@@ -115,6 +115,50 @@ class L10nConfigParser(object):
     return urlopen(self.all_url).read().splitlines()
 
 
+class SourceTreeConfigParser(L10nConfigParser):
+  '''Subclassing L10nConfigParser to work with just the repos
+  checked out next to each other instead of intermingled like
+  we do for real builds.
+  '''
+
+  def __init__(self, inipath, basepath, initial_module=None):
+    '''Add additional arguments basepath and initial_module.
+
+    basepath is used to resolve local paths, initial_momdule 
+    is used to support single module setups like fennec.
+    The module in that case would be 'mobile' while the local
+    paths are just 'locales/en-US/...'
+    '''
+    L10nConfigParser.__init__(self, inipath)
+    self.basepath = basepath
+    self.initial_module = initial_module
+
+  def addChild(self, title, path, orig_cp):
+    # check if there's a section with details for this include
+    # we might have to check a different repo, or even VCS
+    # for example, projects like "mail" indicate in
+    # an "include_" section where to find the l10n.ini for "toolkit"
+    details = 'include_' + title
+    if orig_cp.has_section(details):
+      branch = orig_cp.get(details, 'mozilla')
+      inipath = orig_cp.get(details, 'l10n.ini')
+      path = self.basepath + '/' + branch + '/' + inipath
+    else:
+      path = urljoin(self.baseurl, path)
+    cp = SourceTreeConfigParser(path, self.basepath, **self.defaults)
+    cp.loadConfigs()
+    self.children.append(cp)
+
+  def dirsIter(self):
+    if self.initial_module is not None:
+      assert len(self.dirs) == 1
+      yield self.dirs[0], os.path.join(os.path.abspath(self.basepath),
+                                       self.initial_module)
+    else:
+      for dir, basepath in L10nConfigParser.dirsIter(self):
+        yield dir, basepath
+
+
 class File(object):
   def __init__(self, fullpath, file, module = None, locale = None):
     self.fullpath = fullpath
@@ -188,9 +232,8 @@ class LocalesWrap(object):
 class EnumerateApp(object):
   reference =  'en-US'
   def __init__(self, inipath, l10nbase, locales = None):
+    self.setupConfigParser(inipath)
     self.modules = defaultdict(dict)
-    self.config = L10nConfigParser(inipath)
-    self.config.loadConfigs()
     self.l10nbase = os.path.abspath(l10nbase)
     self.filters = []
     drive, tail = os.path.splitdrive(inipath)
@@ -199,6 +242,9 @@ class EnumerateApp(object):
     self.locales = locales or self.config.allLocales()
     self.locales.sort()
     pass
+  def setupConfigParser(self, inipath):
+    self.config = L10nConfigParser(inipath)
+    self.config.loadConfigs()
   def addFilterFrom(self, filterpath):
     if not os.path.exists(filterpath):
       return
@@ -233,6 +279,43 @@ class EnumerateApp(object):
         base = os.path.join(self.l10nbase, self.reference, mod)
       yield (mod, EnumerateDir(base, mod, self.reference),
              LocalesWrap(self.l10nbase, mod, self.locales))
+
+
+class EnumerateSourceTreeApp(EnumerateApp):
+  '''Subclass EnumerateApp to work on side-by-side checked out
+  repos, and to no pay attention to how the source would actually
+  be checked out for building.
+
+  It's supporting applications like Fennec, too, which have
+  'locales/en-US/...' in their root dir, but claim to be 'mobile'.
+  '''
+
+  def __init__(self, inipath, basepath, l10nbase, locales=None,
+               initial_module=None):
+    self.initial_module = initial_module
+    self.basepath = basepath
+    EnumerateApp.__init__(self, inipath, l10nbase, locales)
+
+  def setupConfigParser(self, inipath):
+    self.config = SourceTreeConfigParser(inipath, self.basepath,
+                                         self.initial_module)
+    self.config.loadConfigs()
+
+  def __iter__(self):
+    redir = None
+    if self.initial_module is not None:
+      # We're something like fennec. If we see the module of the single
+      # fake module, redirect it to not have the mod in the path
+      redir = self.config.dirs[0]
+      target = os.path.join(os.path.abspath(self.basepath),
+                            self.initial_module,
+                            'locales', 'en-US')
+    for mod, ref, l10n in EnumerateApp.__iter__(self):
+      if mod != redir:
+        yield mod, ref, l10n
+      else:
+        yield mod, EnumerateDir(target, mod, self.reference), l10n
+
 
 def get_base_path(mod, loc):
   'statics for path patterns and conversion'
