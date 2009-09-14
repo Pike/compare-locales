@@ -50,26 +50,52 @@ class L10nConfigParser(object):
   Subclass this and overwrite loadConfigs and addChild if you need async.
   '''
   def __init__(self, inipath, **kwargs):
+    """Constructor for L10nConfigParsers
+    
+    inipath -- l10n.ini path
+    Optional keyword arguments are fowarded to the inner ConfigParser as
+    defaults.
+    """
     if os.path.isabs(inipath):
       self.inipath = 'file:%s' % pathname2url(inipath)
     else:
       pwdurl = 'file:%s/' % pathname2url(os.getcwd())
       self.inipath = urljoin(pwdurl, inipath)
+    # l10n.ini files can import other l10n.ini files, store the 
+    # corresponding L10nConfigParsers
     self.children = []
+    # we really only care about the l10n directories described in l10n.ini
     self.dirs = []
+    # optional defaults to be passed to the inner ConfigParser (unused?)
     self.defaults = kwargs
 
-  def loadConfigs(self):
-    self.onLoadConfig(urlopen(self.inipath))
+  def getDepth(self, cp):
+    '''Get the depth for the comparison from the parsed l10n.ini.
 
-  def onLoadConfig(self, inifile):
-    cp = ConfigParser(self.defaults)
-    cp.readfp(inifile)
+    Overloadable to get the source depth for fennec and friends.
+    '''
     try:
       depth = cp.get('general', 'depth')
     except:
       depth = '.'
+    return depth
+
+  def loadConfigs(self):
+    """Entry point to load the l10n.ini file this Parser refers to.
+
+    This implementation uses synchronous loads, subclasses might overload
+    this behaviour. If you do, make sure to pass a file-like object
+    to onLoadConfig.
+    """
+    self.onLoadConfig(urlopen(self.inipath))
+
+  def onLoadConfig(self, inifile):
+    """Parse a file-like object for the loaded l10n.ini file."""
+    cp = ConfigParser(self.defaults)
+    cp.readfp(inifile)
+    depth = self.getDepth(cp)
     self.baseurl = urljoin(self.inipath, depth)
+    # create child loaders for any other l10n.ini files to be included
     try:
       for title, path in cp.items('includes'):
         # skip default items
@@ -79,32 +105,51 @@ class L10nConfigParser(object):
         self.addChild(title, path, cp)
     except NoSectionError:
       pass
+    # try to load the "dirs" defined in the "compare" section
     try:
       self.dirs.extend(cp.get('compare', 'dirs').split())
     except (NoOptionError, NoSectionError):
       pass
+    # try getting a top level compare dir, as used for fennec
+    try:
+      self.tld = cp.get('compare', 'tld')
+      # remove tld from comparison dirs
+      if self.tld in self.dirs:
+        self.dirs.remove(self.tld)
+    except (NoOptionError, NoSectionError):
+      self.tld = None
+    # try to set "all_path" and "all_url"
     try:
       self.all_path = cp.get('general', 'all')
       self.all_url = urljoin(self.baseurl, self.all_path)
     except (NoOptionError, NoSectionError):
       self.all_path = None
       self.all_url = None
+    return cp
 
   def addChild(self, title, path, orig_cp):
+    """Create a child L10nConfigParser and load it.
+    
+    title -- indicates the module's name
+    path -- indicates the path to the module's l10n.ini file
+    orig_cp -- the configuration parser of this l10n.ini
+    """
     cp = L10nConfigParser(urljoin(self.baseurl, path), **self.defaults)
     cp.loadConfigs()
     self.children.append(cp)
 
   def dirsIter(self):
+    """Iterate over all dirs and our base path for this l10n.ini"""
     url = urlparse(self.baseurl)
-    basepath = None
-    if url[0] == 'file':
-      basepath = url2pathname(url[2])
+    basepath = url2pathname(url[2])
     for dir in self.dirs:
-      yield (dir, basepath)
+      yield dir, (basepath, dir)
     
 
   def directories(self):
+    """Iterate over all dirs and base paths for this l10n.ini as well
+    as the included ones.
+    """
     for t in self.dirsIter():
       yield t
     for child in self.children:
@@ -112,6 +157,7 @@ class L10nConfigParser(object):
         yield t
 
   def allLocales(self):
+    """Return a list of all the locales of this project"""
     return urlopen(self.all_url).read().splitlines()
 
 
@@ -121,17 +167,28 @@ class SourceTreeConfigParser(L10nConfigParser):
   we do for real builds.
   '''
 
-  def __init__(self, inipath, basepath, initial_module=None):
-    '''Add additional arguments basepath and initial_module.
+  def __init__(self, inipath, basepath):
+    '''Add additional arguments basepath.
 
-    basepath is used to resolve local paths, initial_momdule 
-    is used to support single module setups like fennec.
-    The module in that case would be 'mobile' while the local
-    paths are just 'locales/en-US/...'
+    basepath is used to resolve local paths via branchnames.
     '''
     L10nConfigParser.__init__(self, inipath)
     self.basepath = basepath
-    self.initial_module = initial_module
+    self.tld = None
+
+  def getDepth(self, cp):
+    '''Get the depth for the comparison from the parsed l10n.ini.
+
+    Overloaded to get the source depth for fennec and friends.
+    '''
+    try:
+      depth = cp.get('general', 'source-depth')
+    except:
+      try:
+        depth = cp.get('general', 'depth')
+      except:
+        depth = '.'
+    return depth
 
   def addChild(self, title, path, orig_cp):
     # check if there's a section with details for this include
@@ -150,13 +207,14 @@ class SourceTreeConfigParser(L10nConfigParser):
     self.children.append(cp)
 
   def dirsIter(self):
-    if self.initial_module is not None:
-      assert len(self.dirs) == 1
-      yield self.dirs[0], os.path.join(os.path.abspath(self.basepath),
-                                       self.initial_module)
-    else:
-      for dir, basepath in L10nConfigParser.dirsIter(self):
-        yield dir, basepath
+    if self.tld is not None:
+      url = urlparse(self.baseurl)
+      basepath = None
+      if url[0] == 'file':
+        basepath = url2pathname(url[2])
+      yield self.tld, (basepath, )
+    for t in L10nConfigParser.dirsIter(self):
+      yield t
 
 
 class File(object):
@@ -274,7 +332,7 @@ class EnumerateApp(object):
     mods.sort()
     for mod in mods:
       if self.reference == 'en-US':
-        base = os.path.join(dirmap[mod], mod, 'locales', 'en-US')
+        base = os.path.join(*(dirmap[mod] + ('locales', 'en-US')))
       else:
         base = os.path.join(self.l10nbase, self.reference, mod)
       yield (mod, EnumerateDir(base, mod, self.reference),
@@ -290,31 +348,13 @@ class EnumerateSourceTreeApp(EnumerateApp):
   'locales/en-US/...' in their root dir, but claim to be 'mobile'.
   '''
 
-  def __init__(self, inipath, basepath, l10nbase, locales=None,
-               initial_module=None):
-    self.initial_module = initial_module
+  def __init__(self, inipath, basepath, l10nbase, locales=None):
     self.basepath = basepath
     EnumerateApp.__init__(self, inipath, l10nbase, locales)
 
   def setupConfigParser(self, inipath):
-    self.config = SourceTreeConfigParser(inipath, self.basepath,
-                                         self.initial_module)
+    self.config = SourceTreeConfigParser(inipath, self.basepath)
     self.config.loadConfigs()
-
-  def __iter__(self):
-    redir = None
-    if self.initial_module is not None:
-      # We're something like fennec. If we see the module of the single
-      # fake module, redirect it to not have the mod in the path
-      redir = self.config.dirs[0]
-      target = os.path.join(os.path.abspath(self.basepath),
-                            self.initial_module,
-                            'locales', 'en-US')
-    for mod, ref, l10n in EnumerateApp.__iter__(self):
-      if mod != redir:
-        yield mod, ref, l10n
-      else:
-        yield mod, EnumerateDir(target, mod, self.reference), l10n
 
 
 def get_base_path(mod, loc):
