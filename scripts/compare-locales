@@ -74,10 +74,12 @@ app.reference = options.reference
 o = compareApp(app, merge_stage = options.merge)
 print codecs.utf_8_encode(o.serialize())[0]
 
-totalMissing = 0
-for k in ('missing', 'missingInFiles'):
-  for summary in o.summary.values():
-    if k in summary:
-      totalMissing = summary[k]
-if totalMissing:
-  parser.exit(1)
+if not options.merge:
+  # if not merging, error on really missing strings
+  totalMissing = 0
+  for k in ('missing', 'missingInFiles'):
+    for summary in o.summary.values():
+      if k in summary:
+        totalMissing = summary[k]
+  if totalMissing:
+    parser.exit(1)

@@ -312,15 +312,31 @@ class EnumerateApp(object):
       # XXX error handling?
       return
     self.filters.append(l['test'])
+
+  value_map = {None:None, 'error':0, 'ignore':1, 'report':2}
   def filter(self, l10n_file, entity = None):
-    for f in self.filters:
+    '''Go through all added filters, and,
+    - map "error" -> 0, "ignore" -> 1, "report" -> 2
+    - if filter.test returns a bool, map that to
+      False -> "ignore" (1), True -> "error" (0)
+    - take the max of all reported
+    '''
+    rv = 0
+    for f in reversed(self.filters):
       try: 
-        if not f(l10n_file.module, l10n_file.file, entity):
-          return False
+        _r = f(l10n_file.module, l10n_file.file, entity)
       except:
         # XXX error handling
         continue
-    return True
+      if isinstance(_r, bool):
+        _r = [1, 0][_r]
+      else:
+        # map string return value to int, default to 'error', None is None
+        _r = self.value_map.get(_r, 0)
+      if _r is not None:
+        rv = max(rv, _r)
+    return ['error','ignore','report'][rv]
+
   def __iter__(self):
     '''
     Iterate over all modules, return en-US directory enumerator, and an

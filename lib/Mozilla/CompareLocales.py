@@ -244,11 +244,11 @@ class Observer(object):
     if category in self.stat_cats:
       self.summary[file.locale][category] += data
     elif category in ['missingFile', 'obsoleteFile']:
-      if self.filter is not None and not self.filter(file):
+      if self.filter is not None and self.filter(file) == "ignore":
         return False
       self.details[file][category] = True
     elif category in ['missingEntity', 'obsoleteEntity']:
-      if self.filter is not None and not self.filter(file, data):
+      if self.filter is not None and self.filter(file, data) == "ignore":
         return False
       v = self.details[file]
       try:
