@@ -77,9 +77,8 @@ class EnumerateJar(object):
       yield JarEntry(self.zf, f, localesub.sub('locale/@AB_CD@', f))
 
 def compareJars(ref, l10n):
-  cc = CompareLocales.ContentComparer()
   o  = CompareLocales.Observer()
-  cc.add_observer(o)
+  cc = CompareLocales.ContentComparer(o)
   dc = CompareLocales.DirectoryCompare(EnumerateJar(ref))
   dc.setWatcher(cc)
   dc.compareWith(EnumerateJar(l10n))

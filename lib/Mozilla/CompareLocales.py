@@ -211,7 +211,7 @@ class DirectoryCompare(SequenceMatcher):
           self.watcher.add(self.a[i], other.cloneFile(self.a[i]))
 
 class Observer(object):
-  stat_cats = ['missing', 'obsolete', 'missingInFiles',
+  stat_cats = ['missing', 'obsolete', 'missingInFiles', 'report',
                'changed', 'unchanged', 'keys']
   def __init__(self):
     class intdict(defaultdict):
@@ -241,27 +241,36 @@ class Observer(object):
   def toJSON(self):
     return dict(summary = self.getSummary(), details = self.details.toJSON())
   def notify(self, category, file, data):
+    rv = "error"
     if category in self.stat_cats:
+      # these get called post reporting just for stats
+      # return "error" to forward them to other observers
       self.summary[file.locale][category] += data
-    elif category in ['missingFile', 'obsoleteFile']:
-      if self.filter is not None and self.filter(file) == "ignore":
-        return False
-      self.details[file][category] = True
-    elif category in ['missingEntity', 'obsoleteEntity']:
-      if self.filter is not None and self.filter(file, data) == "ignore":
-        return False
+      return "error"
+    if category in ['missingFile', 'obsoleteFile']:
+      if self.filter is not None:
+        rv = self.filter(file)
+      if rv != "ignore":
+        self.details[file][category] = rv
+      return rv
+    if category in ['missingEntity', 'obsoleteEntity']:
+      if self.filter is not None:
+        rv = self.filter(file, data)
+      if rv == "ignore":
+        return rv
       v = self.details[file]
       try:
         v[category].append(data)
       except KeyError:
         v[category] = [data]
-    elif category == 'error':
+      return rv
+    if category == 'error':
       try:
         self.details[file][category].append(data)
       except KeyError:
         self.details[file][category] = [data]
       self.summary[file.locale]['errors'] += 1
-    return True
+    return rv
   def serialize(self, type="text/plain"):
     def tostr(t):
       if t[1] == 'key':
@@ -293,7 +302,7 @@ class Observer(object):
         out.append(locale + ':')
       out += [k + ': ' + str(v) for k,v in summary.iteritems()]
       total = sum([summary[k] \
-                     for k in ['changed','unchanged','missing',
+                     for k in ['changed','unchanged','report','missing',
                                'missingInFiles'] \
                      if k in summary])
       rate = (('changed' in summary and summary['changed'] * 100)
@@ -305,11 +314,20 @@ class Observer(object):
 
 class ContentComparer:
   keyRE = re.compile('[kK]ey')
-  def __init__(self):
+  def __init__(self, filterObserver):
+    '''Create a ContentComparer.
+    filterObserver is usually a instance of Observer. The return values
+    of the notify method are used to control the handling of missing
+    entities.
+    '''
     self.reference = dict()
+    self.filterObserver = filterObserver
     self.observers = []
     self.merge_stage = None
   def add_observer(self, obs):
+    '''Add a non-filtering observer.
+    Results from the notify calls are ignored.
+    '''
     self.observers.append(obs)
   def set_merge_stage(self, merge_stage):
     self.merge_stage = merge_stage
@@ -329,9 +347,16 @@ class ContentComparer:
     f.write(''.join(trailing))
     f.close()
   def notify(self, category, file, data):
-    # hack around the lack of all() prior to python2.5
-    results = map(lambda o: o.notify(category, file, data), self.observers)
-    return reduce(lambda l,r: l and r, results, True)
+    '''Check filterObserver for the found data, and if it's
+    not to ignore, notify observers.
+    '''
+    rv = self.filterObserver.notify(category, file, data)
+    if rv == 'ignore':
+      return rv
+    for obs in self.observers:
+      # non-filtering observers, ignore results
+      obs.notify(category, file, data)
+    return rv
   def remove(self, obsolete):
     self.notify('obsoleteFile', obsolete, None)
     pass
@@ -363,23 +388,31 @@ class ContentComparer:
     ar = AddRemove()
     ar.set_left(ref_list)
     ar.set_right(l10n_list)
-    missing = obsolete = changed = unchanged = keys = 0
+    report = missing = obsolete = changed = unchanged = keys = 0
     missings = []
     for action, item_or_pair in ar:
       if action == 'delete':
         # missing entity
-        if self.notify('missingEntity', l10n, item_or_pair):
-          missing += 1
+        _rv = self.notify('missingEntity', l10n, item_or_pair)
+        if _rv == "ignore":
+          continue
+        if _rv == "error":
+          # only add to missing entities for l10n-merge on error, not report
           missings.append(item_or_pair)
+          missing += 1
+        else:
+          # just report
+          report += 1
       elif action == 'add':
         # obsolete entity or junk
         if isinstance(l10n_entities[l10n_map[item_or_pair]], Parser.Junk):
           junk = l10n_entities[l10n_map[item_or_pair]]
           params = (junk.val,) + junk.span
           self.notify('error', l10n, 'Unparsed content "%s" at %d-%d' % params)
-        elif self.notify('obsoleteEntity', l10n, item_or_pair):
+        elif self.notify('obsoleteEntity', l10n, item_or_pair) != 'ignore':
           obsolete += 1
       else:
+        # entity found in both ref and l10n, check for changed
         entity = item_or_pair[0]
         if self.keyRE.search(entity):
           keys += 1
@@ -395,8 +428,10 @@ class ContentComparer:
         pass
     if missing:
       self.notify('missing', l10n, missing)
-      if self.merge_stage is not None:
+      if self.merge_stage is not None and missings:
         self.merge(ref[0], ref[1], ref_file, l10n, missings, p)
+    if report:
+      self.notify('report', l10n, report)
     if obsolete:
       self.notify('obsolete', l10n, obsolete)
     if changed:
@@ -407,7 +442,7 @@ class ContentComparer:
       self.notify('keys', l10n, keys)
     pass
   def add(self, orig, missing):
-    if not self.notify('missingFile', missing, None):
+    if self.notify('missingFile', missing, None) == "ignore":
       # filter said that we don't need this file, don't count it
       return
     f = orig
@@ -430,9 +465,17 @@ class ContentComparer:
     pass
 
 def compareApp(app, otherObserver = None, merge_stage = None):
-  cc = ContentComparer()
+  '''Compare locales set in app.
+
+  Optional arguments are:
+  - otherObserver. A object implementing 
+      notify(category, _file, data)
+    The return values of that callback are ignored.
+  - merge_stage. A directory to be used for staging the output of
+    l10n-merge.
+  '''
   o  = Observer()
-  cc.add_observer(o)
+  cc = ContentComparer(o)
   if otherObserver is not None:
     cc.add_observer(otherObserver)
   cc.set_merge_stage(merge_stage)
@@ -445,9 +488,15 @@ def compareApp(app, otherObserver = None, merge_stage = None):
   return o
 
 def compareDirs(reference, locale, otherObserver = None):
-  cc = ContentComparer()
+  '''Compare reference and locale dir.
+
+  Optional arguments are:
+  - otherObserver. A object implementing 
+      notify(category, _file, data)
+    The return values of that callback are ignored.
+  '''
   o  = Observer()
-  cc.add_observer(o)
+  cc = ContentComparer(o)
   if otherObserver is not None:
     cc.add_observer(otherObserver)
   dc = DirectoryCompare(Paths.EnumerateDir(reference))
