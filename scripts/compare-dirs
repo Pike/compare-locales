@@ -50,6 +50,8 @@ parser.add_option('-v', '--verbose', action='count', dest='v', default=0,
                   help='Make more noise')
 parser.add_option('-q', '--quiet', action='count', dest='q', default=0,
                   help='Make more noise')
+parser.add_option('-m', '--merge',
+                  help='Use this directory to stage merged files')
 
 (options, args) = parser.parse_args()
 if len(args) != 2:
@@ -60,5 +62,15 @@ logging.basicConfig()
 logging.getLogger().setLevel(logging.WARNING - (options.v - options.q)*10)
 
 reference, locale = args
-o = compareDirs(reference, locale)
+o = compareDirs(reference, locale, merge_stage = options.merge)
 print codecs.utf_8_encode(o.serialize())[0]
+
+if not options.merge:
+  # if not merging, error on really missing strings
+  totalMissing = 0
+  for k in ('missing', 'missingInFiles'):
+    for summary in o.summary.values():
+      if k in summary:
+        totalMissing = summary[k]
+  if totalMissing:
+    parser.exit(1)

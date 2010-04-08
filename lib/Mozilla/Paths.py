@@ -267,7 +267,7 @@ class File(object):
 
 class EnumerateDir(object):
   ignore_dirs = ['CVS', '.svn', '.hg']
-  def __init__(self, basepath, module = None, locale = None):
+  def __init__(self, basepath, module = '', locale = None):
     self.basepath = basepath
     self.module = module
     self.locale = locale

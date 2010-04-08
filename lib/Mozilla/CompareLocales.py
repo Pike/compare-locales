@@ -487,7 +487,7 @@ def compareApp(app, otherObserver = None, merge_stage = None):
       dc.compareWith(localization)
   return o
 
-def compareDirs(reference, locale, otherObserver = None):
+def compareDirs(reference, locale, otherObserver = None, merge_stage = None):
   '''Compare reference and locale dir.
 
   Optional arguments are:
@@ -499,6 +499,7 @@ def compareDirs(reference, locale, otherObserver = None):
   cc = ContentComparer(o)
   if otherObserver is not None:
     cc.add_observer(otherObserver)
+  cc.set_merge_stage(merge_stage)
   dc = DirectoryCompare(Paths.EnumerateDir(reference))
   dc.setWatcher(cc)
   dc.compareWith(Paths.EnumerateDir(locale))
