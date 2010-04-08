@@ -80,6 +80,29 @@ class L10nConfigParser(object):
       depth = '.'
     return depth
 
+  def getFilters(self):
+    '''Get the test functions from this ConfigParser and all children.
+
+    Only works with synchronous loads, used by compare-locales, which
+    is local anyway.
+    '''
+    filterurl = urljoin(self.inipath, 'filter.py')
+    try:
+      l = {}
+      execfile(urlparse(filterurl).path, {}, l)
+      if 'test' in l and callable(l['test']):
+        filters = [l['test']]
+      else:
+        filters = []
+    except:
+      filters = []
+
+    for c in self.children:
+      filters += c.getFilters()
+
+    return filters
+
+
   def loadConfigs(self):
     """Entry point to load the l10n.ini file this Parser refers to.
 
@@ -296,22 +319,15 @@ class EnumerateApp(object):
     self.filters = []
     drive, tail = os.path.splitdrive(inipath)
     filterpath = drive + url2pathname(urlparse(urljoin(tail,'filter.py'))[2])
-    self.addFilterFrom(filterpath)
+    self.addFilters(*self.config.getFilters())
     self.locales = locales or self.config.allLocales()
     self.locales.sort()
     pass
   def setupConfigParser(self, inipath):
     self.config = L10nConfigParser(inipath)
     self.config.loadConfigs()
-  def addFilterFrom(self, filterpath):
-    if not os.path.exists(filterpath):
-      return
-    l = {}
-    execfile(filterpath, {}, l)
-    if 'test' not in l or not callable(l['test']):
-      # XXX error handling?
-      return
-    self.filters.append(l['test'])
+  def addFilters(self, *args):
+    self.filters += args
 
   value_map = {None:None, 'error':0, 'ignore':1, 'report':2}
   def filter(self, l10n_file, entity = None):
