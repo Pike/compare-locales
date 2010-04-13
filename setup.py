@@ -10,10 +10,11 @@ http://developer.mozilla.org/en/docs/Compare-locales
 
 docstrings = __doc__.split("\n")
 
-import ez_setup
-ez_setup.use_setuptools()
+try:
+  from setuptools import setup
+except ImportError:
+  from distutils.core import setup
 
-from setuptools import setup, find_packages
 import sys
 import os.path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'lib'))
@@ -33,25 +34,6 @@ Topic :: Software Development :: Localization
 Topic :: Software Development :: Testing
 """
 
-from setuptools import Command
-import glob
-
-class web(Command):
-  description = 'install web files'
-  user_options = [('target=','d','base directory for installation')]
-  
-  def initialize_options(self):
-    self.target = None
-    pass
-  def finalize_options(self):
-    pass
-  def run(self):
-    self.ensure_dirname('target')
-    for f in glob.glob('web/*.*'):
-      if f.find('/CVS') >=0 or f.find('~') >= 0:
-        continue
-      self.copy_file(f, self.target)
-
 setup(name="compare-locales",
       version=version,
       author="Axel Hecht",
@@ -63,10 +45,7 @@ setup(name="compare-locales",
       classifiers=filter(None, classifiers.split("\n")),
       platforms=["any"],
       scripts=['scripts/compare-locales',
-               'scripts/compare-dirs',
-               'scripts/test-locales',
-               'scripts/verify-rss-redirects'],
+               'scripts/compare-dirs'],
       package_dir={'': 'lib'},
       packages=['Mozilla'],
-      cmdclass={'web': web}
       )
