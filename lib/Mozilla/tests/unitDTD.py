@@ -7,7 +7,7 @@ class TestDTD(unittest.TestCase):
 
     def testGood(self):
         self._test('''<!ENTITY foo.label "stuff">''',
-                   (('foo.label','"stuff"'),))
+                   (('foo.label','stuff'),))
 
 
     quoteContent = '''<!ENTITY good.one "one">
@@ -19,13 +19,13 @@ class TestDTD(unittest.TestCase):
 <!ENTITY good.five "good 'quoted' word">
 '''
     quoteRef = (
-        ('good.one', '"one"'),
+        ('good.one', 'one'),
         ('_junk_1_25-56', '<!ENTITY bad.one "bad " quote">'),
-        ('good.two', '"two"'),
+        ('good.two', 'two'),
         ('_junk_2_82-119', '<!ENTITY bad.two "bad "quoted" word">'),
-        ('good.three', '"three"'),
-        ('good.four', '"good \' quote"'),
-        ('good.five', '"good \'quoted\' word"'),
+        ('good.three', 'three'),
+        ('good.four', 'good \' quote'),
+        ('good.five', 'good \'quoted\' word'),
         )
     def testQuote(self):
         self._test(self.quoteContent, self.quoteRef)
