@@ -161,10 +161,21 @@ class L10nConfigParser(object):
     cp.loadConfigs()
     self.children.append(cp)
 
+  def getTLDPathsTuple(self, basepath):
+    """Given the basepath, return the path fragments to be used for 
+    self.tld. For build runs, this is (basepath, self.tld), for
+    source runs, just (basepath,).
+
+    @see overwritten method in SourceTreeConfigParser.
+    """
+    return (basepath, self.tld)
+
   def dirsIter(self):
     """Iterate over all dirs and our base path for this l10n.ini"""
     url = urlparse(self.baseurl)
-    basepath = url2pathname(url[2])
+    basepath = url2pathname(url.path)
+    if self.tld is not None:
+      yield self.tld, self.getTLDPathsTuple(basepath)
     for dir in self.dirs:
       yield dir, (basepath, dir)
     
@@ -229,15 +240,11 @@ class SourceTreeConfigParser(L10nConfigParser):
     cp.loadConfigs()
     self.children.append(cp)
 
-  def dirsIter(self):
-    if self.tld is not None:
-      url = urlparse(self.baseurl)
-      basepath = None
-      if url[0] == 'file':
-        basepath = url2pathname(url[2])
-      yield self.tld, (basepath, )
-    for t in L10nConfigParser.dirsIter(self):
-      yield t
+  def getTLDPathsTuple(self, basepath):
+    """Overwrite L10nConfigParser's getTLDPathsTuple to just return 
+    the basepath.
+    """
+    return (basepath, )
 
 
 class File(object):
