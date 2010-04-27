@@ -1,1 +1,1 @@
-version="0.9pre"
+version="0.8.3"
