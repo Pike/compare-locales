@@ -57,6 +57,8 @@ parser.add_option('-r', '--reference', default='en-US', dest='reference',
                   'localization. [default: en-US]')
 parser.add_option('-m', '--merge',
                   help='Use this directory to stage merged files')
+parser.add_option('--json', action='store_true', dest='json',
+                  help='Dump just summary as exhibit JSON')
 
 (options, args) = parser.parse_args()
 if len(args) < 3:
@@ -72,7 +74,10 @@ app = EnumerateApp(inipath, l10nbase, locales)
 app.reference = options.reference
 
 o = compareApp(app, merge_stage = options.merge)
-print codecs.utf_8_encode(o.serialize())[0]
+so = {}
+if options.json:
+  so['type']='application/json'
+print codecs.utf_8_encode(o.serialize(**so))[0]
 
 if not options.merge:
   # if not merging, error on really missing strings

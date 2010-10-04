@@ -65,6 +65,11 @@ except NameError:
         return True
     return False
 
+try:
+  from json import dumps
+except:
+  from simplejson import dumps
+
 
 import Parser
 import Paths
@@ -278,7 +283,53 @@ class Observer(object):
         self.details[file][category] = [data]
       self.summary[file.locale]['warnings'] += 1
     return rv
+  def toExhibit(self):
+    items = []
+    for locale in sorted(self.summary.iterkeys()):
+      summary = self.summary[locale]
+      if locale is not None:
+        item = {'id': 'xxx/' + locale,
+                'label': locale,
+                'locale': locale}
+      else:
+        item = {'id': 'xxx',
+                'label': 'xxx',
+                'locale': 'xxx'}
+      item['type'] = 'Build'
+      total = sum([summary[k]
+                   for k in ('changed','unchanged','report','missing',
+                             'missingInFiles')
+                   if k in summary])
+      rate = (('changed' in summary and summary['changed'] * 100)
+              or 0) / total
+      item.update((k, summary.get(k, 0))
+                  for k in ('changed','unchanged'))
+      item.update((k, summary[k]) 
+                  for k in ('report','errors','warnings')
+                  if k in summary)
+      item['missing'] = summary.get('missing', 0) + \
+          summary.get('missingInFiles', 0)
+      item['completion'] = rate
+      item['total'] = total
+      result = 'success'
+      if item.get('warnings',0):
+        result = 'warning'
+      if item.get('errors',0) or item.get('missing',0):
+        result = 'failure'
+      item['result'] = result
+      items.append(item)
+    data = {"properties": dict.fromkeys(
+        ("completion", "errors", "warnings", "missing", "report",
+         "unchanged", "changed", "obsolete"),
+        {"valueType": "number"}),
+              "types": {
+        "Build": {"pluralLabel": "Builds"}
+        }}
+    data['items'] = items
+    return dumps(data, indent=2)
   def serialize(self, type="text/plain"):
+    if type=="application/json":
+      return self.toExhibit()
     def tostr(t):
       if t[1] == 'key':
         return '  ' * t[0] + '/'.join(t[2])
