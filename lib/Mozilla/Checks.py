@@ -203,6 +203,7 @@ class DTDChecker(Checker):
 %s
 </elem>
 '''
+    xmllist = set(('amp', 'lt', 'gt', 'apos', 'quot'))
 
     def check(self, refEnt, l10nEnt):
         '''Try to parse the refvalue inside a dummy element, and keep
@@ -214,7 +215,8 @@ class DTDChecker(Checker):
         # find entities the refValue references,
         # reusing markup from DTDParser.
         reflist = set(m.group(1).encode('utf-8') 
-                      for m in self.eref.finditer(refValue))
+                      for m in self.eref.finditer(refValue)) \
+                      - self.xmllist
         entities = ''.join('<!ENTITY %s "">' % s for s in sorted(reflist))
         parser = sax.make_parser()
         try:
@@ -227,7 +229,8 @@ class DTDChecker(Checker):
         # find entities the l10nValue references,
         # reusing markup from DTDParser.
         l10nlist = set(m.group(1).encode('utf-8') 
-                       for m in self.eref.finditer(l10nValue))
+                       for m in self.eref.finditer(l10nValue)) \
+                       - self.xmllist
         missing = sorted(l10nlist - reflist)
         _entities = entities + ''.join('<!ENTITY %s "">' % s for s in missing)
         warntmpl = 'Referencing unknown entity `%s`'
