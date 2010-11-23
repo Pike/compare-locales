@@ -418,7 +418,11 @@ class ContentComparer:
       shutil.copyfile(l10n_file.fullpath, outfile)
       f = codecs.open(outfile, 'ab', p.encoding)
     print "adding to " + outfile
-    f.write(''.join(trailing))
+    def ensureNewline(s):
+      if not s.endswith('\n'):
+        return s + '\n'
+      return s
+    f.write(''.join(map(ensureNewline,trailing)))
     f.close()
   def notify(self, category, file, data):
     '''Check filterObserver for the found data, and if it's
