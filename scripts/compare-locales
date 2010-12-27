@@ -57,6 +57,12 @@ parser.add_option('-r', '--reference', default='en-US', dest='reference',
                   'localization. [default: en-US]')
 parser.add_option('-m', '--merge',
                   help='Use this directory to stage merged files')
+parser.add_option('--clobber-merge', action="store_true", default=False, dest='clobber',
+                  help="""WARNING: DATALOSS.
+Use this option with care. If specified, the merge directory will
+be clobbered for each module. That means, the subdirectory will
+be completely removed, any files that were there are lost.
+Be careful to specify the right merge directory when using this option.""")
 
 (options, args) = parser.parse_args()
 if len(args) < 3:
@@ -71,7 +77,11 @@ logging.getLogger().setLevel(logging.WARNING - (options.v - options.q)*10)
 app = EnumerateApp(inipath, l10nbase, locales)
 app.reference = options.reference
 
-o = compareApp(app, merge_stage = options.merge)
+try:
+  o = compareApp(app, merge_stage = options.merge, clobber = options.clobber)
+except (OSError, IOError), e:
+  print "FAIL: " + str(e)
+  parser.exit(2)
 print codecs.utf_8_encode(o.serialize())[0]
 
 if not options.merge:

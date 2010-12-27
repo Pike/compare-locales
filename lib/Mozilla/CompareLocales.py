@@ -464,7 +464,7 @@ class ContentComparer:
     # overload this if needed
     pass
 
-def compareApp(app, otherObserver = None, merge_stage = None):
+def compareApp(app, otherObserver = None, merge_stage = None, clobber = False):
   '''Compare locales set in app.
 
   Optional arguments are:
@@ -473,6 +473,8 @@ def compareApp(app, otherObserver = None, merge_stage = None):
     The return values of that callback are ignored.
   - merge_stage. A directory to be used for staging the output of
     l10n-merge.
+  - clobber. Clobber the module subdirectories of the merge dir as we go.
+    Use wisely, as it might cause data loss.
   '''
   o  = Observer()
   cc = ContentComparer(o)
@@ -481,6 +483,12 @@ def compareApp(app, otherObserver = None, merge_stage = None):
   cc.set_merge_stage(merge_stage)
   o.filter = app.filter
   for module, reference, locales in app:
+    if merge_stage is not None and clobber:
+      # if clobber and merge is on, remove the stage for the module if it exists
+      clobberdir = os.path.join(merge_stage, module)
+      if os.path.exists(clobberdir):
+        shutil.rmtree(clobberdir)
+        print "clobbered " + clobberdir
     dc = DirectoryCompare(reference)
     dc.setWatcher(cc)
     for locale, localization in locales:
