@@ -5,7 +5,7 @@ particular are done by a number of different file formats. Independent
 of the format, the Mozilla architecture does not provide fallback strings
 at runtime. This library and the calling scripts provide a way to check
 a given localization for completeness. For more information see
-http://developer.mozilla.org/en/docs/Compare-locales
+https://developer.mozilla.org/en/docs/Compare-locales
 """
 
 docstrings = __doc__.split("\n")
@@ -41,7 +41,6 @@ setup(name="compare-locales",
       description=docstrings[0],
       long_description="\n".join(docstrings[2:]),
       license="MPL 1.1/GPL 2.0/LGPL 2.1",
-      url="http://developer.mozilla.org/en/docs/Compare-locales",
       classifiers=filter(None, classifiers.split("\n")),
       platforms=["any"],
       scripts=['scripts/compare-locales',
