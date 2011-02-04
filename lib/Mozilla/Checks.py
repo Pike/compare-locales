@@ -37,6 +37,7 @@
 
 import re
 import itertools
+import codecs
 from difflib import SequenceMatcher
 from xml import sax
 try:
@@ -199,11 +200,21 @@ class DTDChecker(Checker):
 
     eref = re.compile('&(%s);' % DTDParser.Name)
     tmpl = '''<!DOCTYPE elem [%s]>
-<elem>
-%s
-</elem>
+<elem>%s</elem>
 '''
     xmllist = set(('amp', 'lt', 'gt', 'apos', 'quot'))
+
+    # Setup for XML parser, with default and text-only content handler
+    parser = sax.make_parser()
+    class TextContent(sax.handler.ContentHandler):
+        textcontent = ''
+        def characters(self, content):
+            self.textcontent += content
+
+    defaulthandler = sax.handler.ContentHandler()
+    texthandler = TextContent()
+
+    processContent = None
 
     def check(self, refEnt, l10nEnt):
         """Try to parse the refvalue inside a dummy element, and keep
@@ -218,9 +229,13 @@ class DTDChecker(Checker):
                       for m in self.eref.finditer(refValue)) \
                       - self.xmllist
         entities = ''.join('<!ENTITY %s "">' % s for s in sorted(reflist))
-        parser = sax.make_parser()
+        if self.processContent is None:
+            self.parser.setContentHandler(self.defaulthandler)
+        else:
+            self.texthandler.textcontent = ''
+            self.parser.setContentHandler(self.texthandler)
         try:
-            parser.parse(StringIO(self.tmpl % (entities, refValue.encode('utf-8'))))
+            self.parser.parse(StringIO(self.tmpl % (entities, refValue.encode('utf-8'))))
         except sax.SAXParseException, e:
             yield ('warning',
                    (0,0),
@@ -237,29 +252,106 @@ class DTDChecker(Checker):
         if reflist:
             warntmpl += ' (%s known)' % ', '.join(sorted(reflist))
         try:
-            parser.parse(StringIO(self.tmpl % (_entities, l10nValue.encode('utf-8'))))
+            if self.processContent is not None:
+                self.texthandler.textcontent = ''
+            self.parser.parse(StringIO(self.tmpl % (_entities, l10nValue.encode('utf-8'))))
         except sax.SAXParseException, e:
             # xml parse error, yield error
             # sometimes, the error is reported on our fake closing
             # element, make that the end of the last line
-            lnr = e.getLineNumber() - 2
+            lnr = e.getLineNumber() - 1
             lines = l10nValue.splitlines()
             if lnr > len(lines):
                 lnr = len(lines)
                 col = len(lines[lnr-1])
             else:
                 col = e.getColumnNumber()
+                if lnr == 1:
+                    col -= len("<elem>") # first line starts with <elem>, substract
             yield ('error', (lnr, col), ' '.join(e.args))
 
         for key in missing:
             yield ('warning', (0,0), warntmpl % key)
 
+        if self.processContent is not None:
+            for t in self.processContent(self.texthandler.textcontent):
+                yield t
 
-__checks = [DTDChecker(), PropertiesChecker()]
+
+class PrincessAndroid(DTDChecker):
+    """Checker for the string values that Android puts into an XML container.
+
+    http://developer.android.com/guide/topics/resources/string-resource.html#FormattingAndStyling
+    has more info. Check for unescaped apostrophes and bad unicode escapes.
+    """
+    quoted = re.compile("(?P<q>[\"']).*(?P=q)$")
+    def unicode_escape(self, str):
+        """Helper method to try to decode all unicode escapes in a string.
+
+        This code uses the standard python decode for unicode-escape, but that's
+        somewhat tricky, as its input needs to be ascii. To get to ascii, the
+        unicode string gets converted to ascii with backslashreplace, i.e.,
+        all non-ascii unicode chars get unicode escaped. And then we try to roll
+        all of that back.
+        Now, when that hits an error, that's from the original string, and we need
+        to search for the actual error position in the original string, as the
+        backslashreplace code changes string positions quite badly. See also the
+        last check in TestAndroid.test_android_dtd, with a lengthy chinese string.
+        """
+        val = str.encode('ascii', 'backslashreplace')
+        try:
+            val.decode('unicode-escape')
+        except UnicodeDecodeError, e:
+            args = list(e.args)
+            badstring = args[1][args[2]:args[3]]
+            i = str.rindex(badstring, 0, args[3])
+            args[2] = i
+            args[3] = i + len(badstring)
+            raise UnicodeDecodeError(*args)
+    def use(self, file):
+        """Use this Checker only for DTD files in embedding/android."""
+        return (file.module == "embedding/android") and DTDChecker.pattern.match(file.file)
+    def processContent(self, val):
+        """Actual check code.
+        Check for unicode escapes and unescaped quotes and apostrophes, if string's not quoted.
+        """
+        # first, try to decode unicode escapes
+        try:
+            self.unicode_escape(val)
+        except UnicodeDecodeError, e:
+            yield ('error', e.args[2], e.args[4])
+        # check for unescaped single or double quotes.
+        # first, see if the complete string is single or double quoted, that changes the rules
+        m = self.quoted.match(val)
+        if m:
+            q = m.group('q')
+            offset = 0
+            val = val[1:-1] # strip quotes
+        else:
+            q = "[\"']"
+            offset = -1
+        stray_quot = re.compile(r"[\\\\]*(%s)" % q)
+            
+        for m in stray_quot.finditer(val):
+            if len(m.group(0)) % 2:
+                # found an unescaped single or double quote, which message?
+                msg = m.group(1) == '"' and u"Quotes in Android DTDs need escaping with \\\" or \\u0022, or put string in apostrophes." \
+                      or u"Apostrophes in Android DTDs need escaping with \\' or \\u0027, or use \u2019, or put string in quotes."
+                yield ('error', m.end(0)+offset, msg)
+
+
+class __checks:
+    props = PropertiesChecker()
+    android_dtd = PrincessAndroid()
+    dtd = DTDChecker()
 
 def getChecks(file):
-    checks = map(lambda c: c.check, filter(lambda c: c.use(file), __checks))
-    def _checks(refEnt, l10nEnt):
-        return itertools.chain(*[c(refEnt, l10nEnt) for c in checks])
-    return _checks
+    check = None
+    if __checks.props.use(file):
+        check = __checks.props.check
+    elif __checks.android_dtd.use(file):
+        check = __checks.android_dtd.check
+    elif __checks.dtd.use(file):
+        check = __checks.dtd.check
+    return check
 
