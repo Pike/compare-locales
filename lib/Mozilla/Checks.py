@@ -52,7 +52,7 @@ class Checker(object):
     pattern = None
 
     def use(self, file):
-        return self.pattern.match(file)
+        return self.pattern.match(file.file)
 
     def check(self, refEnt, l10nEnt):
         '''Given the reference and localized Entities, performs checks.
@@ -187,14 +187,14 @@ class PropertiesChecker(Checker):
 
 
 class DTDChecker(Checker):
-    '''Tests to run on DTD files.
+    """Tests to run on DTD files.
 
     Uses xml.sax for the heavy lifting of xml parsing.
 
     The code tries to parse until it doesn't find any unresolved entities
     anymore. If it finds one, it tries to grab the key, and adds an empty
     <!ENTITY key ""> definition to the header.
-    '''
+    """
     pattern = re.compile('.*\.dtd$')
 
     eref = re.compile('&(%s);' % DTDParser.Name)
@@ -206,11 +206,11 @@ class DTDChecker(Checker):
     xmllist = set(('amp', 'lt', 'gt', 'apos', 'quot'))
 
     def check(self, refEnt, l10nEnt):
-        '''Try to parse the refvalue inside a dummy element, and keep
+        """Try to parse the refvalue inside a dummy element, and keep
         track of entities that we need to define to make that work.
 
         Return a checker that offers just those entities.
-        '''
+        """
         refValue, l10nValue = refEnt.val, l10nEnt.val
         # find entities the refValue references,
         # reusing markup from DTDParser.

@@ -2,28 +2,29 @@ import unittest
 
 from Mozilla.Checks import getChecks
 from Mozilla.Parser import getParser
+from Mozilla.Paths import File
 
 
 class BaseHelper(unittest.TestCase):
-    filename = None
+    file = None
     refContent = None
 
     def setUp(self):
-        p = getParser(self.filename)
+        p = getParser(self.file.file)
         p.readContents(self.refContent)
         self.refs = [e for e in p]
 
     def _test(self, content, refWarnOrErrors):
-        p = getParser(self.filename)
+        p = getParser(self.file.file)
         p.readContents(content)
         l10n = [e for e in p]
-        checks = getChecks(self.filename)
+        checks = getChecks(self.file)
         found = tuple(checks(self.refs[0], l10n[0]))
         self.assertEqual(found, refWarnOrErrors)
 
 
 class TestPlurals(BaseHelper):
-    filename = 'foo.properties'
+    file = File('foo.properties', 'foo.properties')
     refContent = '''# LOCALIZATION NOTE (downloadsTitleFiles): Semi-colon list of plural forms.
 # See: http://developer.mozilla.org/en/docs/Localization_and_Plurals
 # #1 number of files
@@ -60,7 +61,7 @@ downloadsTitleFiles=#1 file - Downloads;#1 files - #2;#1 #3
 
 
 class TestDTDs(BaseHelper):
-    filename = 'foo.dtd'
+    file = File('foo.dtd', 'foo.dtd')
     refContent = '''<!ENTITY foo "This is &apos;good&apos;">
 '''
     def testWarning(self):

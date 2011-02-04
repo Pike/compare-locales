@@ -425,9 +425,9 @@ class ContentComparer:
     f.write(''.join(map(ensureNewline,trailing)))
     f.close()
   def notify(self, category, file, data):
-    '''Check filterObserver for the found data, and if it's
+    """Check filterObserver for the found data, and if it's
     not to ignore, notify observers.
-    '''
+    """
     rv = self.filterObserver.notify(category, file, data)
     if rv == 'ignore':
       return rv
@@ -441,7 +441,7 @@ class ContentComparer:
   def compare(self, ref_file, l10n):
     try:
       p = Parser.getParser(ref_file.file)
-      checks = Checks.getChecks(ref_file.file)
+      checks = Checks.getChecks(ref_file)
     except UserWarning:
       # no comparison, XXX report?
       return
