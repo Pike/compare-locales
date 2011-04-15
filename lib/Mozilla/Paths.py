@@ -274,10 +274,11 @@ class File(object):
 
 class EnumerateDir(object):
   ignore_dirs = ['CVS', '.svn', '.hg']
-  def __init__(self, basepath, module = '', locale = None):
+  def __init__(self, basepath, module = '', locale = None, ignore_subdirs = []):
     self.basepath = basepath
     self.module = module
     self.locale = locale
+    self.ignore_subdirs = ignore_subdirs
     pass
   def cloneFile(self, other):
     '''
@@ -301,21 +302,23 @@ class EnumerateDir(object):
       for entry in entries:
         leaf = os.path.join(fulldir, entry)
         if os.path.isdir(leaf):
-          if entry not in self.ignore_dirs:
+          if entry not in self.ignore_dirs and \
+             leaf not in [os.path.join(self.basepath, d) for d in self.ignore_subdirs]:
             dirs.append(dir + (entry,))
           continue
         yield File(leaf, '/'.join(dir + (entry,)),
                    self.module, self.locale)
 
 class LocalesWrap(object):
-  def __init__(self, base, module, locales):
+  def __init__(self, base, module, locales, ignore_subdirs = []):
     self.base = base
     self.module = module
     self.locales = locales
+    self.ignore_subdirs = ignore_subdirs
   def __iter__(self):
     for locale in self.locales:
       path = os.path.join(self.base, locale, self.module)
-      yield (locale, EnumerateDir(path, self.module, locale))
+      yield (locale, EnumerateDir(path, self.module, locale, self.ignore_subdirs))
 
 class EnumerateApp(object):
   reference =  'en-US'
@@ -375,8 +378,8 @@ class EnumerateApp(object):
       else:
         base = os.path.join(self.l10nbase, self.reference, mod)
       yield (mod, EnumerateDir(base, mod, self.reference),
-             LocalesWrap(self.l10nbase, mod, self.locales))
-
+             LocalesWrap(self.l10nbase, mod, self.locales,
+                         [m[len(mod)+1:] for m in mods if m.startswith(mod+'/')]))
 
 class EnumerateSourceTreeApp(EnumerateApp):
   '''Subclass EnumerateApp to work on side-by-side checked out
