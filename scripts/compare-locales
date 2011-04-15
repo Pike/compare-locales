@@ -63,6 +63,8 @@ Use this option with care. If specified, the merge directory will
 be clobbered for each module. That means, the subdirectory will
 be completely removed, any files that were there are lost.
 Be careful to specify the right merge directory when using this option.""")
+parser.add_option('--json', action='store_true', dest='json',
+                  help='Dump just summary as exhibit JSON')
 
 (options, args) = parser.parse_args()
 if len(args) < 3:
@@ -82,7 +84,10 @@ try:
 except (OSError, IOError), e:
   print "FAIL: " + str(e)
   parser.exit(2)
-print codecs.utf_8_encode(o.serialize())[0]
+so = {}
+if options.json:
+  so['type']='application/json'
+print codecs.utf_8_encode(o.serialize(**so))[0]
 
 if not options.merge:
   # if not merging, error on really missing strings

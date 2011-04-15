@@ -65,9 +65,15 @@ except NameError:
         return True
     return False
 
+try:
+  from json import dumps
+except:
+  from simplejson import dumps
+
 
 import Parser
 import Paths
+import Checks
 
 class Tree(object):
   def __init__(self, valuetype):
@@ -270,8 +276,60 @@ class Observer(object):
       except KeyError:
         self.details[file][category] = [data]
       self.summary[file.locale]['errors'] += 1
+    elif category == 'warning':
+      try:
+        self.details[file][category].append(data)
+      except KeyError:
+        self.details[file][category] = [data]
+      self.summary[file.locale]['warnings'] += 1
     return rv
+  def toExhibit(self):
+    items = []
+    for locale in sorted(self.summary.iterkeys()):
+      summary = self.summary[locale]
+      if locale is not None:
+        item = {'id': 'xxx/' + locale,
+                'label': locale,
+                'locale': locale}
+      else:
+        item = {'id': 'xxx',
+                'label': 'xxx',
+                'locale': 'xxx'}
+      item['type'] = 'Build'
+      total = sum([summary[k]
+                   for k in ('changed','unchanged','report','missing',
+                             'missingInFiles')
+                   if k in summary])
+      rate = (('changed' in summary and summary['changed'] * 100)
+              or 0) / total
+      item.update((k, summary.get(k, 0))
+                  for k in ('changed','unchanged'))
+      item.update((k, summary[k]) 
+                  for k in ('report','errors','warnings')
+                  if k in summary)
+      item['missing'] = summary.get('missing', 0) + \
+          summary.get('missingInFiles', 0)
+      item['completion'] = rate
+      item['total'] = total
+      result = 'success'
+      if item.get('warnings',0):
+        result = 'warning'
+      if item.get('errors',0) or item.get('missing',0):
+        result = 'failure'
+      item['result'] = result
+      items.append(item)
+    data = {"properties": dict.fromkeys(
+        ("completion", "errors", "warnings", "missing", "report",
+         "unchanged", "changed", "obsolete"),
+        {"valueType": "number"}),
+              "types": {
+        "Build": {"pluralLabel": "Builds"}
+        }}
+    data['items'] = items
+    return dumps(data, indent=2)
   def serialize(self, type="text/plain"):
+    if type=="application/json":
+      return self.toExhibit()
     def tostr(t):
       if t[1] == 'key':
         return '  ' * t[0] + '/'.join(t[2])
@@ -279,6 +337,8 @@ class Observer(object):
       indent = '  ' * (t[0] + 1)
       if 'error' in t[2]:
         o += [indent + 'ERROR: ' + e for e in t[2]['error']]
+      if 'warning' in t[2]:
+        o += [indent + 'WARNING: ' + e for e in t[2]['warning']]
       if 'missingEntity' in t[2] or 'obsoleteEntity' in t[2]:
         missingEntities = ('missingEntity' in t[2] and t[2]['missingEntity']) \
             or []
@@ -314,6 +374,7 @@ class Observer(object):
 
 class ContentComparer:
   keyRE = re.compile('[kK]ey')
+  nl = re.compile('\n', re.M)
   def __init__(self, filterObserver):
     '''Create a ContentComparer.
     filterObserver is usually a instance of Observer. The return values
@@ -331,7 +392,8 @@ class ContentComparer:
     self.observers.append(obs)
   def set_merge_stage(self, merge_stage):
     self.merge_stage = merge_stage
-  def merge(self, ref_entities, ref_map, ref_file, l10n_file, missing, p):
+  def merge(self, ref_entities, ref_map, ref_file, l10n_file, missing, skips,
+            p):
     outfile = os.path.join(self.merge_stage, l10n_file.module, l10n_file.file)
     outdir = os.path.dirname(outfile)
     if not os.path.isdir(outdir):
@@ -340,16 +402,32 @@ class ContentComparer:
       shutil.copyfile(ref_file.fullpath, outfile)
       print "copied reference to " + outfile
       return
-    trailing = [ref_entities[ref_map[key]].all for key in missing]
-    shutil.copyfile(l10n_file.fullpath, outfile)
+    trailing = (['\n'] + 
+                [ref_entities[ref_map[key]].all for key in missing] +
+                [ref_entities[ref_map[skip.key]].all for skip in skips])
+    if skips:
+      # we need to skip a few errornous blocks in the input, copy by hand
+      f = codecs.open(outfile, 'wb', p.encoding)
+      offset = 0
+      for skip in skips:
+        chunk = skip.span
+        f.write(p.contents[offset:chunk[0]])
+        offset = chunk[1]
+      f.write(p.contents[offset:])
+    else:
+      shutil.copyfile(l10n_file.fullpath, outfile)
+      f = codecs.open(outfile, 'ab', p.encoding)
     print "adding to " + outfile
-    f = codecs.open(outfile, 'ab', p.encoding)
-    f.write(''.join(trailing))
+    def ensureNewline(s):
+      if not s.endswith('\n'):
+        return s + '\n'
+      return s
+    f.write(''.join(map(ensureNewline,trailing)))
     f.close()
   def notify(self, category, file, data):
-    '''Check filterObserver for the found data, and if it's
+    """Check filterObserver for the found data, and if it's
     not to ignore, notify observers.
-    '''
+    """
     rv = self.filterObserver.notify(category, file, data)
     if rv == 'ignore':
       return rv
@@ -363,6 +441,7 @@ class ContentComparer:
   def compare(self, ref_file, l10n):
     try:
       p = Parser.getParser(ref_file.file)
+      checks = Checks.getChecks(ref_file)
     except UserWarning:
       # no comparison, XXX report?
       return
@@ -383,6 +462,17 @@ class ContentComparer:
     except Exception, e:
       self.notify('error', l10n, str(e))
       return
+    lines = []
+    def _getLine(offset):
+      if not lines:
+        lines.append(0)
+        for m in self.nl.finditer(p.contents):
+          lines.append(m.end())
+      _line = 1
+      for i in xrange(len(lines), 0, -1):
+        if offset >= lines[i-1]:
+          return (i, offset - lines[i-1])
+      return (1, offset)
     l10n_list = l10n_map.keys()
     l10n_list.sort()
     ar = AddRemove()
@@ -390,6 +480,7 @@ class ContentComparer:
     ar.set_right(l10n_list)
     report = missing = obsolete = changed = unchanged = keys = 0
     missings = []
+    skips = []
     for action, item_or_pair in ar:
       if action == 'delete':
         # missing entity
@@ -425,11 +516,31 @@ class ContentComparer:
           else:
             self.doChanged(ref_file, refent, l10nent)
             changed += 1
+          # run checks:
+          if checks:
+            for tp, pos, msg in checks(refent, l10nent):
+              # compute real src position, if first line, col needs adjustment
+              _l, _offset = _getLine(l10nent.val_span[0])
+              if isinstance(pos, tuple):
+                # line, column
+                if pos[0] == 1:
+                  col = pos[1] + _offset
+                else:
+                  col = pos[1]
+                _l += pos[0] - 1
+              else:
+                _l, col = _getLine(l10nent.val_span[0] + pos)
+               # skip error entities when merging
+              if tp == 'error' and self.merge_stage is not None:
+                skips.append(l10nent)
+              self.notify(tp, l10n,
+                          "%s at line %d, column %d within %s" %
+                          (msg, _l, col, refent.key))
         pass
     if missing:
       self.notify('missing', l10n, missing)
-      if self.merge_stage is not None and missings:
-        self.merge(ref[0], ref[1], ref_file, l10n, missings, p)
+    if self.merge_stage is not None and (missings or skips):
+      self.merge(ref[0], ref[1], ref_file, l10n, missings, skips, p)
     if report:
       self.notify('report', l10n, report)
     if obsolete:
