@@ -48,7 +48,7 @@ downloadsTitleFiles=#1 file - Downloads;#1 files - #2;#1 filers
 # example: 111 files - Downloads
 downloadsTitleFiles=#1 file - Downloads;#1 files - Downloads;#1 filers
 ''',
-                   (('warning', 0, 'not all variables used in l10n'),))
+                   (('warning', 0, 'not all variables used in l10n', 'plural'),))
 
     def testNotDefined(self):
         self._test('''# LOCALIZATION NOTE (downloadsTitleFiles): Semi-colon list of plural forms.
@@ -57,7 +57,7 @@ downloadsTitleFiles=#1 file - Downloads;#1 files - Downloads;#1 filers
 # example: 111 files - Downloads
 downloadsTitleFiles=#1 file - Downloads;#1 files - #2;#1 #3
 ''',
-                   (('error', 0, 'unreplaced variables in l10n'),))
+                   (('error', 0, 'unreplaced variables in l10n', 'plural'),))
 
 
 class TestDTDs(BaseHelper):
@@ -67,17 +67,17 @@ class TestDTDs(BaseHelper):
     def testWarning(self):
         self._test('''<!ENTITY foo "This is &not; good">
 ''',
-                   (('warning',(0,0),'Referencing unknown entity `not`'),))
+                   (('warning',(0,0),'Referencing unknown entity `not`', 'xmlparse'),))
     def testErrorFirstLine(self):
         self._test('''<!ENTITY foo "This is </bad> stuff">
 ''',
-                   (('error',(1,10),'mismatched tag'),))
+                   (('error',(1,10),'mismatched tag', 'xmlparse'),))
     def testErrorSecondLine(self):
         self._test('''<!ENTITY foo "This is
   </bad>
 stuff">
 ''',
-                   (('error',(2,4),'mismatched tag'),))
+                   (('error',(2,4),'mismatched tag', 'xmlparse'),))
     def testXMLEntity(self):
         self._test('''<!ENTITY foo "This is &quot;good&quot;">
 ''',
@@ -109,13 +109,13 @@ class TestAndroid(unittest.TestCase):
         # dtd warning
         l10n = self.getEntity("plain localized string &ref;")
         self.assertEqual(tuple(checks(ref, l10n)),
-                         (('warning', (0, 0), 'Referencing unknown entity `ref`'),))
+                         (('warning', (0, 0), 'Referencing unknown entity `ref`', 'xmlparse'),))
         # no report on stray ampersand or quote, if not completely quoted
         for i in xrange(3):
             # make sure we're catching unescaped apostrophes, try 0..5 backticks
             l10n = self.getEntity("\\"*(2*i) + "'")
             self.assertEqual(tuple(checks(ref, l10n)),
-                             (('error', 2*i, self.apos_msg),))
+                             (('error', 2*i, self.apos_msg, 'android'),))
             l10n = self.getEntity("\\"*(2*i + 1) + "'")
             self.assertEqual(tuple(checks(ref, l10n)),
                              ())
@@ -129,7 +129,7 @@ class TestAndroid(unittest.TestCase):
             # make sure we're catching unescaped quotes, try 0..5 backticks
             l10n = self.getEntity("\\"*(2*i) + "\"")
             self.assertEqual(tuple(checks(ref, l10n)),
-                             (('error', 2*i, self.quot_msg),))
+                             (('error', 2*i, self.quot_msg, 'android'),))
             l10n = self.getEntity("\\"*(2*i + 1) + "'")
             self.assertEqual(tuple(checks(ref, l10n)),
                              ())
@@ -143,23 +143,23 @@ class TestAndroid(unittest.TestCase):
         # check for mixed quotes and ampersands
         l10n = self.getEntity("'\"")
         self.assertEqual(tuple(checks(ref, l10n)),
-                         (('error', 0, self.apos_msg),
-                          ('error', 1, self.quot_msg)))
+                         (('error', 0, self.apos_msg, 'android'),
+                          ('error', 1, self.quot_msg, 'android')))
         l10n = self.getEntity("''\"'")
         self.assertEqual(tuple(checks(ref, l10n)),
-                         (('error', 1, self.apos_msg),))
+                         (('error', 1, self.apos_msg, 'android'),))
         l10n = self.getEntity('"\'""')
         self.assertEqual(tuple(checks(ref, l10n)),
-                         (('error', 2, self.quot_msg),))
+                         (('error', 2, self.quot_msg, 'android'),))
         
         # broken unicode escape
         l10n = self.getEntity("Some broken \u098 unicode")
         self.assertEqual(tuple(checks(ref, l10n)),
-                         (('error', 12, 'truncated \\uXXXX escape'),))
+                         (('error', 12, 'truncated \\uXXXX escape', 'android'),))
         # broken unicode escape, try to set the error off
         l10n = self.getEntity(u"\u9690"*14+"\u006"+"  "+"\u0064")
         self.assertEqual(tuple(checks(ref, l10n)),
-                         (('error', 14, 'truncated \\uXXXX escape'),))
+                         (('error', 14, 'truncated \\uXXXX escape', 'android'),))
     def test_android_prop(self):
         f = File("embedding/android/strings.properties", "strings.properties", "embedding/android")
         checks = getChecks(f)
@@ -182,7 +182,7 @@ class TestAndroid(unittest.TestCase):
         ref = self.getEntity("string with %s")
         l10n = self.getEntity("string with %S")
         self.assertEqual(tuple(checks(ref, l10n)),
-                         (('error', 0, 'argument 1 `S` should be `s`'),))
+                         (('error', 0, 'argument 1 `S` should be `s`', 'printf'),))
     def test_non_android_dtd(self):
         f = File("browser/strings.dtd", "strings.dtd", "browser")
         checks = getChecks(f)
@@ -195,7 +195,7 @@ class TestAndroid(unittest.TestCase):
         ref = self.getEntity("plain string")
         l10n = self.getEntity("plain localized string &ref;")
         self.assertEqual(tuple(checks(ref, l10n)),
-                         (('warning', (0, 0), 'Referencing unknown entity `ref`'),))
+                         (('warning', (0, 0), 'Referencing unknown entity `ref`', 'xmlparse'),))
         # no report on stray ampersand
         ref = self.getEntity("plain string")
         l10n = self.getEntity("plain localized string with apos: '")

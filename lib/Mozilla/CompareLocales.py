@@ -518,7 +518,7 @@ class ContentComparer:
             changed += 1
           # run checks:
           if checks:
-            for tp, pos, msg in checks(refent, l10nent):
+            for tp, pos, msg, cat in checks(refent, l10nent):
               # compute real src position, if first line, col needs adjustment
               _l, _offset = _getLine(l10nent.val_span[0])
               if isinstance(pos, tuple):

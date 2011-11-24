@@ -65,7 +65,7 @@ class Checker(object):
         '''
         if True:
             raise NotImplementedError, "Need to subclass"
-        yield ("error", (0,0), "This is an example error")
+        yield ("error", (0,0), "This is an example error", "example")
 
 class PrintfException(Exception):
     def __init__(self, msg, pos):
@@ -94,10 +94,12 @@ class PropertiesChecker(Checker):
             lpats = set(int(m.group(1)) for m in re.finditer('#([0-9]+)',
                                                              l10nValue))
             if pats - lpats:
-                yield ('warning', 0, 'not all variables used in l10n')
+                yield ('warning', 0, 'not all variables used in l10n',
+                       'plural')
                 return
             if lpats - pats:
-                yield ('error', 0, 'unreplaced variables in l10n')
+                yield ('error', 0, 'unreplaced variables in l10n',
+                       'plural')
                 return
             return
         try:
@@ -113,7 +115,7 @@ class PropertiesChecker(Checker):
         try:
             l10nSpecs = self.getPrintfSpecs(l10nValue)
         except PrintfException, e:
-            yield ('error', e.pos, e.msg)
+            yield ('error', e.pos, e.msg, 'printf')
             return
         if refSpecs != l10nSpecs:
             sm = SequenceMatcher()
@@ -146,9 +148,9 @@ class PropertiesChecker(Checker):
                         msgs.append('argument %d `%s` should be `%s`' %
                                     (j+1, l10nSpecs[j], refSpecs[i]))
             if msgs:
-                yield ('error', 0, ', '.join(msgs))
+                yield ('error', 0, ', '.join(msgs), 'printf')
             if warn is not None:
-                yield ('warning', 0, warn)
+                yield ('warning', 0, warn, 'printf')
 
     def getPrintfSpecs(self, val):
         hasNumber = False
@@ -239,7 +241,7 @@ class DTDChecker(Checker):
         except sax.SAXParseException, e:
             yield ('warning',
                    (0,0),
-                   "can't parse en-US value")
+                   "can't parse en-US value", 'xmlparse')
 
         # find entities the l10nValue references,
         # reusing markup from DTDParser.
@@ -268,10 +270,10 @@ class DTDChecker(Checker):
                 col = e.getColumnNumber()
                 if lnr == 1:
                     col -= len("<elem>") # first line starts with <elem>, substract
-            yield ('error', (lnr, col), ' '.join(e.args))
+            yield ('error', (lnr, col), ' '.join(e.args), 'xmlparse')
 
         for key in missing:
-            yield ('warning', (0,0), warntmpl % key)
+            yield ('warning', (0,0), warntmpl % key, 'xmlparse')
 
         if self.processContent is not None:
             for t in self.processContent(self.texthandler.textcontent):
@@ -319,7 +321,7 @@ class PrincessAndroid(DTDChecker):
         try:
             self.unicode_escape(val)
         except UnicodeDecodeError, e:
-            yield ('error', e.args[2], e.args[4])
+            yield ('error', e.args[2], e.args[4], 'android')
         # check for unescaped single or double quotes.
         # first, see if the complete string is single or double quoted, that changes the rules
         m = self.quoted.match(val)
@@ -337,7 +339,7 @@ class PrincessAndroid(DTDChecker):
                 # found an unescaped single or double quote, which message?
                 msg = m.group(1) == '"' and u"Quotes in Android DTDs need escaping with \\\" or \\u0022, or put string in apostrophes." \
                       or u"Apostrophes in Android DTDs need escaping with \\' or \\u0027, or use \u2019, or put string in quotes."
-                yield ('error', m.end(0)+offset, msg)
+                yield ('error', m.end(0)+offset, msg, 'android')
 
 
 class __checks:
