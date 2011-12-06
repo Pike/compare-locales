@@ -534,7 +534,7 @@ class ContentComparer:
               if tp == 'error' and self.merge_stage is not None:
                 skips.append(l10nent)
               self.notify(tp, l10n,
-                          "%s at line %d, column %d within %s" %
+                          "%s at line %d, column %d for %s" %
                           (msg, _l, col, refent.key))
         pass
     if missing:

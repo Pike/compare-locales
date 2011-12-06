@@ -12,14 +12,17 @@ class BaseHelper(unittest.TestCase):
     def setUp(self):
         p = getParser(self.file.file)
         p.readContents(self.refContent)
-        self.refs = [e for e in p]
+        self.refList, self.refMap = p.parse()
 
     def _test(self, content, refWarnOrErrors):
         p = getParser(self.file.file)
         p.readContents(content)
         l10n = [e for e in p]
+        assert len(l10n) == 1
+        l10n = l10n[0]
         checks = getChecks(self.file)
-        found = tuple(checks(self.refs[0], l10n[0]))
+        ref = self.refList[self.refMap[l10n.key]]
+        found = tuple(checks(ref, l10n))
         self.assertEqual(found, refWarnOrErrors)
 
 
@@ -63,6 +66,10 @@ downloadsTitleFiles=#1 file - Downloads;#1 files - #2;#1 #3
 class TestDTDs(BaseHelper):
     file = File('foo.dtd', 'foo.dtd')
     refContent = '''<!ENTITY foo "This is &apos;good&apos;">
+<!ENTITY width "10ch">
+<!ENTITY style "width: 20ch; height: 280px;">
+<!ENTITY minStyle "min-height: 50em;">
+<!ENTITY ftd "0">
 '''
     def testWarning(self):
         self._test('''<!ENTITY foo "This is &not; good">
@@ -82,6 +89,27 @@ stuff">
         self._test('''<!ENTITY foo "This is &quot;good&quot;">
 ''',
                    tuple())
+    def testNoNumber(self):
+        self._test('''<!ENTITY ftd "foo">''',
+                   (('warning', 0, 'reference is a number', 'number'),))
+    def testNoLength(self):
+        self._test('''<!ENTITY width "15miles">''',
+                   (('error', 0, 'reference is a CSS length', 'css'),))
+    def testNoStyle(self):
+        self._test('''<!ENTITY style "15ch">''',
+                   (('error', 0, 'reference is a CSS spec', 'css'),))
+        self._test('''<!ENTITY style "junk">''',
+                   (('error', 0, 'reference is a CSS spec', 'css'),))
+    def testStyleWarnings(self):
+        self._test('''<!ENTITY style "width:15ch">''',
+                   (('warning', 0, 'height only in reference', 'css'),))
+        self._test('''<!ENTITY style "width:15em;height:200px;">''',
+                   (('warning', 0, "units for width don't match (em != ch)", 'css'),))
+    def testNoWarning(self):
+        self._test('''<!ENTITY width "12em">''', tuple())
+        self._test('''<!ENTITY style "width:12ch;height:200px;">''', tuple())
+        self._test('''<!ENTITY ftd "0">''', tuple())
+
 
 class TestAndroid(unittest.TestCase):
     """Test Android checker

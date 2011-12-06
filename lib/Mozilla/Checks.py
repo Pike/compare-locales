@@ -197,6 +197,8 @@ class DTDChecker(Checker):
     The code tries to parse until it doesn't find any unresolved entities
     anymore. If it finds one, it tries to grab the key, and adds an empty
     <!ENTITY key ""> definition to the header.
+
+    Also checks for some CSS and number heuristics in the values.
     """
     pattern = re.compile('.*\.dtd$')
 
@@ -215,6 +217,13 @@ class DTDChecker(Checker):
 
     defaulthandler = sax.handler.ContentHandler()
     texthandler = TextContent()
+
+    numPattern = r'([0-9]+|[0-9]*\.[0-9]+)'
+    num = re.compile('^%s$' % numPattern)
+    lengthPattern = '%s(em|px|ch|cm|in)' % numPattern
+    length = re.compile('^%s$' % lengthPattern)
+    spec = re.compile(r'((?:min\-)?(?:width|height))\s*:\s*%s' % lengthPattern)
+    style = re.compile(r'^%(spec)s\s*(;\s*%(spec)s\s*)*;?$' % {'spec': spec.pattern})
 
     processContent = None
 
@@ -274,6 +283,36 @@ class DTDChecker(Checker):
 
         for key in missing:
             yield ('warning', (0,0), warntmpl % key, 'xmlparse')
+
+        # Number check
+        if self.num.match(refValue) and not self.num.match(l10nValue):
+            yield ('warning', 0, 'reference is a number', 'number')
+        # CSS checks
+        # just a length, width="100em"
+        if self.length.match(refValue) and not self.length.match(l10nValue):
+            yield ('error', 0, 'reference is a CSS length', 'css')
+        # real CSS spec, style="width:100px;"
+        if self.style.match(refValue):
+            if not self.style.match(l10nValue):
+                yield ('error', 0, 'reference is a CSS spec', 'css')
+            else:
+                # warn if different properties or units
+                refMap = dict((s, u) for s, _, u in
+                              self.spec.findall(refValue))
+                msgs = []
+                for s, _, u in self.spec.findall(l10nValue):
+                    if s not in refMap:
+                        msgs.insert(0, '%s only in l10n' % s)
+                        continue
+                    else:
+                        ru = refMap.pop(s)
+                        if u != ru:
+                            msgs.append("units for %s don't match "
+                                        "(%s != %s)" % (s, u, ru))
+                for s in refMap.iterkeys():
+                    msgs.insert(0, '%s only in reference' % s)
+                if msgs:
+                    yield ('warning', 0, ', '.join(msgs), 'css')
 
         if self.processContent is not None:
             for t in self.processContent(self.texthandler.textcontent):
