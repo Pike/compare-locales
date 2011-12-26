@@ -351,7 +351,9 @@ class PrincessAndroid(DTDChecker):
             raise UnicodeDecodeError(*args)
     def use(self, file):
         """Use this Checker only for DTD files in embedding/android."""
-        return (file.module == "embedding/android") and DTDChecker.pattern.match(file.file)
+        return (file.module in ("embedding/android",
+                                "mobile/android/base")
+            and DTDChecker.pattern.match(file.file))
     def processContent(self, val):
         """Actual check code.
         Check for unicode escapes and unescaped quotes and apostrophes, if string's not quoted.
