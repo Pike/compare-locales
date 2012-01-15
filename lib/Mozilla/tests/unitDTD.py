@@ -38,6 +38,12 @@ class TestDTD(unittest.TestCase):
         self._test(quot2apos(self.quoteContent), 
                    map(lambda t: (t[0], quot2apos(t[1])), self.quoteRef))
 
+    def testDTD(self):
+        self._test('''<!ENTITY % fooDTD SYSTEM "chrome://brand.dtd">
+  %fooDTD;
+''',
+                   (('fooDTD', '"chrome://brand.dtd"'),))
+
     def _test(self, content, refs):
         p = getParser('foo.dtd')
         Junk.junkid = 0

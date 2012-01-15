@@ -209,7 +209,6 @@ class DTDChecker(Checker):
     xmllist = set(('amp', 'lt', 'gt', 'apos', 'quot'))
 
     # Setup for XML parser, with default and text-only content handler
-    parser = sax.make_parser()
     class TextContent(sax.handler.ContentHandler):
         textcontent = ''
         def characters(self, content):
@@ -226,6 +225,10 @@ class DTDChecker(Checker):
     style = re.compile(r'^%(spec)s\s*(;\s*%(spec)s\s*)*;?$' % {'spec': spec.pattern})
 
     processContent = None
+
+    def __init__(self):
+        self.parser = sax.make_parser()
+        self.parser.setFeature(sax.handler.feature_external_ges, False)
 
     def check(self, refEnt, l10nEnt):
         """Try to parse the refvalue inside a dummy element, and keep
