@@ -259,7 +259,7 @@ class DTDChecker(Checker):
                        - self.xmllist
         missing = sorted(l10nlist - reflist)
         _entities = entities + ''.join('<!ENTITY %s "">' % s for s in missing)
-        warntmpl = 'Referencing unknown entity `%s`'
+        warntmpl = u'Referencing unknown entity `%s`'
         if reflist:
             warntmpl += ' (%s known)' % ', '.join(sorted(reflist))
         try:
@@ -282,7 +282,7 @@ class DTDChecker(Checker):
             yield ('error', (lnr, col), ' '.join(e.args), 'xmlparse')
 
         for key in missing:
-            yield ('warning', (0,0), warntmpl % key, 'xmlparse')
+            yield ('warning', (0,0), warntmpl % key.decode('utf-8'), 'xmlparse')
 
         # Number check
         if self.num.match(refValue) and not self.num.match(l10nValue):

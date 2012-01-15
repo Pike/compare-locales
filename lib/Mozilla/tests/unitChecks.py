@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import unittest
 
 from Mozilla.Checks import getChecks
@@ -75,6 +77,10 @@ class TestDTDs(BaseHelper):
         self._test('''<!ENTITY foo "This is &not; good">
 ''',
                    (('warning',(0,0),'Referencing unknown entity `not`', 'xmlparse'),))
+        # make sure we only handle translated entity references
+        self._test(u'''<!ENTITY foo "This is &ƞǿŧ; good">
+'''.encode('utf-8'),
+                   (('warning',(0,0),u'Referencing unknown entity `ƞǿŧ`', 'xmlparse'),))
     def testErrorFirstLine(self):
         self._test('''<!ENTITY foo "This is </bad> stuff">
 ''',
