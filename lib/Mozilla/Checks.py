@@ -240,13 +240,11 @@ class DTDChecker(Checker):
                       for m in self.eref.finditer(refValue)) \
                       - self.xmllist
         entities = ''.join('<!ENTITY %s "">' % s for s in sorted(reflist))
-        if self.processContent is None:
-            self.parser.setContentHandler(self.defaulthandler)
-        else:
-            self.texthandler.textcontent = ''
-            self.parser.setContentHandler(self.texthandler)
+        self.parser.setContentHandler(self.defaulthandler)
         try:
             self.parser.parse(StringIO(self.tmpl % (entities, refValue.encode('utf-8'))))
+            # also catch stray %
+            self.parser.parse(StringIO(self.tmpl % (refEnt.all.encode('utf-8') + entities, '&%s;' % refEnt.key.encode('utf-8'))))
         except sax.SAXParseException, e:
             yield ('warning',
                    (0,0),
@@ -262,10 +260,15 @@ class DTDChecker(Checker):
         warntmpl = u'Referencing unknown entity `%s`'
         if reflist:
             warntmpl += ' (%s known)' % ', '.join(sorted(reflist))
+        if self.processContent is not None:
+            self.texthandler.textcontent = ''
+            self.parser.setContentHandler(self.texthandler)
         try:
-            if self.processContent is not None:
-                self.texthandler.textcontent = ''
             self.parser.parse(StringIO(self.tmpl % (_entities, l10nValue.encode('utf-8'))))
+            # also catch stray %
+            # if this fails, we need to substract the entity definition
+            self.parser.setContentHandler(self.defaulthandler)
+            self.parser.parse(StringIO(self.tmpl % (l10nEnt.all.encode('utf-8') + _entities, '&%s;' % l10nEnt.key.encode('utf-8'))))
         except sax.SAXParseException, e:
             # xml parse error, yield error
             # sometimes, the error is reported on our fake closing
@@ -279,6 +282,8 @@ class DTDChecker(Checker):
                 col = e.getColumnNumber()
                 if lnr == 1:
                     col -= len("<elem>") # first line starts with <elem>, substract
+                elif lnr == 0:
+                    col -= len("<!DOCTYPE elem [") # first line is DOCTYPE
             yield ('error', (lnr, col), ' '.join(e.args), 'xmlparse')
 
         for key in missing:

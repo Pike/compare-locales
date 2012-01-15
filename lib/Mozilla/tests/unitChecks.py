@@ -72,6 +72,7 @@ class TestDTDs(BaseHelper):
 <!ENTITY style "width: 20ch; height: 280px;">
 <!ENTITY minStyle "min-height: 50em;">
 <!ENTITY ftd "0">
+<!ENTITY formatPercent "This is 100&#037; correct">
 '''
     def testWarning(self):
         self._test('''<!ENTITY foo "This is &not; good">
@@ -95,6 +96,13 @@ stuff">
         self._test('''<!ENTITY foo "This is &quot;good&quot;">
 ''',
                    tuple())
+    def testPercentEntity(self):
+        self._test('''<!ENTITY formatPercent "Another 100&#037;">
+''',
+                   tuple())
+        self._test('''<!ENTITY formatPercent "Bad 100% should fail">
+''',
+                   (('error', (0, 32), 'not well-formed (invalid token)', 'xmlparse'),))
     def testNoNumber(self):
         self._test('''<!ENTITY ftd "foo">''',
                    (('warning', 0, 'reference is a number', 'number'),))
@@ -129,6 +137,11 @@ class TestAndroid(unittest.TestCase):
                u"or put string in apostrophes."
     def getEntity(self, v):
         return Entity(v, lambda s: s, (0, len(v)), (), (0, 0), (), (), (0, len(v)), ())
+    def getDTDEntity(self, v):
+        v = v.replace('"', '&quot;')
+        return Entity('<!ENTITY foo "%s">' % v,
+                      lambda s: s,
+            (0, len(v)+16), (), (0, 0), (), (9,12), (14, len(v)+14), ())
     def test_android_dtd(self):
         """Testing the actual android checks. The logic is involved, so this is a lot
         of nitty gritty detail tests.
@@ -136,62 +149,62 @@ class TestAndroid(unittest.TestCase):
         f = File("embedding/android/strings.dtd", "strings.dtd", "embedding/android")
         checks = getChecks(f)
         # good string
-        ref = self.getEntity("plain string")
-        l10n = self.getEntity("plain localized string")
+        ref = self.getDTDEntity("plain string")
+        l10n = self.getDTDEntity("plain localized string")
         self.assertEqual(tuple(checks(ref, l10n)),
                          ())
         # dtd warning
-        l10n = self.getEntity("plain localized string &ref;")
+        l10n = self.getDTDEntity("plain localized string &ref;")
         self.assertEqual(tuple(checks(ref, l10n)),
                          (('warning', (0, 0), 'Referencing unknown entity `ref`', 'xmlparse'),))
         # no report on stray ampersand or quote, if not completely quoted
         for i in xrange(3):
             # make sure we're catching unescaped apostrophes, try 0..5 backticks
-            l10n = self.getEntity("\\"*(2*i) + "'")
+            l10n = self.getDTDEntity("\\"*(2*i) + "'")
             self.assertEqual(tuple(checks(ref, l10n)),
                              (('error', 2*i, self.apos_msg, 'android'),))
-            l10n = self.getEntity("\\"*(2*i + 1) + "'")
+            l10n = self.getDTDEntity("\\"*(2*i + 1) + "'")
             self.assertEqual(tuple(checks(ref, l10n)),
                              ())
             # make sure we don't report if apos string is quoted
-            l10n = self.getEntity('"' + "\\"*(2*i) + "'\"")
+            l10n = self.getDTDEntity('"' + "\\"*(2*i) + "'\"")
             tpl = tuple(checks(ref, l10n))
             self.assertEqual(tpl, (), "`%s` shouldn't fail but got %s" % (l10n.val, str(tpl)))
-            l10n = self.getEntity('"' + "\\"*(2*i+1) + "'\"")
+            l10n = self.getDTDEntity('"' + "\\"*(2*i+1) + "'\"")
             tpl = tuple(checks(ref, l10n))
             self.assertEqual(tpl, (), "`%s` shouldn't fail but got %s" % (l10n.val, str(tpl)))
             # make sure we're catching unescaped quotes, try 0..5 backticks
-            l10n = self.getEntity("\\"*(2*i) + "\"")
+            l10n = self.getDTDEntity("\\"*(2*i) + "\"")
             self.assertEqual(tuple(checks(ref, l10n)),
                              (('error', 2*i, self.quot_msg, 'android'),))
-            l10n = self.getEntity("\\"*(2*i + 1) + "'")
+            l10n = self.getDTDEntity("\\"*(2*i + 1) + "'")
             self.assertEqual(tuple(checks(ref, l10n)),
                              ())
             # make sure we don't report if quote string is single quoted
-            l10n = self.getEntity("'" + "\\"*(2*i) + "\"'")
+            l10n = self.getDTDEntity("'" + "\\"*(2*i) + "\"'")
             tpl = tuple(checks(ref, l10n))
             self.assertEqual(tpl, (), "`%s` shouldn't fail but got %s" % (l10n.val, str(tpl)))
-            l10n = self.getEntity('"' + "\\"*(2*i+1) + "'\"")
+            l10n = self.getDTDEntity('"' + "\\"*(2*i+1) + "'\"")
             tpl = tuple(checks(ref, l10n))
             self.assertEqual(tpl, (), "`%s` shouldn't fail but got %s" % (l10n.val, str(tpl)))
         # check for mixed quotes and ampersands
-        l10n = self.getEntity("'\"")
+        l10n = self.getDTDEntity("'\"")
         self.assertEqual(tuple(checks(ref, l10n)),
                          (('error', 0, self.apos_msg, 'android'),
                           ('error', 1, self.quot_msg, 'android')))
-        l10n = self.getEntity("''\"'")
+        l10n = self.getDTDEntity("''\"'")
         self.assertEqual(tuple(checks(ref, l10n)),
                          (('error', 1, self.apos_msg, 'android'),))
-        l10n = self.getEntity('"\'""')
+        l10n = self.getDTDEntity('"\'""')
         self.assertEqual(tuple(checks(ref, l10n)),
                          (('error', 2, self.quot_msg, 'android'),))
         
         # broken unicode escape
-        l10n = self.getEntity("Some broken \u098 unicode")
+        l10n = self.getDTDEntity("Some broken \u098 unicode")
         self.assertEqual(tuple(checks(ref, l10n)),
                          (('error', 12, 'truncated \\uXXXX escape', 'android'),))
         # broken unicode escape, try to set the error off
-        l10n = self.getEntity(u"\u9690"*14+"\u006"+"  "+"\u0064")
+        l10n = self.getDTDEntity(u"\u9690"*14+"\u006"+"  "+"\u0064")
         self.assertEqual(tuple(checks(ref, l10n)),
                          (('error', 14, 'truncated \\uXXXX escape', 'android'),))
     def test_android_prop(self):
@@ -221,18 +234,18 @@ class TestAndroid(unittest.TestCase):
         f = File("browser/strings.dtd", "strings.dtd", "browser")
         checks = getChecks(f)
         # good string
-        ref = self.getEntity("plain string")
-        l10n = self.getEntity("plain localized string")
+        ref = self.getDTDEntity("plain string")
+        l10n = self.getDTDEntity("plain localized string")
         self.assertEqual(tuple(checks(ref, l10n)),
                          ())
         # dtd warning
-        ref = self.getEntity("plain string")
-        l10n = self.getEntity("plain localized string &ref;")
+        ref = self.getDTDEntity("plain string")
+        l10n = self.getDTDEntity("plain localized string &ref;")
         self.assertEqual(tuple(checks(ref, l10n)),
                          (('warning', (0, 0), 'Referencing unknown entity `ref`', 'xmlparse'),))
         # no report on stray ampersand
-        ref = self.getEntity("plain string")
-        l10n = self.getEntity("plain localized string with apos: '")
+        ref = self.getDTDEntity("plain string")
+        l10n = self.getDTDEntity("plain localized string with apos: '")
         self.assertEqual(tuple(checks(ref, l10n)),
                          ())
 
