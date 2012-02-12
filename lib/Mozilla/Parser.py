@@ -268,17 +268,16 @@ class PropertiesParser(Parser):
     self.reKey = re.compile('^(\s*)((?:[#!].*?\n\s*)*)(([^#!\s\n][^=:\n]*?)\s*[:=][ \t]*((?:[^\\\\]|\\\\.)*?))([ \t]*$\n?)',re.M|re.S)
     self.reHeader = re.compile('^\s*([#!].*LICENSE BLOCK.*\s*)([#!].*\s*)*')
     self.reFooter = re.compile('\s*([#!].*\s*)*$')
-    self._post = re.compile('\\\\u([0-9a-fA-F]{4})')
+    self._post = re.compile('\\\\u([0-9a-fA-F]{0,4})')
+    self._multLine = re.compile('\\\\\n\s*', re.M)
+    self._back = re.compile('\\\\(.)')
     Parser.__init__(self)
   _arg_re = re.compile('%(?:(?P<cn>[0-9]+)\$)?(?P<width>[0-9]+)?(?:.(?P<pres>[0-9]+))?(?P<size>[hL]|(?:ll?))?(?P<type>[dciouxXefgpCSsn])')
   def postProcessValue(self, val):
-    m = self._post.search(val)
-    if not m:
-      return val
-    while m:
-      uChar = unichr(int(m.group(1), 16))
-      val = val.replace(m.group(), uChar)
-      m = self._post.search(val)
+    val = self._post.sub(lambda m: unichr(int(m.group(1), 16)), val)  # unicode escapes
+    val = self._multLine.sub('', val)  # multiline escapes
+    # ... and the rest
+    val = self._back.sub(lambda m: {'n': '\n', 'r': '\r', 't': '\t', '\\': '\\'}.get(m.group(1), m.group(1)), val)
     return val
 
 class DefinesParser(Parser):
