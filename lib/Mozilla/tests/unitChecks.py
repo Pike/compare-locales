@@ -73,6 +73,7 @@ class TestDTDs(BaseHelper):
 <!ENTITY minStyle "min-height: 50em;">
 <!ENTITY ftd "0">
 <!ENTITY formatPercent "This is 100&#037; correct">
+<!ENTITY some.key "K">
 '''
     def testWarning(self):
         self._test('''<!ENTITY foo "This is &not; good">
@@ -92,6 +93,10 @@ class TestDTDs(BaseHelper):
 stuff">
 ''',
                    (('error',(2,4),'mismatched tag', 'xmlparse'),))
+    def testKeyErrorSingleAmpersand(self):
+        self._test('''<!ENTITY some.key "&">
+''',
+                   (('error', (1, 1), 'not well-formed (invalid token)', 'xmlparse'),))
     def testXMLEntity(self):
         self._test('''<!ENTITY foo "This is &quot;good&quot;">
 ''',

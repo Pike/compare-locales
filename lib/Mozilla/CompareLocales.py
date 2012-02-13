@@ -505,11 +505,11 @@ class ContentComparer:
       else:
         # entity found in both ref and l10n, check for changed
         entity = item_or_pair[0]
+        refent = ref[0][ref[1][entity]]
+        l10nent = l10n_entities[l10n_map[entity]]
         if self.keyRE.search(entity):
           keys += 1
         else:
-          refent = ref[0][ref[1][entity]]
-          l10nent = l10n_entities[l10n_map[entity]]
           if refent.val == l10nent.val:
             self.doUnchanged(l10nent)
             unchanged += 1
@@ -517,25 +517,25 @@ class ContentComparer:
             self.doChanged(ref_file, refent, l10nent)
             changed += 1
           # run checks:
-          if checks:
-            for tp, pos, msg, cat in checks(refent, l10nent):
-              # compute real src position, if first line, col needs adjustment
-              _l, _offset = _getLine(l10nent.val_span[0])
-              if isinstance(pos, tuple):
-                # line, column
-                if pos[0] == 1:
-                  col = pos[1] + _offset
-                else:
-                  col = pos[1]
-                _l += pos[0] - 1
+        if checks:
+          for tp, pos, msg, cat in checks(refent, l10nent):
+            # compute real src position, if first line, col needs adjustment
+            _l, _offset = _getLine(l10nent.val_span[0])
+            if isinstance(pos, tuple):
+              # line, column
+              if pos[0] == 1:
+                col = pos[1] + _offset
               else:
-                _l, col = _getLine(l10nent.val_span[0] + pos)
-               # skip error entities when merging
-              if tp == 'error' and self.merge_stage is not None:
-                skips.append(l10nent)
-              self.notify(tp, l10n,
-                          u"%s at line %d, column %d for %s" %
-                          (msg, _l, col, refent.key))
+                col = pos[1]
+              _l += pos[0] - 1
+            else:
+              _l, col = _getLine(l10nent.val_span[0] + pos)
+             # skip error entities when merging
+            if tp == 'error' and self.merge_stage is not None:
+              skips.append(l10nent)
+            self.notify(tp, l10n,
+                        u"%s at line %d, column %d for %s" %
+                        (msg, _l, col, refent.key))
         pass
     if missing:
       self.notify('missing', l10n, missing)
