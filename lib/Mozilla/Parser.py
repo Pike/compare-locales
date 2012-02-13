@@ -265,14 +265,54 @@ class DTDParser(Parser):
 
 class PropertiesParser(Parser):
   def __init__(self):
-    self.reKey = re.compile('^(\s*)((?:[#!].*?\n\s*)*)(([^#!\s\n][^=:\n]*?)\s*[:=][ \t]*((?:[^\\\\]|\\\\.)*?))([ \t]*$\n?)',re.M|re.S)
+    self.reKey = re.compile('^(\s*)((?:[#!].*?\n\s*)*)([^#!\s\n][^=:\n]*?)\s*[:=][ \t]*',re.M)
     self.reHeader = re.compile('^\s*([#!].*LICENSE BLOCK.*\s*)([#!].*\s*)*')
     self.reFooter = re.compile('\s*([#!].*\s*)*$')
+    self._escapedEnd = re.compile(r'\\+$')
+    self._trailingWS = re.compile(r'[ \t]*$')
     self._post = re.compile('\\\\u([0-9a-fA-F]{0,4})')
     self._multLine = re.compile('\\\\\n\s*', re.M)
     self._back = re.compile('\\\\(.)')
     Parser.__init__(self)
   _arg_re = re.compile('%(?:(?P<cn>[0-9]+)\$)?(?P<width>[0-9]+)?(?:.(?P<pres>[0-9]+))?(?P<size>[hL]|(?:ll?))?(?P<type>[dciouxXefgpCSsn])')
+  def getEntity(self, contents, offset):
+    # overwritten to parse values line by line
+    m = self.reKey.match(contents, offset)
+    if m:
+      offset = m.end()
+      while True:
+        endval = nextline = contents.find('\n', offset)
+        if nextline == -1:
+          endval = offset = len(contents)
+          break
+        # is newline escaped?
+        _e = self._escapedEnd.search(contents, offset, nextline)
+        offset = nextline + 1
+        if _e is None:
+          break
+        # backslashes at end of line, if 2*n, not escaped
+        if len(_e.group()) % 2 == 0:
+          break;
+      # strip trailing whitespace
+      ws = self._trailingWS.search(contents, m.end(), offset)
+      if ws:
+        endval -= ws.end() - ws.start()
+      entity = Entity(contents, self.postProcessValue,
+                      (m.start(), offset),  # full span
+                      m.span(1),  # leading whitespan
+                      m.span(2),  # leading comment span
+                      (m.start(3), offset),  # entity def span
+                      m.span(3),  # key span
+                      (m.end(), endval),  # value span
+                      (offset, offset))  # post comment span, empty
+      return (entity, offset)
+    m = self.reKey.search(contents, offset)
+    if m:
+      # we didn't match, but search, so there's junk between offset
+      # and start. We'll match() on the next turn
+      junkend = m.start()
+      return (Junk(contents, (offset, junkend)), junkend)
+    return (None, offset)
   def postProcessValue(self, val):
     val = self._post.sub(lambda m: unichr(int(m.group(1), 16)), val)  # unicode escapes
     val = self._multLine.sub('', val)  # multiline escapes
