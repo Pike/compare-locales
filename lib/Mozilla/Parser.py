@@ -161,12 +161,8 @@ class Parser:
   def __iter__(self):
     contents = self.contents
     offset = 0
-    self.header = ''
+    self.header, offset = self.getHeader(contents, offset)
     self.footer = ''
-    h = self.reHeader.match(contents)
-    if h:
-      self.header = h.group()
-      offset = h.end()
     entity, offset = self.getEntity(contents, offset)
     while entity:
       yield entity
@@ -178,6 +174,13 @@ class Parser:
     if len(contents) > offset:
       yield Junk(contents, (offset, len(contents)))
     pass
+  def getHeader(self, contents, offset):
+    header = ''
+    h = self.reHeader.match(contents)
+    if h:
+      header = h.group()
+      offset = h.end()
+    return (header, offset)
   def getEntity(self, contents, offset):
     m = self.reKey.match(contents, offset)
     if m:
@@ -236,7 +239,7 @@ class DTDParser(Parser):
   Name = '[' + NameStartChar + '][' + NameChar + ']*'
   reKey = re.compile('(?:(?P<pre>\s*)(?P<precomment>(?:' + XmlComment + '\s*)*)(?P<entity><!ENTITY\s+(?P<key>' + Name + ')\s+(?P<val>\"[^\"]*\"|\'[^\']*\'?)\s*>)(?P<post>[ \t]*(?:' + XmlComment + '\s*)*\n?)?)', re.DOTALL)
   # add BOM to DTDs, details in bug 435002
-  reHeader = re.compile(u'^\ufeff?(\s*<!--.*LICENSE BLOCK([^-]+-)*[^-]+-->)?')
+  reHeader = re.compile(u'^\ufeff?(\s*<!--.*(http://mozilla.org/MPL/2.0/|LICENSE BLOCK)([^-]+-)*[^-]+-->)?', re.S)
   reFooter = re.compile('\s*(<!--([^-]+-)*[^-]+-->\s*)*$')
   rePE = re.compile('(?:(\s*)((?:' + XmlComment + '\s*)*)(<!ENTITY\s+%\s+(' + Name + ')\s+SYSTEM\s+(\"[^\"]*\"|\'[^\']*\')\s*>\s*%' + Name + ';)([ \t]*(?:' + XmlComment + '\s*)*\n?)?)')
   def getEntity(self, contents, offset):
@@ -266,7 +269,7 @@ class DTDParser(Parser):
 class PropertiesParser(Parser):
   def __init__(self):
     self.reKey = re.compile('^(\s*)((?:[#!].*?\n\s*)*)([^#!\s\n][^=:\n]*?)\s*[:=][ \t]*',re.M)
-    self.reHeader = re.compile('^\s*([#!].*LICENSE BLOCK.*\s*)([#!].*\s*)*')
+    self.reHeader = re.compile('^\s*([#!].*\s*)+')
     self.reFooter = re.compile('\s*([#!].*\s*)*$')
     self._escapedEnd = re.compile(r'\\+$')
     self._trailingWS = re.compile(r'[ \t]*$')
@@ -275,6 +278,15 @@ class PropertiesParser(Parser):
     self._back = re.compile('\\\\(.)')
     Parser.__init__(self)
   _arg_re = re.compile('%(?:(?P<cn>[0-9]+)\$)?(?P<width>[0-9]+)?(?:.(?P<pres>[0-9]+))?(?P<size>[hL]|(?:ll?))?(?P<type>[dciouxXefgpCSsn])')
+  def getHeader(self, contents, offset):
+    header = ''
+    h = self.reHeader.match(contents, offset)
+    if h:
+      candidate = h.group()
+      if 'http://mozilla.org/MPL/2.0/' in candidate or 'LICENSE BLOCK' in candidate:
+        header = candidate
+        offset = h.end()
+    return (header, offset)
   def getEntity(self, contents, offset):
     # overwritten to parse values line by line
     m = self.reKey.match(contents, offset)
