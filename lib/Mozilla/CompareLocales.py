@@ -402,6 +402,9 @@ class ContentComparer:
       shutil.copyfile(ref_file.fullpath, outfile)
       print "copied reference to " + outfile
       return
+    if skips:
+      # skips come in ordered by key name, we need them in file order
+      skips.sort(key=lambda s:s.span[0])
     trailing = (['\n'] + 
                 [ref_entities[ref_map[key]].all for key in missing] +
                 [ref_entities[ref_map[skip.key]].all for skip in skips])
