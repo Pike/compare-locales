@@ -24,9 +24,7 @@ from Mozilla import version
 classifiers = """\
 Development Status :: 4 - Beta
 Intended Audience :: Developers
-License :: OSI Approved :: GNU General Public License (GPL)
-License :: OSI Approved :: GNU Library or Lesser General Public License (LGPL)
-License :: OSI Approved :: Mozilla Public License 1.1 (MPL 1.1)
+License :: OSI Approved :: Mozilla Public License 2.0 (MPL 2.0)
 Operating System :: OS Independent
 Programming Language :: Python
 Topic :: Software Development :: Libraries :: Python Modules
@@ -40,7 +38,7 @@ setup(name="compare-locales",
       author_email="axel@mozilla.com",
       description=docstrings[0],
       long_description="\n".join(docstrings[2:]),
-      license="MPL 1.1/GPL 2.0/LGPL 2.1",
+      license="MPL 2.0",
       classifiers=filter(None, classifiers.split("\n")),
       platforms=["any"],
       scripts=['scripts/compare-locales',
