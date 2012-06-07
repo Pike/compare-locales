@@ -352,7 +352,7 @@ class IniParser(Parser):
   ...
   '''
   def __init__(self):
-    self.reHeader = re.compile('^(\s*[;#].*\n)*\[.+?\]\n', re.M)
+    self.reHeader = re.compile('^((?:\s*|[;#].*)\n)*\[.+?\]\n', re.M)
     self.reKey = re.compile('(\s*)((?:[;#].*\n\s*)*)((.+?)=(.*))(\n?)')
     self.reFooter = re.compile('\s*')
     Parser.__init__(self)
