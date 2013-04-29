@@ -193,10 +193,6 @@ class DTDChecker(Checker):
 
     processContent = None
 
-    def __init__(self):
-        self.parser = sax.make_parser()
-        self.parser.setFeature(sax.handler.feature_external_ges, False)
-
     def check(self, refEnt, l10nEnt):
         """Try to parse the refvalue inside a dummy element, and keep
         track of entities that we need to define to make that work.
@@ -210,11 +206,14 @@ class DTDChecker(Checker):
                       for m in self.eref.finditer(refValue)) \
                       - self.xmllist
         entities = ''.join('<!ENTITY %s "">' % s for s in sorted(reflist))
-        self.parser.setContentHandler(self.defaulthandler)
+        parser = sax.make_parser()
+        parser.setFeature(sax.handler.feature_external_ges, False)
+
+        parser.setContentHandler(self.defaulthandler)
         try:
-            self.parser.parse(StringIO(self.tmpl % (entities, refValue.encode('utf-8'))))
+            parser.parse(StringIO(self.tmpl % (entities, refValue.encode('utf-8'))))
             # also catch stray %
-            self.parser.parse(StringIO(self.tmpl % (refEnt.all.encode('utf-8') + entities, '&%s;' % refEnt.key.encode('utf-8'))))
+            parser.parse(StringIO(self.tmpl % (refEnt.all.encode('utf-8') + entities, '&%s;' % refEnt.key.encode('utf-8'))))
         except sax.SAXParseException, e:
             yield ('warning',
                    (0,0),
@@ -232,13 +231,13 @@ class DTDChecker(Checker):
             warntmpl += ' (%s known)' % ', '.join(sorted(reflist))
         if self.processContent is not None:
             self.texthandler.textcontent = ''
-            self.parser.setContentHandler(self.texthandler)
+            parser.setContentHandler(self.texthandler)
         try:
-            self.parser.parse(StringIO(self.tmpl % (_entities, l10nValue.encode('utf-8'))))
+            parser.parse(StringIO(self.tmpl % (_entities, l10nValue.encode('utf-8'))))
             # also catch stray %
             # if this fails, we need to substract the entity definition
-            self.parser.setContentHandler(self.defaulthandler)
-            self.parser.parse(StringIO(self.tmpl % (l10nEnt.all.encode('utf-8') + _entities, '&%s;' % l10nEnt.key.encode('utf-8'))))
+            parser.setContentHandler(self.defaulthandler)
+            parser.parse(StringIO(self.tmpl % (l10nEnt.all.encode('utf-8') + _entities, '&%s;' % l10nEnt.key.encode('utf-8'))))
         except sax.SAXParseException, e:
             # xml parse error, yield error
             # sometimes, the error is reported on our fake closing
@@ -320,7 +319,7 @@ class PrincessAndroid(DTDChecker):
         except UnicodeDecodeError, e:
             args = list(e.args)
             badstring = args[1][args[2]:args[3]]
-            i = str.rindex(badstring, 0, args[3])
+            i = len(args[1][:args[2]].decode('unicode-escape'))
             args[2] = i
             args[3] = i + len(badstring)
             raise UnicodeDecodeError(*args)
