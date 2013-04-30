@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+import re
 import unittest
 
 from Mozilla.Parser import getParser
@@ -28,7 +32,7 @@ and still has another line coming
     for r, e in zip(ref, i):
       self.assertEqual(e.val, r)
     e = i.next()
-    self.assertEqual(e.key, '_junk_1_113-126')
+    self.assertTrue(re.match('_junk_\\d+_113-126$', e.key))
     for r, e in zip(('This line is one of two and ends in \\and still has another line coming',), i):
       self.assertEqual(e.val, r)
   

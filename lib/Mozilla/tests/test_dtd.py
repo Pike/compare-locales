@@ -1,3 +1,7 @@
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
+
 import unittest
 import re
 
@@ -20,9 +24,9 @@ class TestDTD(unittest.TestCase):
 '''
     quoteRef = (
         ('good.one', 'one'),
-        ('_junk_1_25-56', '<!ENTITY bad.one "bad " quote">'),
+        ('_junk_\\d_25-56$', '<!ENTITY bad.one "bad " quote">'),
         ('good.two', 'two'),
-        ('_junk_2_82-119', '<!ENTITY bad.two "bad "quoted" word">'),
+        ('_junk_\\d_82-119$', '<!ENTITY bad.two "bad "quoted" word">'),
         ('good.three', 'three'),
         ('good.four', 'good \' quote'),
         ('good.five', 'good \'quoted\' word'),
@@ -46,13 +50,15 @@ class TestDTD(unittest.TestCase):
 
     def _test(self, content, refs):
         p = getParser('foo.dtd')
-        Junk.junkid = 0
         p.readContents(content)
         entities = [e for e in p]
         self.assertEqual(len(entities), len(refs))
         for e, ref in zip(entities, refs):
             self.assertEqual(e.val, ref[1])
-            self.assertEqual(e.key, ref[0])
+            if ref[0].startswith('_junk'):
+                self.assertTrue(re.match(ref[0], e.key))
+            else:
+                self.assertEqual(e.key, ref[0])
 
     def testLicenseHeader(self):
         p = getParser('foo.dtd')

@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+import re
 import unittest
 
 from Mozilla.Parser import getParser
@@ -72,15 +76,16 @@ Junk
 [Strings]
 TitleText=Some Title
 ''')
-	self.assertEqual([
-	    ('_junk_1_0-213', '''; This Source Code Form is subject to the terms of the Mozilla Public
+        (junk_key, junk_val), (title_key, title_val) = \
+            ((e.key, e.val) for e in self.p)
+        self.assertTrue(re.match('_junk_\\d+_0-213$', junk_key))
+        self.assertEqual(junk_val, '''; This Source Code Form is subject to the terms of the Mozilla Public
 ; License, v. 2.0. If a copy of the MPL was not distributed with this file,
 ; You can obtain one at http://mozilla.org/MPL/2.0/.
 Junk
-[Strings]'''),
-	    ('TitleText', 'Some Title')
-	    ],
-	    [(e.key, e.val) for e in self.p])
+[Strings]''')
+        self.assertEqual(title_key, 'TitleText')
+        self.assertEqual(title_val, 'Some Title')
 	self.assert_('MPL' not in self.p.header)
 
 if __name__ == '__main__':
