@@ -34,10 +34,13 @@ parser.add_option('--json', action='store_true', dest='json',
                   help='Dump just summary as exhibit JSON')
 
 (options, args) = parser.parse_args()
-if len(args) < 3:
-  parser.error('At least one language required')
+if len(args) < 2:
+  parser.error('At least two arguments required')
 inipath, l10nbase = args[:2]
 locales = args[2:]
+
+if len(locales) != 1 and options.merge:
+  parser.error('l10n-merge only possible for one locale at a time')
 
 # log as verbose or quiet as we want, warn by default
 logging.basicConfig()

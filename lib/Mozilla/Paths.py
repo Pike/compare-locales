@@ -9,6 +9,7 @@ from urlparse import urlparse, urljoin
 from urllib import pathname2url, url2pathname
 from urllib2 import urlopen
 from Mozilla.CompareLocales import defaultdict
+from Mozilla import util
 
 class L10nConfigParser(object):
   '''Helper class to gather application information from ini files.
@@ -159,7 +160,7 @@ class L10nConfigParser(object):
 
   def allLocales(self):
     """Return a list of all the locales of this project"""
-    return urlopen(self.all_url).read().splitlines()
+    return util.parseLocales(urlopen(self.all_url).read())
 
 
 class SourceTreeConfigParser(L10nConfigParser):
