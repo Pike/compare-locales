@@ -18,7 +18,7 @@ parser = OptionParser(usage = usage, version = "%%prog %s" % version)
 parser.add_option('-v', '--verbose', action='count', dest='v', default=0,
                   help='Make more noise')
 parser.add_option('-q', '--quiet', action='count', dest='q', default=0,
-                  help='Make more noise')
+                  help='Make less noise')
 parser.add_option('-r', '--reference', default='en-US', dest='reference',
                   help='Explicitly set the reference '+
                   'localization. [default: en-US]')
@@ -30,8 +30,12 @@ Use this option with care. If specified, the merge directory will
 be clobbered for each module. That means, the subdirectory will
 be completely removed, any files that were there are lost.
 Be careful to specify the right merge directory when using this option.""")
-parser.add_option('--json', action='store_true', dest='json',
-                  help='Dump just summary as exhibit JSON')
+parser.add_option('--data', choices=['text', 'exhibit', 'json'], default='text',
+                  help='''Choose data and format (one of text, exhibit, json)
+text: (default) Show which files miss which strings,
+               together with warnings and errors. Also prints a summary
+json: Serialize the internal tree, useful for tools. Also always succeeds
+exhibit: Serialize the summary data in a json useful for Exhibit''')
 
 (options, args) = parser.parse_args()
 if len(args) < 2:
@@ -54,12 +58,10 @@ try:
 except (OSError, IOError), e:
   print "FAIL: " + str(e)
   parser.exit(2)
-so = {}
-if options.json:
-  so['type']='application/json'
-print codecs.utf_8_encode(o.serialize(**so))[0]
 
-if not options.merge:
+print codecs.utf_8_encode(o.serialize(type=options.data))[0]
+
+if not options.merge and options.data is 'text':
   # if not merging, error on really missing strings
   totalMissing = 0
   for k in ('missing', 'missingInFiles'):

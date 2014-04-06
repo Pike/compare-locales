@@ -219,6 +219,10 @@ class Observer(object):
       # these get called post reporting just for stats
       # return "error" to forward them to other observers
       self.summary[file.locale][category] += data
+      # keep track of how many strings are in a missing file
+      # we got the {'missingFile': 'error'} from the first pass
+      if category == 'missingInFiles':
+        self.details[file]['strings'] = data
       return "error"
     if category in ['missingFile', 'obsoleteFile']:
       if self.filter is not None:
@@ -294,9 +298,11 @@ class Observer(object):
         }}
     data['items'] = items
     return dumps(data, indent=2)
-  def serialize(self, type="text/plain"):
-    if type=="application/json":
+  def serialize(self, type="text"):
+    if type=="exhibit":
       return self.toExhibit()
+    if type=="json":
+      return dumps(self.toJSON())
     def tostr(t):
       if t[1] == 'key':
         return '  ' * t[0] + '/'.join(t[2])
