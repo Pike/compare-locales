@@ -45,4 +45,5 @@ setup(name="compare-locales",
                'scripts/compare-dirs'],
       package_dir={'': 'lib'},
       packages=['Mozilla'],
+      test_suite='Mozilla.tests',
       )
