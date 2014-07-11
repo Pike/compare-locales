@@ -12,7 +12,7 @@ try:
 except ImportError:
     from StringIO import StringIO
 
-from Parser import DTDParser
+from Parser import DTDParser, PropertiesParser
 
 class Checker(object):
     '''Abstract class to implement checks per file type.
@@ -69,6 +69,13 @@ class PropertiesChecker(Checker):
                        'plural')
                 return
             return
+        # check for lost escapes
+        raw_val = l10nEnt.raw_val
+        for m in PropertiesParser.escape.finditer(raw_val):
+            if m.group('single') and m.group('single') not in PropertiesParser.known_escapes:
+                yield ('warning', m.start(),
+                       'unknown escape sequence, \\' + m.group('single'),
+                       'escape')
         try:
             refSpecs = self.getPrintfSpecs(refValue)
         except PrintfException, e:

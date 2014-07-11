@@ -31,6 +31,20 @@ class BaseHelper(unittest.TestCase):
         self.assertEqual(found, refWarnOrErrors)
 
 
+class TestProperties(BaseHelper):
+    file = File('foo.properties', 'foo.properties')
+    refContent = '''some = value
+'''
+
+    def testGood(self):
+        self._test('''some = localized''',
+                   tuple())
+
+    def testMissedEscape(self):
+        self._test(r'''some = \u67ood escape, bad \escape''',
+                   (('warning', 20, r'unknown escape sequence, \e', 'escape'),))
+
+
 class TestPlurals(BaseHelper):
     file = File('foo.properties', 'foo.properties')
     refContent = '''# LOCALIZATION NOTE (downloadsTitleFiles): Semi-colon list of plural forms.

@@ -54,6 +54,8 @@ class Entity(object):
     return self.contents[self.key_span[0] : self.key_span[1]]
   def get_val(self):
     return self.pp(self.contents[self.val_span[0] : self.val_span[1]])
+  def get_raw_val(self):
+    return self.contents[self.val_span[0] : self.val_span[1]]
   def get_post(self):
     return self.contents[self.post_span[0] : self.post_span[1]]
 
@@ -65,6 +67,7 @@ class Entity(object):
   definition = property(get_def)
   key = property(get_key)
   val = property(get_val)
+  raw_val = property(get_raw_val)
   post = property(get_post)
 
   def __repr__(self):
@@ -231,17 +234,17 @@ class DTDParser(Parser):
                   m.span('post'))
 
 class PropertiesParser(Parser):
+  escape = re.compile(r'\\((?P<uni>u[0-9a-fA-F]{1,4})|'
+                      '(?P<nl>\n\s*)|(?P<single>.))', re.M)
+  known_escapes = {'n': '\n', 'r': '\r', 't': '\t', '\\': '\\'}
   def __init__(self):
     self.reKey = re.compile('^(\s*)((?:[#!].*?\n\s*)*)([^#!\s\n][^=:\n]*?)\s*[:=][ \t]*',re.M)
     self.reHeader = re.compile('^\s*([#!].*\s*)+')
     self.reFooter = re.compile('\s*([#!].*\s*)*$')
     self._escapedEnd = re.compile(r'\\+$')
     self._trailingWS = re.compile(r'[ \t]*$')
-    self._post = re.compile('\\\\u([0-9a-fA-F]{0,4})')
-    self._multLine = re.compile('\\\\\n\s*', re.M)
-    self._back = re.compile('\\\\(.)')
     Parser.__init__(self)
-  _arg_re = re.compile('%(?:(?P<cn>[0-9]+)\$)?(?P<width>[0-9]+)?(?:.(?P<pres>[0-9]+))?(?P<size>[hL]|(?:ll?))?(?P<type>[dciouxXefgpCSsn])')
+
   def getHeader(self, contents, offset):
     header = ''
     h = self.reHeader.match(contents, offset)
@@ -290,10 +293,14 @@ class PropertiesParser(Parser):
       return (Junk(contents, (offset, junkend)), junkend)
     return (None, offset)
   def postProcessValue(self, val):
-    val = self._post.sub(lambda m: unichr(int(m.group(1), 16)), val)  # unicode escapes
-    val = self._multLine.sub('', val)  # multiline escapes
-    # ... and the rest
-    val = self._back.sub(lambda m: {'n': '\n', 'r': '\r', 't': '\t', '\\': '\\'}.get(m.group(1), m.group(1)), val)
+    def unescape(m):
+      found = m.groupdict()
+      if found['uni']:
+        return unichr(int(found['uni'][1:], 16))
+      if found['nl']:
+        return ''
+      return self.known_escapes.get(found['single'], found['single'])
+    val = self.escape.sub(unescape, val)
     return val
 
 class DefinesParser(Parser):

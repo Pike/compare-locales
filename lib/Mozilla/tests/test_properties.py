@@ -170,6 +170,22 @@ foo=value
         self.assertEqual(e.val, 'value')
     self.assert_('MPL' in p.header)
 
+  def test_escapes(self):
+    self.p.readContents(r'''
+# unicode escapes
+zero = some \unicode
+one = \u0
+two = \u41
+three = \u042
+four = \u0043
+five = \u0044a
+six = \a
+seven = \n\r\t\\
+''')
+    ref = ['some unicode', chr(0), 'A', 'B', 'C', 'Da', 'a', '\n\r\t\\']
+    for r, e in zip(ref, self.p):
+      self.assertEqual(e.val, r)
+
 
 if __name__ == '__main__':
   unittest.main()
