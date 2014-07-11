@@ -241,7 +241,7 @@ class File(object):
     return cmp(self.file, other.file)
 
 class EnumerateDir(object):
-  ignore_dirs = ['CVS', '.svn', '.hg']
+  ignore_dirs = ['CVS', '.svn', '.hg', '.git']
   def __init__(self, basepath, module = '', locale = None, ignore_subdirs = []):
     self.basepath = basepath
     self.module = module
