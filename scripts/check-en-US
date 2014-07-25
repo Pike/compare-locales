@@ -23,9 +23,6 @@ parser.add_option('--source-tree',
 if len(inis) < 1:
   parser.error('At least one l10n.ini required')
 
-emptyEnt = Entity('', lambda v: v,
-                  (0, 0), (0, 0), (0, 0), (0, 0), (0, 0), (0, 0), (0, 0))
-
 covered = set()
 for inipath in inis:
   if options.source_tree:
@@ -53,5 +50,5 @@ for inipath in inis:
         print 'ERROR', ref_file, str(e)
         continue
       for refent in p:
-        for tp, pos, msg, cat in checks(refent, emptyEnt):
+        for tp, pos, msg, cat in checks(refent, refent):
           print codecs.utf_8_encode('%s\t%s\t%s\t%s\t%s\t%s' % (cat, tp, ref_file.module, ref_file.file, refent.key, refent.val))[0]
