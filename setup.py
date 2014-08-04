@@ -8,7 +8,7 @@ a given localization for completeness. For more information see
 https://developer.mozilla.org/en/docs/Compare-locales
 """
 
-docstrings = __doc__.split("\n")
+DOCSTRINGS = __doc__.split("\n")
 
 from setuptools import setup
 
@@ -18,7 +18,7 @@ sys.path.insert(0, os.path.dirname(__file__))
 
 from compare_locales import version
 
-classifiers = """\
+CLASSIFIERS = """\
 Development Status :: 4 - Beta
 Intended Audience :: Developers
 License :: OSI Approved :: Mozilla Public License 2.0 (MPL 2.0)
@@ -26,20 +26,20 @@ Operating System :: OS Independent
 Programming Language :: Python
 Topic :: Software Development :: Libraries :: Python Modules
 Topic :: Software Development :: Localization
-Topic :: Software Development :: Testing
+Topic :: Software Development :: Testing\
 """
 
 setup(name="compare-locales",
       version=version,
       author="Axel Hecht",
       author_email="axel@mozilla.com",
-      description=docstrings[0],
-      long_description="\n".join(docstrings[2:]),
+      description=DOCSTRINGS[0],
+      long_description="\n".join(DOCSTRINGS[2:]),
       license="MPL 2.0",
-      classifiers=filter(None, classifiers.split("\n")),
+      classifiers=CLASSIFIERS.split("\n"),
       platforms=["any"],
-      scripts=['scripts/compare-locales',
-               'scripts/compare-dirs'],
+      entry_points={'console_scripts': [
+          'compare-locales = compare_locales.commands:CompareLocales.call',
+          'compare-dirs = compare_locales.commands:CompareDirs.call']},
       packages=['compare_locales'],
-      test_suite='compare_locales.tests',
-      )
+      test_suite='compare_locales.tests')
