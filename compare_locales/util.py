@@ -6,5 +6,6 @@
 # test_util is in compare-locales only, for the sake of easy
 # development.
 
+
 def parseLocales(content):
     return sorted(l.split()[0] for l in content.splitlines() if l)

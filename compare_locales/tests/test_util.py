@@ -6,6 +6,7 @@ import unittest
 
 from compare_locales import util
 
+
 class ParseLocalesTest(unittest.TestCase):
     def test_empty(self):
         self.assertEquals(util.parseLocales(''), [])

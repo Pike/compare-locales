@@ -5,14 +5,14 @@
 import unittest
 import re
 
-from compare_locales.parser import getParser, Junk
+from compare_locales.parser import getParser
+
 
 class TestDTD(unittest.TestCase):
 
     def testGood(self):
         self._test('''<!ENTITY foo.label "stuff">''',
-                   (('foo.label','stuff'),))
-
+                   (('foo.label', 'stuff'),))
 
     quoteContent = '''<!ENTITY good.one "one">
 <!ENTITY bad.one "bad " quote">
@@ -29,17 +29,18 @@ class TestDTD(unittest.TestCase):
         ('_junk_\\d_82-119$', '<!ENTITY bad.two "bad "quoted" word">'),
         ('good.three', 'three'),
         ('good.four', 'good \' quote'),
-        ('good.five', 'good \'quoted\' word'),
-        )
+        ('good.five', 'good \'quoted\' word'),)
+
     def testQuote(self):
         self._test(self.quoteContent, self.quoteRef)
 
     def testApos(self):
         qr = re.compile('[\'"]', re.M)
+
         def quot2apos(s):
-            return qr.sub(lambda m: m.group(0)=='"' and "'" or '"', s)
-            
-        self._test(quot2apos(self.quoteContent), 
+            return qr.sub(lambda m: m.group(0) == '"' and "'" or '"', s)
+
+        self._test(quot2apos(self.quoteContent),
                    map(lambda t: (t[0], quot2apos(t[1])), self.quoteRef))
 
     def testDTD(self):
@@ -105,7 +106,8 @@ class TestDTD(unittest.TestCase):
             self.assertEqual(e.key, 'foo')
             self.assertEqual(e.val, 'value')
         self.assert_('MPL' in p.header)
-        p.readContents('''<!-- This Source Code Form is subject to the terms of the Mozilla Public
+        p.readContents('''\
+<!-- This Source Code Form is subject to the terms of the Mozilla Public
    - License, v. 2.0. If a copy of the MPL was not distributed with this file,
    - You can obtain one at http://mozilla.org/MPL/2.0/.  -->
 <!ENTITY foo "value">
@@ -116,4 +118,4 @@ class TestDTD(unittest.TestCase):
         self.assert_('MPL' in p.header)
 
 if __name__ == '__main__':
-  unittest.main()
+    unittest.main()

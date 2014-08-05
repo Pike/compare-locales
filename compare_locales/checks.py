@@ -3,8 +3,6 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 import re
-import itertools
-import codecs
 from difflib import SequenceMatcher
 from xml import sax
 try:
@@ -13,6 +11,7 @@ except ImportError:
     from StringIO import StringIO
 
 from compare_locales.parser import DTDParser, PropertiesParser
+
 
 class Checker(object):
     '''Abstract class to implement checks per file type.
@@ -31,19 +30,25 @@ class Checker(object):
         - description string to be shown in the report
         '''
         if True:
-            raise NotImplementedError, "Need to subclass"
-        yield ("error", (0,0), "This is an example error", "example")
+            raise NotImplementedError("Need to subclass")
+        yield ("error", (0, 0), "This is an example error", "example")
+
 
 class PrintfException(Exception):
     def __init__(self, msg, pos):
         self.pos = pos
         self.msg = msg
 
+
 class PropertiesChecker(Checker):
     '''Tests to run on .properties files.
     '''
     pattern = re.compile('.*\.properties$')
-    printf = re.compile(r'%(?P<good>%|(?:(?P<number>[1-9][0-9]*)\$)?(?P<width>\*|[0-9]+)?(?P<prec>\.(?:\*|[0-9]+)?)?(?P<spec>[duxXosScpfg]))?')
+    printf = re.compile(r'%(?P<good>%|'
+                        r'(?:(?P<number>[1-9][0-9]*)\$)?'
+                        r'(?P<width>\*|[0-9]+)?'
+                        r'(?P<prec>\.(?:\*|[0-9]+)?)?'
+                        r'(?P<spec>[duxXosScpfg]))?')
 
     def check(self, refEnt, l10nEnt):
         '''Test for the different variable formats.
@@ -56,7 +61,7 @@ class PropertiesChecker(Checker):
             # For plurals, common variable pattern is #1. Try that.
             pats = set(int(m.group(1)) for m in re.finditer('#([0-9]+)',
                                                             refValue))
-            if len(pats)==0:
+            if len(pats) == 0:
                 return
             lpats = set(int(m.group(1)) for m in re.finditer('#([0-9]+)',
                                                              l10nValue))
@@ -72,13 +77,14 @@ class PropertiesChecker(Checker):
         # check for lost escapes
         raw_val = l10nEnt.raw_val
         for m in PropertiesParser.escape.finditer(raw_val):
-            if m.group('single') and m.group('single') not in PropertiesParser.known_escapes:
+            if m.group('single') and \
+               m.group('single') not in PropertiesParser.known_escapes:
                 yield ('warning', m.start(),
                        'unknown escape sequence, \\' + m.group('single'),
                        'escape')
         try:
             refSpecs = self.getPrintfSpecs(refValue)
-        except PrintfException, e:
+        except PrintfException:
             refSpecs = []
         if refSpecs:
             for t in self.checkPrintf(refSpecs, l10nValue):
@@ -104,7 +110,7 @@ class PropertiesChecker(Checker):
                     if le == len(refSpecs):
                         # trailing specs missing, that's just a warning
                         warn = ', '.join('trailing argument %d `%s` missing' %
-                                         (i+1, refSpecs[i]) 
+                                         (i+1, refSpecs[i])
                                          for i in xrange(ls, le))
                     else:
                         for i in xrange(ls, le):
@@ -137,7 +143,8 @@ class PropertiesChecker(Checker):
                 # escaped %
                 continue
             if ((hasNumber and m.group('number') is None) or
-                (not hasNumber and specs and m.group('number') is not None)):
+                    (not hasNumber and specs and
+                     m.group('number') is not None)):
                 # mixed style, numbered and not
                 raise PrintfException('Mixed ordered and non-ordered args',
                                       m.start())
@@ -152,7 +159,8 @@ class PropertiesChecker(Checker):
                     specs.append(m.group('spec'))
                 else:
                     if specs[pos] is not None:
-                        raise PrintfException('Double ordered argument %d' % (pos+1),
+                        raise PrintfException('Double ordered argument %d' %
+                                              (pos+1),
                                               m.start())
                     specs[pos] = m.group('spec')
             else:
@@ -185,6 +193,7 @@ class DTDChecker(Checker):
     # Setup for XML parser, with default and text-only content handler
     class TextContent(sax.handler.ContentHandler):
         textcontent = ''
+
         def characters(self, content):
             self.textcontent += content
 
@@ -195,8 +204,10 @@ class DTDChecker(Checker):
     num = re.compile('^%s$' % numPattern)
     lengthPattern = '%s(em|px|ch|cm|in)' % numPattern
     length = re.compile('^%s$' % lengthPattern)
-    spec = re.compile(r'((?:min\-)?(?:width|height))\s*:\s*%s' % lengthPattern)
-    style = re.compile(r'^%(spec)s\s*(;\s*%(spec)s\s*)*;?$' % {'spec': spec.pattern})
+    spec = re.compile(r'((?:min\-)?(?:width|height))\s*:\s*%s' %
+                      lengthPattern)
+    style = re.compile(r'^%(spec)s\s*(;\s*%(spec)s\s*)*;?$' %
+                       {'spec': spec.pattern})
 
     processContent = None
 
@@ -209,28 +220,31 @@ class DTDChecker(Checker):
         refValue, l10nValue = refEnt.val, l10nEnt.val
         # find entities the refValue references,
         # reusing markup from DTDParser.
-        reflist = set(m.group(1).encode('utf-8') 
-                      for m in self.eref.finditer(refValue)) \
-                      - self.xmllist
+        reflist = set(m.group(1).encode('utf-8')
+                      for m in self.eref.finditer(refValue))
+        reflist -= self.xmllist
         entities = ''.join('<!ENTITY %s "">' % s for s in sorted(reflist))
         parser = sax.make_parser()
         parser.setFeature(sax.handler.feature_external_ges, False)
 
         parser.setContentHandler(self.defaulthandler)
         try:
-            parser.parse(StringIO(self.tmpl % (entities, refValue.encode('utf-8'))))
+            parser.parse(StringIO(self.tmpl %
+                                  (entities, refValue.encode('utf-8'))))
             # also catch stray %
-            parser.parse(StringIO(self.tmpl % (refEnt.all.encode('utf-8') + entities, '&%s;' % refEnt.key.encode('utf-8'))))
+            parser.parse(StringIO(self.tmpl %
+                                  (refEnt.all.encode('utf-8') + entities,
+                                   '&%s;' % refEnt.key.encode('utf-8'))))
         except sax.SAXParseException, e:
             yield ('warning',
-                   (0,0),
+                   (0, 0),
                    "can't parse en-US value", 'xmlparse')
 
         # find entities the l10nValue references,
         # reusing markup from DTDParser.
-        l10nlist = set(m.group(1).encode('utf-8') 
-                       for m in self.eref.finditer(l10nValue)) \
-                       - self.xmllist
+        l10nlist = set(m.group(1).encode('utf-8')
+                       for m in self.eref.finditer(l10nValue))
+        l10nlist -= self.xmllist
         missing = sorted(l10nlist - reflist)
         _entities = entities + ''.join('<!ENTITY %s "">' % s for s in missing)
         warntmpl = u'Referencing unknown entity `%s`'
@@ -240,11 +254,14 @@ class DTDChecker(Checker):
             self.texthandler.textcontent = ''
             parser.setContentHandler(self.texthandler)
         try:
-            parser.parse(StringIO(self.tmpl % (_entities, l10nValue.encode('utf-8'))))
+            parser.parse(StringIO(self.tmpl % (_entities,
+                         l10nValue.encode('utf-8'))))
             # also catch stray %
             # if this fails, we need to substract the entity definition
             parser.setContentHandler(self.defaulthandler)
-            parser.parse(StringIO(self.tmpl % (l10nEnt.all.encode('utf-8') + _entities, '&%s;' % l10nEnt.key.encode('utf-8'))))
+            parser.parse(StringIO(self.tmpl % (
+                l10nEnt.all.encode('utf-8') + _entities,
+                '&%s;' % l10nEnt.key.encode('utf-8'))))
         except sax.SAXParseException, e:
             # xml parse error, yield error
             # sometimes, the error is reported on our fake closing
@@ -257,13 +274,15 @@ class DTDChecker(Checker):
             else:
                 col = e.getColumnNumber()
                 if lnr == 1:
-                    col -= len("<elem>") # first line starts with <elem>, substract
+                    # first line starts with <elem>, substract
+                    col -= len("<elem>")
                 elif lnr == 0:
-                    col -= len("<!DOCTYPE elem [") # first line is DOCTYPE
+                    col -= len("<!DOCTYPE elem [")  # first line is DOCTYPE
             yield ('error', (lnr, col), ' '.join(e.args), 'xmlparse')
 
         for key in missing:
-            yield ('warning', (0,0), warntmpl % key.decode('utf-8'), 'xmlparse')
+            yield ('warning', (0, 0), warntmpl % key.decode('utf-8'),
+                   'xmlparse')
 
         # Number check
         if self.num.match(refValue) and not self.num.match(l10nValue):
@@ -303,22 +322,24 @@ class DTDChecker(Checker):
 class PrincessAndroid(DTDChecker):
     """Checker for the string values that Android puts into an XML container.
 
-    http://developer.android.com/guide/topics/resources/string-resource.html#FormattingAndStyling
+    http://developer.android.com/guide/topics/resources/string-resource.html#FormattingAndStyling  # noqa
     has more info. Check for unescaped apostrophes and bad unicode escapes.
     """
     quoted = re.compile("(?P<q>[\"']).*(?P=q)$")
+
     def unicode_escape(self, str):
         """Helper method to try to decode all unicode escapes in a string.
 
-        This code uses the standard python decode for unicode-escape, but that's
-        somewhat tricky, as its input needs to be ascii. To get to ascii, the
-        unicode string gets converted to ascii with backslashreplace, i.e.,
-        all non-ascii unicode chars get unicode escaped. And then we try to roll
-        all of that back.
-        Now, when that hits an error, that's from the original string, and we need
-        to search for the actual error position in the original string, as the
-        backslashreplace code changes string positions quite badly. See also the
-        last check in TestAndroid.test_android_dtd, with a lengthy chinese string.
+        This code uses the standard python decode for unicode-escape, but
+        that's somewhat tricky, as its input needs to be ascii. To get to
+        ascii, the unicode string gets converted to ascii with
+        backslashreplace, i.e., all non-ascii unicode chars get unicode
+        escaped. And then we try to roll all of that back.
+        Now, when that hits an error, that's from the original string, and we
+        need to search for the actual error position in the original string,
+        as the backslashreplace code changes string positions quite badly.
+        See also the last check in TestAndroid.test_android_dtd, with a
+        lengthy chinese string.
         """
         val = str.encode('ascii', 'backslashreplace')
         try:
@@ -330,14 +351,17 @@ class PrincessAndroid(DTDChecker):
             args[2] = i
             args[3] = i + len(badstring)
             raise UnicodeDecodeError(*args)
+
     def use(self, file):
         """Use this Checker only for DTD files in embedding/android."""
         return (file.module in ("embedding/android",
                                 "mobile/android/base")
-            and DTDChecker.pattern.match(file.file))
+                and DTDChecker.pattern.match(file.file))
+
     def processContent(self, val):
         """Actual check code.
-        Check for unicode escapes and unescaped quotes and apostrophes, if string's not quoted.
+        Check for unicode escapes and unescaped quotes and apostrophes,
+        if string's not quoted.
         """
         # first, try to decode unicode escapes
         try:
@@ -345,22 +369,28 @@ class PrincessAndroid(DTDChecker):
         except UnicodeDecodeError, e:
             yield ('error', e.args[2], e.args[4], 'android')
         # check for unescaped single or double quotes.
-        # first, see if the complete string is single or double quoted, that changes the rules
+        # first, see if the complete string is single or double quoted,
+        # that changes the rules
         m = self.quoted.match(val)
         if m:
             q = m.group('q')
             offset = 0
-            val = val[1:-1] # strip quotes
+            val = val[1:-1]  # strip quotes
         else:
             q = "[\"']"
             offset = -1
         stray_quot = re.compile(r"[\\\\]*(%s)" % q)
-            
+
         for m in stray_quot.finditer(val):
             if len(m.group(0)) % 2:
                 # found an unescaped single or double quote, which message?
-                msg = m.group(1) == '"' and u"Quotes in Android DTDs need escaping with \\\" or \\u0022, or put string in apostrophes." \
-                      or u"Apostrophes in Android DTDs need escaping with \\' or \\u0027, or use \u2019, or put string in quotes."
+                if m.group(1) == '"':
+                    msg = u"Quotes in Android DTDs need escaping with \\\" "\
+                          u"or \\u0022, or put string in apostrophes."
+                else:
+                    msg = u"Apostrophes in Android DTDs need escaping with "\
+                          u"\\' or \\u0027, or use \u2019, or put string in "\
+                          u"quotes."
                 yield ('error', m.end(0)+offset, msg, 'android')
 
 
@@ -368,6 +398,7 @@ class __checks:
     props = PropertiesChecker()
     android_dtd = PrincessAndroid()
     dtd = DTDChecker()
+
 
 def getChecks(file):
     check = None
@@ -378,4 +409,3 @@ def getChecks(file):
     elif __checks.dtd.use(file):
         check = __checks.dtd.check
     return check
-
