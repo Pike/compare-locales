@@ -10,6 +10,7 @@ import codecs
 
 from compare_locales.paths import EnumerateApp
 from compare_locales.compare import compareApp, compareDirs
+from compare_locales.webapps import compare_web_app
 
 
 class BaseCommand(object):
@@ -131,4 +132,23 @@ class CompareDirs(BaseCommand):
             self.parser.error('Reference and localizatino required')
         reference, locale = args
         observer = compareDirs(reference, locale, merge_stage=options.merge)
+        return observer
+
+
+class CompareWebApp(BaseCommand):
+    'usage: %prog [options] webapp [locale locale]\n\n'\
+    'Check the localization status of a gaia-style web app.\n'\
+    'The first argument is the directory of the web app.\n'\
+    'Following arguments explicitly state the locales to test.\n'\
+    'If none are given, test all locales in manifest.webapp or files.'
+
+    options = BaseCommand.options[:-1] + [
+        BaseCommand.data_option]
+
+    def handle(self, args, options):
+        if len(args) < 1:
+            self.parser.error('Webapp directory required')
+        basedir = args[0]
+        locales = args[1:]
+        observer = compare_web_app(basedir, locales)
         return observer
