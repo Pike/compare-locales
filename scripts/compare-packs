@@ -11,7 +11,7 @@ from optparse import OptionParser
 from pprint   import pprint
 from zipfile  import ZipFile
 
-from Mozilla.Jars import compareJars
+from compare_locales.jars import compareJars
 
 usage = 'usage: %prog [options] language-pack reference-pack'
 parser = OptionParser(usage=usage)

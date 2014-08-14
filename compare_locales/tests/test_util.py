@@ -4,7 +4,7 @@
 
 import unittest
 
-from Mozilla import util
+from compare_locales import util
 
 class ParseLocalesTest(unittest.TestCase):
     def test_empty(self):

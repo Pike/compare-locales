@@ -5,9 +5,9 @@
 
 import unittest
 
-from Mozilla.Checks import getChecks
-from Mozilla.Parser import getParser, Entity
-from Mozilla.Paths import File
+from compare_locales.checks import getChecks
+from compare_locales.parser import getParser, Entity
+from compare_locales.paths import File
 
 
 class BaseHelper(unittest.TestCase):

@@ -8,9 +8,9 @@ import logging
 from optparse import OptionParser
 import codecs
 
-from Mozilla.Paths import EnumerateApp
-from Mozilla.CompareLocales import compareApp
-from Mozilla import version
+from compare_locales.paths import EnumerateApp
+from compare_locales.compare import compareApp
+from compare_locales import version
 
 usage = 'usage: %prog [options] l10n.ini l10n_base_dir language1 [language2 ...]'
 parser = OptionParser(usage = usage, version = "%%prog %s" % version)

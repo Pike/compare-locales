@@ -5,7 +5,7 @@
 import unittest
 import re
 
-from Mozilla.Parser import getParser, Junk
+from compare_locales.parser import getParser, Junk
 
 class TestDTD(unittest.TestCase):
 

@@ -7,8 +7,8 @@ from difflib import SequenceMatcher
 import os.path
 import re
 
-from Paths import File
-import CompareLocales
+from compare_locales.paths import File
+from compare_locales import compare
 
 class JarEntry(File):
   def __init__(self, zf, file, fakefile):
@@ -44,9 +44,9 @@ class EnumerateJar(object):
       yield JarEntry(self.zf, f, localesub.sub('locale/@AB_CD@', f))
 
 def compareJars(ref, l10n):
-  o  = CompareLocales.Observer()
-  cc = CompareLocales.ContentComparer(o)
-  dc = CompareLocales.DirectoryCompare(EnumerateJar(ref))
+  o  = compare.Observer()
+  cc = compare.ContentComparer(o)
+  dc = compare.DirectoryCompare(EnumerateJar(ref))
   dc.setWatcher(cc)
   dc.compareWith(EnumerateJar(l10n))
   return o

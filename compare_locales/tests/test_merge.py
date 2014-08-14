@@ -7,9 +7,9 @@ import os
 from tempfile import mkdtemp
 import shutil
 
-from Mozilla.Parser import getParser
-from Mozilla.Paths import File
-from Mozilla.CompareLocales import ContentComparer, Observer
+from compare_locales.parser import getParser
+from compare_locales.paths import File
+from compare_locales.compare import ContentComparer, Observer
 
 class TestProperties(unittest.TestCase):
     def setUp(self):

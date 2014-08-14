@@ -12,7 +12,7 @@ try:
 except ImportError:
     from StringIO import StringIO
 
-from Parser import DTDParser, PropertiesParser
+from compare_locales.parser import DTDParser, PropertiesParser
 
 class Checker(object):
     '''Abstract class to implement checks per file type.

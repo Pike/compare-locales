@@ -8,8 +8,8 @@ from ConfigParser import ConfigParser, NoSectionError, NoOptionError
 from urlparse import urlparse, urljoin
 from urllib import pathname2url, url2pathname
 from urllib2 import urlopen
-from Mozilla.CompareLocales import defaultdict
-from Mozilla import util
+from collections import defaultdict
+from compare_locales import util
 
 class L10nConfigParser(object):
   '''Helper class to gather application information from ini files.

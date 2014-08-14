@@ -10,16 +10,13 @@ https://developer.mozilla.org/en/docs/Compare-locales
 
 docstrings = __doc__.split("\n")
 
-try:
-  from setuptools import setup
-except ImportError:
-  from distutils.core import setup
+from setuptools import setup
 
 import sys
 import os.path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), 'lib'))
+sys.path.insert(0, os.path.dirname(__file__))
 
-from Mozilla import version
+from compare_locales import version
 
 classifiers = """\
 Development Status :: 4 - Beta
@@ -43,7 +40,6 @@ setup(name="compare-locales",
       platforms=["any"],
       scripts=['scripts/compare-locales',
                'scripts/compare-dirs'],
-      package_dir={'': 'lib'},
-      packages=['Mozilla'],
-      test_suite='Mozilla.tests',
+      packages=['compare_locales'],
+      test_suite='compare_locales.tests',
       )

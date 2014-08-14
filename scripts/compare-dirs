@@ -8,7 +8,7 @@ import logging
 from optparse import OptionParser
 import codecs
 
-from Mozilla.CompareLocales import compareDirs
+from compare_locales.compare import compareDirs
 
 usage = 'usage: %prog [options] reference locale'
 parser = OptionParser(usage=usage)

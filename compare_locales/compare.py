@@ -11,26 +11,7 @@ import shutil
 import re
 import logging
 from difflib import SequenceMatcher
-try:
-  from collections import defaultdict
-except ImportError:
-  class defaultdict(dict):
-    def __init__(self, defaultclass):
-      dict.__init__(self)
-      self.__defaultclass = defaultclass
-    def __getitem__(self, k):
-      if not dict.__contains__(self, k):
-        self[k] = self.__defaultclass()
-      return dict.__getitem__(self, k)
-# backwards compat hack for any(), new in python 2.5
-try:
-  any([True])
-except NameError:
-  def any(sequence):
-    for item in sequence:
-      if item:
-        return True
-    return False
+from collections import defaultdict
 
 try:
   from json import dumps
@@ -38,9 +19,9 @@ except:
   from simplejson import dumps
 
 
-import Parser
-import Paths
-import Checks
+from compare_locales import parser
+from compare_locales import paths
+from compare_locales.checks import getChecks
 
 class Tree(object):
   def __init__(self, valuetype):
@@ -49,7 +30,7 @@ class Tree(object):
     self.value = None
   def __getitem__(self, leaf):
     parts = []
-    if isinstance(leaf, Paths.File):
+    if isinstance(leaf, paths.File):
       parts = [p for p in [leaf.locale, leaf.module] if p] + \
           leaf.file.split('/')
     else:
@@ -416,8 +397,8 @@ class ContentComparer:
     pass
   def compare(self, ref_file, l10n):
     try:
-      p = Parser.getParser(ref_file.file)
-      checks = Checks.getChecks(ref_file)
+      p = parser.getParser(ref_file.file)
+      checks = getChecks(ref_file)
     except UserWarning:
       # no comparison, XXX report?
       return
@@ -472,7 +453,7 @@ class ContentComparer:
           report += 1
       elif action == 'add':
         # obsolete entity or junk
-        if isinstance(l10n_entities[l10n_map[item_or_pair]], Parser.Junk):
+        if isinstance(l10n_entities[l10n_map[item_or_pair]], parser.Junk):
           junk = l10n_entities[l10n_map[item_or_pair]]
           params = (junk.val,) + junk.span
           self.notify('error', l10n, 'Unparsed content "%s" at %d-%d' % params)
@@ -534,7 +515,7 @@ class ContentComparer:
       return
     f = orig
     try:
-      p = Parser.getParser(f.file)
+      p = parser.getParser(f.file)
     except UserWarning:
       return
     try:
@@ -595,7 +576,7 @@ def compareDirs(reference, locale, otherObserver = None, merge_stage = None):
   if otherObserver is not None:
     cc.add_observer(otherObserver)
   cc.set_merge_stage(merge_stage)
-  dc = DirectoryCompare(Paths.EnumerateDir(reference))
+  dc = DirectoryCompare(paths.EnumerateDir(reference))
   dc.setWatcher(cc)
-  dc.compareWith(Paths.EnumerateDir(locale))
+  dc.compareWith(paths.EnumerateDir(locale))
   return o

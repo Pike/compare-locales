@@ -8,10 +8,10 @@ from optparse import OptionParser
 import os.path
 import codecs
 
-from Mozilla.Paths import EnumerateApp, EnumerateSourceTreeApp
-from Mozilla.Checks import getChecks
-from Mozilla.Parser import getParser, Entity
-from Mozilla import version
+from compare_locales.paths import EnumerateApp, EnumerateSourceTreeApp
+from compare_locales.checks import getChecks
+from compare_locales.parser import getParser, Entity
+from compare_locales import version
 
 usage = 'usage: %prog [options] l10n.ini'
 parser = OptionParser(usage = usage, version = "%%prog %s" % version)

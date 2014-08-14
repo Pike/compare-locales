@@ -6,7 +6,7 @@
 import re
 import unittest
 
-from Mozilla.Parser import getParser
+from compare_locales.parser import getParser
 
 class TestLineWraps(unittest.TestCase):
 
