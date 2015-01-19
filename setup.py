@@ -42,5 +42,8 @@ setup(name="compare-locales",
           'compare-locales = compare_locales.commands:CompareLocales.call',
           'compare-dirs = compare_locales.commands:CompareDirs.call',
           'compare-web-app = compare_locales.commands:CompareWebApp.call']},
-      packages=['compare_locales'],
+      packages=['compare_locales', 'compare_locales.tests'],
+      package_data={
+          'compare_locales.tests': ['data/*.properties', 'data/*.dtd']
+      },
       test_suite='compare_locales.tests')

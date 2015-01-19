@@ -2,15 +2,21 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+'''Tests for the DTD parser.
+'''
+
 import unittest
 import re
 
 from compare_locales.parser import getParser
+from compare_locales.tests import ParserTestMixin
 
 
-class TestDTD(unittest.TestCase):
+class TestDTD(ParserTestMixin, unittest.TestCase):
+    '''Tests for the DTD Parser.'''
+    filename = 'foo.dtd'
 
-    def testGood(self):
+    def test_one_entity(self):
         self._test('''<!ENTITY foo.label "stuff">''',
                    (('foo.label', 'stuff'),))
 
@@ -31,10 +37,10 @@ class TestDTD(unittest.TestCase):
         ('good.four', 'good \' quote'),
         ('good.five', 'good \'quoted\' word'),)
 
-    def testQuote(self):
+    def test_quotes(self):
         self._test(self.quoteContent, self.quoteRef)
 
-    def testApos(self):
+    def test_apos(self):
         qr = re.compile('[\'"]', re.M)
 
         def quot2apos(s):
@@ -43,13 +49,13 @@ class TestDTD(unittest.TestCase):
         self._test(quot2apos(self.quoteContent),
                    map(lambda t: (t[0], quot2apos(t[1])), self.quoteRef))
 
-    def testDTD(self):
+    def test_parsed_ref(self):
         self._test('''<!ENTITY % fooDTD SYSTEM "chrome://brand.dtd">
   %fooDTD;
 ''',
                    (('fooDTD', '"chrome://brand.dtd"'),))
 
-    def testTrailingComment(self):
+    def test_trailing_comment(self):
         self._test('''<!ENTITY first "string">
 <!ENTITY second "string">
 <!--
@@ -58,59 +64,9 @@ class TestDTD(unittest.TestCase):
 ''',
                    (('first', 'string'), ('second', 'string')))
 
-    def _test(self, content, refs):
+    def test_license_header(self):
         p = getParser('foo.dtd')
-        p.readContents(content)
-        entities = [e for e in p]
-        self.assertEqual(len(entities), len(refs))
-        for e, ref in zip(entities, refs):
-            self.assertEqual(e.val, ref[1])
-            if ref[0].startswith('_junk'):
-                self.assertTrue(re.match(ref[0], e.key))
-            else:
-                self.assertEqual(e.key, ref[0])
-
-    def testLicenseHeader(self):
-        p = getParser('foo.dtd')
-        p.readContents('''<!-- ***** BEGIN LICENSE BLOCK *****
-#if 0
-   - Version: MPL 1.1/GPL 2.0/LGPL 2.1
-   -
-   - The contents of this file are subject to the Mozilla Public License Version
-   - 1.1 (the "License"); you may not use this file except in compliance with
-   - the License. You may obtain a copy of the License at
-   - http://www.mozilla.org/MPL/
-   -
-   - Software distributed under the License is distributed on an "AS IS" basis,
-   - WITHOUT WARRANTY OF ANY KIND, either express or implied. See the License
-   - for the specific language governing rights and limitations under the
-   - License.
-   -
-   - The Original Code is mozilla.org Code.
-   -
-   - The Initial Developer of the Original Code is dummy.
-   - Portions created by the Initial Developer are Copyright (C) 2005
-   - the Initial Developer. All Rights Reserved.
-   -
-   - Contributor(s):
-   -
-   - Alternatively, the contents of this file may be used under the terms of
-   - either the GNU General Public License Version 2 or later (the "GPL"), or
-   - the GNU Lesser General Public License Version 2.1 or later (the "LGPL"),
-   - in which case the provisions of the GPL or the LGPL are applicable instead
-   - of those above. If you wish to allow use of your version of this file only
-   - under the terms of either the GPL or the LGPL, and not to allow others to
-   - use your version of this file under the terms of the MPL, indicate your
-   - decision by deleting the provisions above and replace them with the notice
-   - and other provisions required by the LGPL or the GPL. If you do not delete
-   - the provisions above, a recipient may use your version of this file under
-   - the terms of any one of the MPL, the GPL or the LGPL.
-   -
-#endif
-   - ***** END LICENSE BLOCK ***** -->
-
-<!ENTITY foo "value">
-''')
+        p.readContents(self.resource('triple-license.dtd'))
         for e in p:
             self.assertEqual(e.key, 'foo')
             self.assertEqual(e.val, 'value')
