@@ -49,6 +49,15 @@ class TestDTD(unittest.TestCase):
 ''',
                    (('fooDTD', '"chrome://brand.dtd"'),))
 
+    def testTrailingComment(self):
+        self._test('''<!ENTITY first "string">
+<!ENTITY second "string">
+<!--
+<!ENTITY commented "out">
+-->
+''',
+                   (('first', 'string'), ('second', 'string')))
+
     def _test(self, content, refs):
         p = getParser('foo.dtd')
         p.readContents(content)

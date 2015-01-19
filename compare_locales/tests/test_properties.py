@@ -196,6 +196,27 @@ seven = \n\r\t\\
         for r, e in zip(ref, self.p):
             self.assertEqual(e.val, r)
 
+    def testTrailingComment(self):
+        self._test('''first = string
+second = string
+
+#
+#commented out
+''',
+                   (('first', 'string'), ('second', 'string')))
+
+    def _test(self, content, refs):
+        p = getParser('foo.properties')
+        p.readContents(content)
+        entities = [e for e in p]
+        self.assertEqual(len(entities), len(refs))
+        for e, ref in zip(entities, refs):
+            self.assertEqual(e.val, ref[1])
+            if ref[0].startswith('_junk'):
+                self.assertTrue(re.match(ref[0], e.key))
+            else:
+                self.assertEqual(e.key, ref[0])
+
 
 if __name__ == '__main__':
     unittest.main()

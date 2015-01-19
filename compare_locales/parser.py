@@ -173,6 +173,11 @@ class Parser:
             offset = m.end()
             entity = self.createEntity(contents, m)
             return (entity, offset)
+        # first check if footer has a non-empy match,
+        # 'cause then we don't find junk
+        m = self.reFooter.match(contents, offset)
+        if m and m.end() > offset:
+            return (None, offset)
         m = self.reKey.search(contents, offset)
         if m:
             # we didn't match, but search, so there's junk between offset
