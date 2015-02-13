@@ -76,13 +76,14 @@ data in a json useful for Exhibit
 
 
 class CompareLocales(BaseCommand):
-    'usage: %prog [options] l10n.ini l10n_base_dir [locale ...]\n\n'\
-    'Check the localization status of a gecko application.\n'\
-    'The first argument is a path to the l10n.ini file for the application,\n'\
-    'followed by the base directory of the localziation repositories.\n'\
-    'Then you pass in the list of locale codes you want to compare. If\n'\
-    'there are not locales given, the list of locales will be taken from\n'\
-    'the all-locales file of the application\'s l10n.ini.'
+    """usage: %prog [options] l10n.ini l10n_base_dir [locale ...]
+
+Check the localization status of a gecko application.
+The first argument is a path to the l10n.ini file for the application,
+followed by the base directory of the localization repositories.
+Then you pass in the list of locale codes you want to compare. If there are
+not locales given, the list of locales will be taken from the all-locales file
+of the application\'s l10n.ini."""
 
     options = BaseCommand.options + [
         make_option('--clobber-merge', action="store_true", default=False,
@@ -118,10 +119,11 @@ Be careful to specify the right merge directory when using this option."""),
 
 
 class CompareDirs(BaseCommand):
-    'usage: %prog [options] reference localization\n\n'\
-    'Check the localization status of a directory tree.\n'\
-    'The first argument is a path to the reference data,\n'\
-    'the second is the localization to be tested'
+    """usage: %prog [options] reference localization
+
+Check the localization status of a directory tree.
+The first argument is a path to the reference data,the second is the
+localization to be tested."""
 
     options = BaseCommand.options + [
         BaseCommand.data_option
@@ -136,11 +138,12 @@ class CompareDirs(BaseCommand):
 
 
 class CompareWebApp(BaseCommand):
-    'usage: %prog [options] webapp [locale locale]\n\n'\
-    'Check the localization status of a gaia-style web app.\n'\
-    'The first argument is the directory of the web app.\n'\
-    'Following arguments explicitly state the locales to test.\n'\
-    'If none are given, test all locales in manifest.webapp or files.'
+    """usage: %prog [options] webapp [locale locale]
+
+Check the localization status of a gaia-style web app.
+The first argument is the directory of the web app.
+Following arguments explicitly state the locales to test.
+If none are given, test all locales in manifest.webapp or files."""
 
     options = BaseCommand.options[:-1] + [
         BaseCommand.data_option]

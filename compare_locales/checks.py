@@ -102,29 +102,29 @@ class PropertiesChecker(Checker):
             sm.set_seqs(refSpecs, l10nSpecs)
             msgs = []
             warn = None
-            for action, ls, le, rs, re in sm.get_opcodes():
+            for action, i1, i2, j1, j2 in sm.get_opcodes():
                 if action == 'equal':
                     continue
                 if action == 'delete':
                     # missing argument in l10n
-                    if le == len(refSpecs):
+                    if i2 == len(refSpecs):
                         # trailing specs missing, that's just a warning
                         warn = ', '.join('trailing argument %d `%s` missing' %
                                          (i+1, refSpecs[i])
-                                         for i in xrange(ls, le))
+                                         for i in xrange(i1, i2))
                     else:
-                        for i in xrange(ls, le):
+                        for i in xrange(i1, i2):
                             msgs.append('argument %d `%s` missing' %
                                         (i+1, refSpecs[i]))
                     continue
                 if action == 'insert':
                     # obsolete argument in l10n
-                    for i in xrange(rs, re):
+                    for i in xrange(j1, j2):
                         msgs.append('argument %d `%s` obsolete' %
                                     (i+1, l10nSpecs[i]))
                     continue
                 if action == 'replace':
-                    for i, j in zip(xrange(ls, le), xrange(rs, re)):
+                    for i, j in zip(xrange(i1, i2), xrange(j1, j2)):
                         msgs.append('argument %d `%s` should be `%s`' %
                                     (j+1, l10nSpecs[j], refSpecs[i]))
             if msgs:
