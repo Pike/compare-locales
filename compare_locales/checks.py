@@ -18,8 +18,9 @@ class Checker(object):
     '''
     pattern = None
 
-    def use(self, file):
-        return self.pattern.match(file.file)
+    @classmethod
+    def use(cls, file):
+        return cls.pattern.match(file.file)
 
     def check(self, refEnt, l10nEnt):
         '''Given the reference and localized Entities, performs checks.
@@ -190,6 +191,24 @@ class DTDChecker(Checker):
 '''
     xmllist = set(('amp', 'lt', 'gt', 'apos', 'quot'))
 
+    def __init__(self, reference):
+        self.reference = reference
+        self.__known_entities = None
+
+    def known_entities(self, refValue):
+        if self.__known_entities is None and self.reference is not None:
+            self.__known_entities = set()
+            for ent in self.reference:
+                self.__known_entities.update(self.entities_for_value(ent.val))
+        return self.__known_entities if self.__known_entities is not None \
+            else self.entities_for_value(refValue)
+
+    def entities_for_value(self, value):
+        reflist = set(m.group(1).encode('utf-8')
+                      for m in self.eref.finditer(value))
+        reflist -= self.xmllist
+        return reflist
+
     # Setup for XML parser, with default and text-only content handler
     class TextContent(sax.handler.ContentHandler):
         textcontent = ''
@@ -220,9 +239,7 @@ class DTDChecker(Checker):
         refValue, l10nValue = refEnt.val, l10nEnt.val
         # find entities the refValue references,
         # reusing markup from DTDParser.
-        reflist = set(m.group(1).encode('utf-8')
-                      for m in self.eref.finditer(refValue))
-        reflist -= self.xmllist
+        reflist = self.known_entities(refValue)
         entities = ''.join('<!ENTITY %s "">' % s for s in sorted(reflist))
         parser = sax.make_parser()
         parser.setFeature(sax.handler.feature_external_ges, False)
@@ -242,9 +259,7 @@ class DTDChecker(Checker):
 
         # find entities the l10nValue references,
         # reusing markup from DTDParser.
-        l10nlist = set(m.group(1).encode('utf-8')
-                       for m in self.eref.finditer(l10nValue))
-        l10nlist -= self.xmllist
+        l10nlist = self.entities_for_value(l10nValue)
         missing = sorted(l10nlist - reflist)
         _entities = entities + ''.join('<!ENTITY %s "">' % s for s in missing)
         warntmpl = u'Referencing unknown entity `%s`'
@@ -352,11 +367,12 @@ class PrincessAndroid(DTDChecker):
             args[3] = i + len(badstring)
             raise UnicodeDecodeError(*args)
 
-    def use(self, file):
+    @classmethod
+    def use(cls, file):
         """Use this Checker only for DTD files in embedding/android."""
         return (file.module in ("embedding/android",
                                 "mobile/android/base")
-                and DTDChecker.pattern.match(file.file))
+                and cls.pattern.match(file.file))
 
     def processContent(self, val):
         """Actual check code.
@@ -394,18 +410,11 @@ class PrincessAndroid(DTDChecker):
                 yield ('error', m.end(0)+offset, msg, 'android')
 
 
-class __checks:
-    props = PropertiesChecker()
-    android_dtd = PrincessAndroid()
-    dtd = DTDChecker()
-
-
-def getChecks(file):
-    check = None
-    if __checks.props.use(file):
-        check = __checks.props.check
-    elif __checks.android_dtd.use(file):
-        check = __checks.android_dtd.check
-    elif __checks.dtd.use(file):
-        check = __checks.dtd.check
-    return check
+def getChecker(file, reference=None):
+    if PropertiesChecker.use(file):
+        return PropertiesChecker()
+    if PrincessAndroid.use(file):
+        return PrincessAndroid(reference)
+    if DTDChecker.use(file):
+        return DTDChecker(reference)
+    return None

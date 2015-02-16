@@ -19,7 +19,7 @@ except:
 
 from compare_locales import parser
 from compare_locales import paths
-from compare_locales.checks import getChecks
+from compare_locales.checks import getChecker
 
 
 class Tree(object):
@@ -440,7 +440,6 @@ class ContentComparer:
     def compare(self, ref_file, l10n):
         try:
             p = parser.getParser(ref_file.file)
-            checks = getChecks(ref_file)
         except UserWarning:
             # no comparison, XXX report?
             return
@@ -481,6 +480,7 @@ class ContentComparer:
         report = missing = obsolete = changed = unchanged = keys = 0
         missings = []
         skips = []
+        checker = getChecker(l10n, reference=ref[0])
         for action, item_or_pair in ar:
             if action == 'delete':
                 # missing entity
@@ -521,8 +521,8 @@ class ContentComparer:
                         self.doChanged(ref_file, refent, l10nent)
                         changed += 1
                         # run checks:
-                if checks:
-                    for tp, pos, msg, cat in checks(refent, l10nent):
+                if checker:
+                    for tp, pos, msg, cat in checker.check(refent, l10nent):
                         # compute real src position, if first line,
                         # col needs adjustment
                         _l, _offset = _getLine(l10nent.val_span[0])
