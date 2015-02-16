@@ -339,10 +339,10 @@ class Observer(object):
             return '\n'.join(o)
 
         out = []
-        for locale, summary in self.summary.iteritems():
+        for locale, summary in sorted(self.summary.iteritems()):
             if locale is not None:
                 out.append(locale + ':')
-            out += [k + ': ' + str(v) for k, v in summary.iteritems()]
+            out += [k + ': ' + str(v) for k, v in sorted(summary.iteritems())]
             total = sum([summary[k]
                          for k in ['changed', 'unchanged', 'report', 'missing',
                                    'missingInFiles']
