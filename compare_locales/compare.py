@@ -599,19 +599,20 @@ def compareApp(app, other_observer=None, merge_stage=None, clobber=False):
     comparer = ContentComparer()
     if other_observer is not None:
         comparer.add_observer(other_observer)
-    comparer.set_merge_stage(merge_stage)
     comparer.observer.filter = app.filter
     for module, reference, locales in app:
-        if merge_stage is not None and clobber:
-            # if clobber and merge is on, remove the stage for the module
-            # if it exists
-            clobberdir = os.path.join(merge_stage, module)
-            if os.path.exists(clobberdir):
-                shutil.rmtree(clobberdir)
-                print "clobbered " + clobberdir
         dir_comp = DirectoryCompare(reference)
         dir_comp.setWatcher(comparer)
         for _, localization in locales:
+            if merge_stage is not None:
+                locale_merge = merge_stage.format(ab_CD=localization.locale)
+                comparer.set_merge_stage(locale_merge)
+                if clobber:
+                    # if clobber on, remove the stage for the module if it exists
+                    clobberdir = os.path.join(locale_merge, module)
+                    if os.path.exists(clobberdir):
+                        shutil.rmtree(clobberdir)
+                        print "clobbered " + clobberdir
             dir_comp.compareWith(localization)
     return comparer.observer
 

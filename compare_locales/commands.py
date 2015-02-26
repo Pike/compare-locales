@@ -24,7 +24,8 @@ class BaseCommand(object):
         make_option('-q', '--quiet', action='count', dest='q', default=0,
                     help='Make less noise'),
         make_option('-m', '--merge',
-                    help='Use this directory to stage merged files'),
+                    help='''Use this directory to stage merged files,
+use {ab_CD} to specify a different directory for each locale'''),
     ]
     data_option = make_option('--data', choices=['text', 'exhibit', 'json'],
                               default='text',
@@ -104,9 +105,6 @@ Be careful to specify the right merge directory when using this option."""),
             self.parser.error('Need to pass in list of languages')
         inipath, l10nbase = args[:2]
         locales = args[2:]
-        if len(locales) != 1 and options.merge:
-            self.parser.error('l10n-merge only possible for one '
-                              'locale at a time')
         app = EnumerateApp(inipath, l10nbase, locales)
         app.reference = options.reference
         try:
