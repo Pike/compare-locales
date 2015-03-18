@@ -6,7 +6,6 @@
 
 import logging
 from optparse import OptionParser, make_option
-import codecs
 
 from compare_locales.paths import EnumerateApp
 from compare_locales.compare import compareApp, compareDirs
@@ -67,7 +66,7 @@ data in a json useful for Exhibit
         logging.getLogger().setLevel(logging.WARNING -
                                      (options.v - options.q)*10)
         observer = self.handle(args, options)
-        print codecs.utf_8_encode(observer.serialize(type=options.data))[0]
+        print observer.serialize(type=options.data).encode('utf-8', 'replace')
 
     def handle(self, args, options):
         """Subclasses need to implement this method for the actual
