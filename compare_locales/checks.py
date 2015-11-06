@@ -264,7 +264,16 @@ class DTDChecker(Checker):
         _entities = entities + ''.join('<!ENTITY %s "">' % s for s in missing)
         warntmpl = u'Referencing unknown entity `%s`'
         if reflist:
-            warntmpl += ' (%s known)' % ', '.join(sorted(reflist))
+            used = self.entities_for_value(refValue)
+            if used:
+                elsewhere = reflist - used
+                warntmpl += ' (%s used in context' % ', '.join(sorted(used))
+                if elsewhere:
+                    warntmpl += ', %s known)' % ', '.join(sorted(elsewhere))
+                else:
+                    warntmpl += ')'
+            else:
+                warntmpl += ' (%s known)' % ', '.join(sorted(reflist))
         if self.processContent is not None:
             self.texthandler.textcontent = ''
             parser.setContentHandler(self.texthandler)
