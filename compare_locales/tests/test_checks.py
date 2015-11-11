@@ -184,7 +184,15 @@ class TestEntitiesInDTDs(BaseHelper):
 '''
 
     def testOK(self):
-        self._test('''<!ENTITY ent.start "Mit &brandShorterName;">''', tuple())
+        self._test('''<!ENTITY ent.start "Mit &brandShorterName;">''', tuple(),
+                   with_ref_file=True)
+
+    def testMismatch(self):
+        self._test('''<!ENTITY ent.start "Mit &brandShortName;">''',
+                   (('warning', (0, 0),
+                    'Entity brandShortName referenced, but brandShorterName used in context',
+                    'xmlparse'),),
+                   with_ref_file=True)
 
     def testAcross(self):
         self._test('''<!ENTITY ent.end "Mit &brandShorterName;">''',

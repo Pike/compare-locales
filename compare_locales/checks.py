@@ -240,6 +240,7 @@ class DTDChecker(Checker):
         # find entities the refValue references,
         # reusing markup from DTDParser.
         reflist = self.known_entities(refValue)
+        inContext = self.entities_for_value(refValue)
         entities = ''.join('<!ENTITY %s "">' % s for s in sorted(reflist))
         parser = sax.make_parser()
         parser.setFeature(sax.handler.feature_external_ges, False)
@@ -262,18 +263,6 @@ class DTDChecker(Checker):
         l10nlist = self.entities_for_value(l10nValue)
         missing = sorted(l10nlist - reflist)
         _entities = entities + ''.join('<!ENTITY %s "">' % s for s in missing)
-        warntmpl = u'Referencing unknown entity `%s`'
-        if reflist:
-            used = self.entities_for_value(refValue)
-            if used:
-                elsewhere = reflist - used
-                warntmpl += ' (%s used in context' % ', '.join(sorted(used))
-                if elsewhere:
-                    warntmpl += ', %s known)' % ', '.join(sorted(elsewhere))
-                else:
-                    warntmpl += ')'
-            else:
-                warntmpl += ' (%s known)' % ', '.join(sorted(reflist))
         if self.processContent is not None:
             self.texthandler.textcontent = ''
             parser.setContentHandler(self.texthandler)
@@ -304,9 +293,28 @@ class DTDChecker(Checker):
                     col -= len("<!DOCTYPE elem [")  # first line is DOCTYPE
             yield ('error', (lnr, col), ' '.join(e.args), 'xmlparse')
 
+        warntmpl = u'Referencing unknown entity `%s`'
+        if reflist:
+            if inContext:
+                elsewhere = reflist - inContext
+                warntmpl += ' (%s used in context' % ', '.join(sorted(inContext))
+                if elsewhere:
+                    warntmpl += ', %s known)' % ', '.join(sorted(elsewhere))
+                else:
+                    warntmpl += ')'
+            else:
+                warntmpl += ' (%s known)' % ', '.join(sorted(reflist))
         for key in missing:
             yield ('warning', (0, 0), warntmpl % key.decode('utf-8'),
                    'xmlparse')
+        if inContext and l10nlist and l10nlist - inContext - set(missing):
+            mismatch = sorted(l10nlist - inContext - set(missing))
+            for key in mismatch:
+                yield ('warning', (0, 0),
+                       'Entity %s referenced, but %s used in context' % (
+                           key.decode('utf-8'),
+                           ', '.join(sorted(inContext))
+                       ), 'xmlparse')
 
         # Number check
         if self.num.match(refValue) and not self.num.match(l10nValue):
