@@ -190,8 +190,9 @@ class TestEntitiesInDTDs(BaseHelper):
     def testMismatch(self):
         self._test('''<!ENTITY ent.start "Mit &brandShortName;">''',
                    (('warning', (0, 0),
-                    'Entity brandShortName referenced, but brandShorterName used in context',
-                    'xmlparse'),),
+                     'Entity brandShortName referenced, '
+                     'but brandShorterName used in context',
+                     'xmlparse'),),
                    with_ref_file=True)
 
     def testAcross(self):
@@ -207,17 +208,20 @@ class TestEntitiesInDTDs(BaseHelper):
     def testUnknownWithRef(self):
         self._test('''<!ENTITY ent.start "Mit &foopy;">''',
                    (('warning',
-                    (0, 0),
-                    'Referencing unknown entity `foopy` (brandShorterName used in context, brandShortName known)',
-                    'xmlparse'),),
+                     (0, 0),
+                     'Referencing unknown entity `foopy` '
+                     '(brandShorterName used in context, '
+                     'brandShortName known)',
+                     'xmlparse'),),
                    with_ref_file=True)
 
     def testUnknown(self):
         self._test('''<!ENTITY ent.end "Mit &foopy;">''',
                    (('warning',
-                    (0, 0),
-                    'Referencing unknown entity `foopy` (brandShortName, brandShorterName known)',
-                    'xmlparse'),),
+                     (0, 0),
+                     'Referencing unknown entity `foopy`'
+                     ' (brandShortName, brandShorterName known)',
+                     'xmlparse'),),
                    with_ref_file=True)
 
 

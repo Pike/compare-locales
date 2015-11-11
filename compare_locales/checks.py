@@ -297,7 +297,8 @@ class DTDChecker(Checker):
         if reflist:
             if inContext:
                 elsewhere = reflist - inContext
-                warntmpl += ' (%s used in context' % ', '.join(sorted(inContext))
+                warntmpl += ' (%s used in context' % \
+                    ', '.join(sorted(inContext))
                 if elsewhere:
                     warntmpl += ', %s known)' % ', '.join(sorted(elsewhere))
                 else:
@@ -314,7 +315,7 @@ class DTDChecker(Checker):
                        'Entity %s referenced, but %s used in context' % (
                            key.decode('utf-8'),
                            ', '.join(sorted(inContext))
-                       ), 'xmlparse')
+                ), 'xmlparse')
 
         # Number check
         if self.num.match(refValue) and not self.num.match(l10nValue):
