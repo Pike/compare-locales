@@ -389,8 +389,8 @@ class PrincessAndroid(DTDChecker):
     def use(cls, file):
         """Use this Checker only for DTD files in embedding/android."""
         return (file.module in ("embedding/android",
-                                "mobile/android/base")
-                and cls.pattern.match(file.file))
+                                "mobile/android/base") and
+                cls.pattern.match(file.file))
 
     def processContent(self, val):
         """Actual check code.
