@@ -200,7 +200,9 @@ class TestEntitiesInDTDs(BaseHelper):
                    tuple(),
                    with_ref_file=True)
 
-    def testKnownButWrong(self):
+    def testAcrossWithMismatch(self):
+        '''If we could tell that ent.start and ent.end are one string,
+        we should warn. Sadly, we can't, so this goes without warning.'''
         self._test('''<!ENTITY ent.end "Mit &brandShortName;">''',
                    tuple(),
                    with_ref_file=True)
