@@ -12,15 +12,25 @@ from compare_locales.paths import File
 from compare_locales.compare import ContentComparer
 
 
-class TestProperties(unittest.TestCase):
+class ContentMixin(object):
+    maxDiff = None  # we got big dictionaries to compare
+    extension = None  # OVERLOAD
+
+    def reference(self, content):
+        self.ref = os.path.join(self.tmp, "en-reference" + self.extension)
+        open(self.ref, "w").write(content)
+
+    def localized(self, content):
+        self.l10n = os.path.join(self.tmp, "l10n" + self.extension)
+        open(self.l10n, "w").write(content)
+
+
+class TestProperties(unittest.TestCase, ContentMixin):
+    extension = '.properties'
 
     def setUp(self):
         self.tmp = mkdtemp()
         os.mkdir(os.path.join(self.tmp, "merge"))
-        self.ref = os.path.join(self.tmp, "en-reference.properties")
-        open(self.ref, "w").write("""foo = fooVal
-bar = barVal
-eff = effVal""")
 
     def tearDown(self):
         shutil.rmtree(self.tmp)
@@ -28,27 +38,54 @@ eff = effVal""")
 
     def testGood(self):
         self.assertTrue(os.path.isdir(self.tmp))
-        l10n = os.path.join(self.tmp, "l10n.properties")
-        open(l10n, "w").write("""foo = lFoo
+        self.reference("""foo = fooVal
+bar = barVal
+eff = effVal""")
+        self.localized("""foo = lFoo
 bar = lBar
 eff = lEff
 """)
         cc = ContentComparer()
         cc.set_merge_stage(os.path.join(self.tmp, "merge"))
         cc.compare(File(self.ref, "en-reference.properties", ""),
-                   File(l10n, "l10n.properties", ""))
-        print cc.observer.serialize()
+                   File(self.l10n, "l10n.properties", ""))
+        self.assertDictEqual(
+            cc.observer.toJSON(),
+            {'summary':
+                {None: {
+                    'changed': 3
+                }},
+             'details': {}
+             }
+        )
+        self.assert_(not os.path.exists(os.path.join(cc.merge_stage,
+                                                     'l10n.properties')))
 
     def testMissing(self):
         self.assertTrue(os.path.isdir(self.tmp))
-        l10n = os.path.join(self.tmp, "l10n.properties")
-        open(l10n, "w").write("""bar = lBar
+        self.reference("""foo = fooVal
+bar = barVal
+eff = effVal""")
+        self.localized("""bar = lBar
 """)
         cc = ContentComparer()
         cc.set_merge_stage(os.path.join(self.tmp, "merge"))
         cc.compare(File(self.ref, "en-reference.properties", ""),
-                   File(l10n, "l10n.properties", ""))
-        print cc.observer.serialize()
+                   File(self.l10n, "l10n.properties", ""))
+        self.assertDictEqual(
+            cc.observer.toJSON(),
+            {'summary':
+                {None: {
+                    'changed': 1, 'missing': 2
+                }},
+             'details': {
+                 'children': [
+                     ('l10n.properties',
+                         {'value': {'missingEntity': [u'eff', u'foo']}}
+                      )
+                 ]}
+             }
+        )
         mergefile = os.path.join(self.tmp, "merge", "l10n.properties")
         self.assertTrue(os.path.isfile(mergefile))
         p = getParser(mergefile)
@@ -57,15 +94,12 @@ eff = lEff
         self.assertEqual(map(lambda e: e.key,  m), ["bar", "eff", "foo"])
 
 
-class TestDTD(unittest.TestCase):
+class TestDTD(unittest.TestCase, ContentMixin):
+    extension = '.dtd'
 
     def setUp(self):
         self.tmp = mkdtemp()
         os.mkdir(os.path.join(self.tmp, "merge"))
-        self.ref = os.path.join(self.tmp, "en-reference.dtd")
-        open(self.ref, "w").write("""<!ENTITY foo 'fooVal'>
-<!ENTITY bar 'barVal'>
-<!ENTITY eff 'effVal'>""")
 
     def tearDown(self):
         shutil.rmtree(self.tmp)
@@ -73,27 +107,54 @@ class TestDTD(unittest.TestCase):
 
     def testGood(self):
         self.assertTrue(os.path.isdir(self.tmp))
-        l10n = os.path.join(self.tmp, "l10n.dtd")
-        open(l10n, "w").write("""<!ENTITY foo 'lFoo'>
+        self.reference("""<!ENTITY foo 'fooVal'>
+<!ENTITY bar 'barVal'>
+<!ENTITY eff 'effVal'>""")
+        self.localized("""<!ENTITY foo 'lFoo'>
 <!ENTITY bar 'lBar'>
 <!ENTITY eff 'lEff'>
 """)
         cc = ContentComparer()
         cc.set_merge_stage(os.path.join(self.tmp, "merge"))
         cc.compare(File(self.ref, "en-reference.dtd", ""),
-                   File(l10n, "l10n.dtd", ""))
-        print cc.observer.serialize()
+                   File(self.l10n, "l10n.dtd", ""))
+        self.assertDictEqual(
+            cc.observer.toJSON(),
+            {'summary':
+                {None: {
+                    'changed': 3
+                }},
+             'details': {}
+             }
+        )
+        self.assert_(
+            not os.path.exists(os.path.join(cc.merge_stage, 'l10n.dtd')))
 
     def testMissing(self):
         self.assertTrue(os.path.isdir(self.tmp))
-        l10n = os.path.join(self.tmp, "l10n.dtd")
-        open(l10n, "w").write("""<!ENTITY bar 'lBar'>
+        self.reference("""<!ENTITY foo 'fooVal'>
+<!ENTITY bar 'barVal'>
+<!ENTITY eff 'effVal'>""")
+        self.localized("""<!ENTITY bar 'lBar'>
 """)
         cc = ContentComparer()
         cc.set_merge_stage(os.path.join(self.tmp, "merge"))
         cc.compare(File(self.ref, "en-reference.dtd", ""),
-                   File(l10n, "l10n.dtd", ""))
-        print cc.observer.serialize()
+                   File(self.l10n, "l10n.dtd", ""))
+        self.assertDictEqual(
+            cc.observer.toJSON(),
+            {'summary':
+                {None: {
+                    'changed': 1, 'missing': 2
+                }},
+             'details': {
+                 'children': [
+                     ('l10n.dtd',
+                         {'value': {'missingEntity': [u'eff', u'foo']}}
+                      )
+                 ]}
+             }
+        )
         mergefile = os.path.join(self.tmp, "merge", "l10n.dtd")
         self.assertTrue(os.path.isfile(mergefile))
         p = getParser(mergefile)
