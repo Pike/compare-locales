@@ -4,3 +4,5 @@ build/
 dist/
 compare_locales.egg-info/
 .tox/
+.coverage
+htmlcov/
