@@ -3,6 +3,7 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 import re
+import bisect
 import codecs
 import logging
 from HTMLParser import HTMLParser
@@ -27,10 +28,10 @@ class Entity(object):
 
     <-------[3]---------><------[6]------>
     '''
-    def __init__(self, contents, pp,
+    def __init__(self, ctx, pp,
                  span, pre_ws_span, pre_comment_span, def_span,
                  key_span, val_span, post_span):
-        self.contents = contents
+        self.ctx = ctx
         self.span = span
         self.pre_ws_span = pre_ws_span
         self.pre_comment_span = pre_comment_span
@@ -41,32 +42,56 @@ class Entity(object):
         self.pp = pp
         pass
 
+    def position(self, offset=0):
+        """Get the 1-based line and column of the character
+        with given offset into the Entity.
+
+        If offset is negative, return the end of the Entity.
+        """
+        if offset < 0:
+            pos = self.span[1]
+        else:
+            pos = self.span[0] + offset
+        return self.ctx.lines(pos)[0]
+
+    def value_position(self, offset=0):
+        """Get the 1-based line and column of the character
+        with given offset into the value.
+
+        If offset is negative, return the end of the value.
+        """
+        if offset < 0:
+            pos = self.val_span[1]
+        else:
+            pos = self.val_span[0] + offset
+        return self.ctx.lines(pos)[0]
+
     # getter helpers
 
     def get_all(self):
-        return self.contents[self.span[0]:self.span[1]]
+        return self.ctx.contents[self.span[0]:self.span[1]]
 
     def get_pre_ws(self):
-        return self.contents[self.pre_ws_span[0]:self.pre_ws_span[1]]
+        return self.ctx.contents[self.pre_ws_span[0]:self.pre_ws_span[1]]
 
     def get_pre_comment(self):
-        return self.contents[self.pre_comment_span[0]:
-                             self.pre_comment_span[1]]
+        return self.ctx.contents[self.pre_comment_span[0]:
+                                 self.pre_comment_span[1]]
 
     def get_def(self):
-        return self.contents[self.def_span[0]:self.def_span[1]]
+        return self.ctx.contents[self.def_span[0]:self.def_span[1]]
 
     def get_key(self):
-        return self.contents[self.key_span[0]:self.key_span[1]]
+        return self.ctx.contents[self.key_span[0]:self.key_span[1]]
 
     def get_val(self):
-        return self.pp(self.contents[self.val_span[0]:self.val_span[1]])
+        return self.pp(self.ctx.contents[self.val_span[0]:self.val_span[1]])
 
     def get_raw_val(self):
-        return self.contents[self.val_span[0]:self.val_span[1]]
+        return self.ctx.contents[self.val_span[0]:self.val_span[1]]
 
     def get_post(self):
-        return self.contents[self.post_span[0]:self.post_span[1]]
+        return self.ctx.contents[self.post_span[0]:self.post_span[1]]
 
     # getters
 
@@ -91,16 +116,28 @@ class Junk(object):
     '''
     junkid = 0
 
-    def __init__(self, contents, span):
-        self.contents = contents
+    def __init__(self, ctx, span):
+        self.ctx = ctx
         self.span = span
         self.pre_ws = self.pre_comment = self.definition = self.post = ''
         self.__class__.junkid += 1
         self.key = '_junk_%d_%d-%d' % (self.__class__.junkid, span[0], span[1])
 
+    def position(self, offset=0):
+        """Get the 1-based line and column of the character
+        with given offset into the Entity.
+
+        If offset is negative, return the end of the Entity.
+        """
+        if offset < 0:
+            pos = self.span[1]
+        else:
+            pos = self.span[0] + offset
+        return self.ctx.lines(pos)[0]
+
     # getter helpers
     def get_all(self):
-        return self.contents[self.span[0]:self.span[1]]
+        return self.ctx.contents[self.span[0]:self.span[1]]
 
     # getters
     all = property(get_all)
@@ -113,23 +150,42 @@ class Junk(object):
 class Parser:
     canMerge = True
 
+    class Context(object):
+        "Fixture for content and line numbers"
+        def __init__(self, contents):
+            self.contents = contents
+            self._lines = None
+
+        def lines(self, *positions):
+            # return line and column tuples, 1-based
+            if self._lines is None:
+                nl = re.compile('\n', re.M)
+                self._lines = [m.end()
+                               for m in nl.finditer(self.contents)]
+            line_nrs = [bisect.bisect(self._lines, p) for p in positions]
+            # compute columns
+            pos_ = [
+                (1 + line, 1 + p - (self._lines[line-1] if line else 0))
+                for line, p in zip(line_nrs, positions)]
+            return pos_
+
     def __init__(self):
         if not hasattr(self, 'encoding'):
             self.encoding = 'utf-8'
-        pass
+        self.ctx = None
 
     def readFile(self, file):
         f = codecs.open(file, 'r', self.encoding)
         try:
-            self.contents = f.read()
+            self.ctx = Parser.Context(f.read())
         except UnicodeDecodeError, e:
             (logging.getLogger('locales')
                     .error("Can't read file: " + file + '; ' + str(e)))
-            self.contents = u''
         f.close()
 
     def readContents(self, contents):
-        (self.contents, length) = codecs.getdecoder(self.encoding)(contents)
+        (contents, length) = codecs.getdecoder(self.encoding)(contents)
+        self.ctx = Parser.Context(contents)
 
     def parse(self):
         l = []
@@ -143,20 +199,21 @@ class Parser:
         return val
 
     def __iter__(self):
-        contents = self.contents
+        ctx = self.ctx
+        contents = ctx.contents
         offset = 0
         self.header, offset = self.getHeader(contents, offset)
         self.footer = ''
-        entity, offset = self.getEntity(contents, offset)
+        entity, offset = self.getEntity(ctx, offset)
         while entity:
             yield entity
-            entity, offset = self.getEntity(contents, offset)
+            entity, offset = self.getEntity(ctx, offset)
         f = self.reFooter.match(contents, offset)
         if f:
             self.footer = f.group()
             offset = f.end()
         if len(contents) > offset:
-            yield Junk(contents, (offset, len(contents)))
+            yield Junk(ctx, (offset, len(contents)))
         pass
 
     def getHeader(self, contents, offset):
@@ -167,27 +224,27 @@ class Parser:
             offset = h.end()
         return (header, offset)
 
-    def getEntity(self, contents, offset):
-        m = self.reKey.match(contents, offset)
+    def getEntity(self, ctx, offset):
+        m = self.reKey.match(ctx.contents, offset)
         if m:
             offset = m.end()
-            entity = self.createEntity(contents, m)
+            entity = self.createEntity(ctx, m)
             return (entity, offset)
         # first check if footer has a non-empty match,
         # 'cause then we don't find junk
-        m = self.reFooter.match(contents, offset)
+        m = self.reFooter.match(ctx.contents, offset)
         if m and m.end() > offset:
             return (None, offset)
-        m = self.reKey.search(contents, offset)
+        m = self.reKey.search(ctx.contents, offset)
         if m:
             # we didn't match, but search, so there's junk between offset
             # and start. We'll match() on the next turn
             junkend = m.start()
-            return (Junk(contents, (offset, junkend)), junkend)
+            return (Junk(ctx, (offset, junkend)), junkend)
         return (None, offset)
 
-    def createEntity(self, contents, m):
-        return Entity(contents, self.postProcessValue,
+    def createEntity(self, ctx, m):
+        return Entity(ctx, self.postProcessValue,
                       *[m.span(i) for i in xrange(7)])
 
 
@@ -245,7 +302,7 @@ class DTDParser(Parser):
                       ')\s+SYSTEM\s+(\"[^\"]*\"|\'[^\']*\')\s*>\s*%' + Name +
                       ';)([ \t]*(?:' + XmlComment + '\s*)*\n?)?)')
 
-    def getEntity(self, contents, offset):
+    def getEntity(self, ctx, offset):
         '''
         Overload Parser.getEntity to special-case ParsedEntities.
         Just check for a parsed entity if that method claims junk.
@@ -253,19 +310,19 @@ class DTDParser(Parser):
         <!ENTITY % foo SYSTEM "url">
         %foo;
         '''
-        entity, inneroffset = Parser.getEntity(self, contents, offset)
+        entity, inneroffset = Parser.getEntity(self, ctx, offset)
         if (entity and isinstance(entity, Junk)) or entity is None:
-            m = self.rePE.match(contents, offset)
+            m = self.rePE.match(ctx.contents, offset)
             if m:
                 inneroffset = m.end()
-                entity = Entity(contents, self.postProcessValue,
+                entity = Entity(ctx, self.postProcessValue,
                                 *[m.span(i) for i in xrange(7)])
         return (entity, inneroffset)
 
-    def createEntity(self, contents, m):
+    def createEntity(self, ctx, m):
         valspan = m.span('val')
         valspan = (valspan[0]+1, valspan[1]-1)
-        return Entity(contents, self.postProcessValue, m.span(),
+        return Entity(ctx, self.postProcessValue, m.span(),
                       m.span('pre'), m.span('precomment'),
                       m.span('entity'), m.span('key'), valspan,
                       m.span('post'))
@@ -297,8 +354,9 @@ class PropertiesParser(Parser):
                 offset = h.end()
         return (header, offset)
 
-    def getEntity(self, contents, offset):
+    def getEntity(self, ctx, offset):
         # overwritten to parse values line by line
+        contents = ctx.contents
         m = self.reKey.match(contents, offset)
         if m:
             offset = m.end()
@@ -319,7 +377,7 @@ class PropertiesParser(Parser):
             ws = self._trailingWS.search(contents, m.end(), offset)
             if ws:
                 endval -= ws.end() - ws.start()
-            entity = Entity(contents, self.postProcessValue,
+            entity = Entity(ctx, self.postProcessValue,
                             (m.start(), offset),   # full span
                             m.span(1),  # leading whitespan
                             m.span(2),  # leading comment span
@@ -333,7 +391,7 @@ class PropertiesParser(Parser):
             # we didn't match, but search, so there's junk between offset
             # and start. We'll match() on the next turn
             junkend = m.start()
-            return (Junk(contents, (offset, junkend)), junkend)
+            return (Junk(ctx, (offset, junkend)), junkend)
         return (None, offset)
 
     def postProcessValue(self, val):
