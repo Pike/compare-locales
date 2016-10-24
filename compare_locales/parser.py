@@ -16,29 +16,27 @@ class Entity(object):
     Currently supported are grammars of the form:
 
     1: pre white space
-    2: pre comments
-    3: entity definition
-    4: entity key (name)
-    5: entity value
-    6: post comment (and white space) in the same line (dtd only)
+    2: entity definition
+    3: entity key (name)
+    4: entity value
+    5: post white space
                                                  <--[1]
-    <!-- pre comments -->                        <--[2]
-    <!ENTITY key "value"> <!-- comment -->
+    <!ENTITY key "value">
 
-    <-------[3]---------><------[6]------>
+    <-------[2]--------->
     '''
-    def __init__(self, ctx, pp,
-                 span, pre_ws_span, pre_comment_span, def_span,
+    def __init__(self, ctx, pp, pre_comment,
+                 span, pre_ws_span, def_span,
                  key_span, val_span, post_span):
         self.ctx = ctx
         self.span = span
         self.pre_ws_span = pre_ws_span
-        self.pre_comment_span = pre_comment_span
         self.def_span = def_span
         self.key_span = key_span
         self.val_span = val_span
         self.post_span = post_span
         self.pp = pp
+        self.pre_comment = pre_comment
         pass
 
     def position(self, offset=0):
@@ -73,10 +71,6 @@ class Entity(object):
     def get_pre_ws(self):
         return self.ctx.contents[self.pre_ws_span[0]:self.pre_ws_span[1]]
 
-    def get_pre_comment(self):
-        return self.ctx.contents[self.pre_comment_span[0]:
-                                 self.pre_comment_span[1]]
-
     def get_def(self):
         return self.ctx.contents[self.def_span[0]:self.def_span[1]]
 
@@ -96,7 +90,6 @@ class Entity(object):
 
     all = property(get_all)
     pre_ws = property(get_pre_ws)
-    pre_comment = property(get_pre_comment)
     definition = property(get_def)
     key = property(get_key)
     val = property(get_val)
@@ -105,6 +98,28 @@ class Entity(object):
 
     def __repr__(self):
         return self.key
+
+
+class Comment(Entity):
+    def __init__(self, ctx, span, pre_ws_span, def_span,
+                 post_span):
+        self.ctx = ctx
+        self.span = span
+        self.pre_ws_span = pre_ws_span
+        self.def_span = def_span
+        self.post_span = post_span
+        self.pp = lambda v: v
+
+    @property
+    def key(self):
+        return None
+
+    @property
+    def val(self):
+        return None
+
+    def __repr__(self):
+        return self.all
 
 
 class Junk(object):
@@ -118,7 +133,7 @@ class Junk(object):
     def __init__(self, ctx, span):
         self.ctx = ctx
         self.span = span
-        self.pre_ws = self.pre_comment = self.definition = self.post = ''
+        self.pre_ws = self.definition = self.post = ''
         self.__class__.junkid += 1
         self.key = '_junk_%d_%d-%d' % (self.__class__.junkid, span[0], span[1])
 
@@ -146,8 +161,24 @@ class Junk(object):
         return self.key
 
 
+class Whitespace(Entity):
+    '''Entity-like object representing an empty file with whitespace,
+    if allowed
+    '''
+    def __init__(self, ctx, span):
+        self.ctx = ctx
+        self.key_span = self.val_span = self.span = span
+        self.def_span = self.pre_ws_span = (span[0], span[0])
+        self.post_span = (span[1], span[1])
+        self.pp = lambda v: v
+
+    def __repr__(self):
+        return self.raw_val
+
+
 class Parser:
     canMerge = True
+    tail = re.compile('\s+\Z')
 
     class Context(object):
         "Fixture for content and line numbers"
@@ -172,6 +203,7 @@ class Parser:
         if not hasattr(self, 'encoding'):
             self.encoding = 'utf-8'
         self.ctx = None
+        self.last_comment = None
 
     def readFile(self, file):
         f = codecs.open(file, 'r', self.encoding)
@@ -198,30 +230,21 @@ class Parser:
         return val
 
     def __iter__(self):
+        return self.walk(onlyEntities=True)
+
+    def walk(self, onlyEntities=False):
         ctx = self.ctx
         contents = ctx.contents
         offset = 0
-        self.header, offset = self.getHeader(contents, offset)
-        self.footer = ''
         entity, offset = self.getEntity(ctx, offset)
         while entity:
-            yield entity
+            if (not onlyEntities or
+                    type(entity) is Entity or
+                    type(entity) is Junk):
+                yield entity
             entity, offset = self.getEntity(ctx, offset)
-        f = self.reFooter.match(contents, offset)
-        if f:
-            self.footer = f.group()
-            offset = f.end()
         if len(contents) > offset:
             yield Junk(ctx, (offset, len(contents)))
-        pass
-
-    def getHeader(self, contents, offset):
-        header = ''
-        h = self.reHeader.match(contents)
-        if h:
-            header = h.group()
-            offset = h.end()
-        return (header, offset)
 
     def getEntity(self, ctx, offset):
         m = self.reKey.match(ctx.contents, offset)
@@ -229,22 +252,32 @@ class Parser:
             offset = m.end()
             entity = self.createEntity(ctx, m)
             return (entity, offset)
-        # first check if footer has a non-empty match,
-        # 'cause then we don't find junk
-        m = self.reFooter.match(ctx.contents, offset)
-        if m and m.end() > offset:
-            return (None, offset)
-        m = self.reKey.search(ctx.contents, offset)
+        m = self.reComment.match(ctx.contents, offset)
         if m:
-            # we didn't match, but search, so there's junk between offset
-            # and start. We'll match() on the next turn
-            junkend = m.start()
-            return (Junk(ctx, (offset, junkend)), junkend)
-        return (None, offset)
+            offset = m.end()
+            self.last_comment = Comment(ctx, *[m.span(i) for i in xrange(4)])
+            return (self.last_comment, offset)
+        return self.getTrailing(ctx, offset, self.reKey, self.reComment)
+
+    def getTrailing(self, ctx, offset, *expressions):
+        junkend = None
+        for exp in expressions:
+            m = exp.search(ctx.contents, offset)
+            if m:
+                junkend = min(junkend, m.start()) if junkend else m.start()
+        if junkend is None:
+            if self.tail.match(ctx.contents, offset):
+                white_end = len(ctx.contents)
+                return (Whitespace(ctx, (offset, white_end)), white_end)
+            else:
+                return (None, offset)
+        return (Junk(ctx, (offset, junkend)), junkend)
 
     def createEntity(self, ctx, m):
-        return Entity(ctx, self.postProcessValue,
-                      *[m.span(i) for i in xrange(7)])
+        pre_comment = str(self.last_comment) if self.last_comment else ''
+        self.last_comment = ''
+        return Entity(ctx, self.postProcessValue, pre_comment,
+                      *[m.span(i) for i in xrange(6)])
 
 
 def getParser(path):
@@ -286,20 +319,18 @@ class DTDParser(Parser):
     #     [#x0300-#x036F] | [#x203F-#x2040]
     NameChar = NameStartChar + ur'\-\.0-9' + u'\xB7\u0300-\u036F\u203F-\u2040'
     Name = '[' + NameStartChar + '][' + NameChar + ']*'
-    reKey = re.compile('(?:(?P<pre>\s*)(?P<precomment>(?:' + XmlComment +
-                       '\s*)*)(?P<entity><!ENTITY\s+(?P<key>' + Name +
+    reKey = re.compile('(?:(?P<pre>\s*)(?P<entity><!ENTITY\s+(?P<key>' + Name +
                        ')\s+(?P<val>\"[^\"]*\"|\'[^\']*\'?)\s*>)'
-                       '(?P<post>[ \t]*(?:' + XmlComment + '\s*)*\n?)?)',
-                       re.DOTALL)
+                       '(?P<post>\s*)?)',
+                       re.DOTALL | re.M)
     # add BOM to DTDs, details in bug 435002
-    reHeader = re.compile(u'^\ufeff?'
-                          u'(\s*<!--.*(http://mozilla.org/MPL/2.0/|'
-                          u'LICENSE BLOCK)([^-]+-)*[^-]+-->)?', re.S)
-    reFooter = re.compile('\s*(<!--([^-]+-)*[^-]+-->\s*)*$')
-    rePE = re.compile('(?:(\s*)((?:' + XmlComment + '\s*)*)'
-                      '(<!ENTITY\s+%\s+(' + Name +
-                      ')\s+SYSTEM\s+(\"[^\"]*\"|\'[^\']*\')\s*>\s*%' + Name +
-                      ';)([ \t]*(?:' + XmlComment + '\s*)*\n?)?)')
+    reHeader = re.compile(u'^\ufeff')
+    reComment = re.compile('(\s*)(<!--(-?[%s])*?-->)(\s*)' % CharMinusDash,
+                           re.S)
+    rePE = re.compile(u'(?:(\s*)'
+                      u'(<!ENTITY\s+%\s+(' + Name +
+                      u')\s+SYSTEM\s+(\"[^\"]*\"|\'[^\']*\')\s*>\s*%' + Name +
+                      u';)([ \t]*(?:' + XmlComment + u'\s*)*\n?)?)')
 
     def getEntity(self, ctx, offset):
         '''
@@ -309,20 +340,26 @@ class DTDParser(Parser):
         <!ENTITY % foo SYSTEM "url">
         %foo;
         '''
+        if offset is 0 and self.reHeader.match(ctx.contents):
+            offset += 1
         entity, inneroffset = Parser.getEntity(self, ctx, offset)
         if (entity and isinstance(entity, Junk)) or entity is None:
             m = self.rePE.match(ctx.contents, offset)
             if m:
                 inneroffset = m.end()
-                entity = Entity(ctx, self.postProcessValue,
-                                *[m.span(i) for i in xrange(7)])
+                self.last_comment = ''
+                entity = Entity(ctx, self.postProcessValue, '',
+                                *[m.span(i) for i in xrange(6)])
         return (entity, inneroffset)
 
     def createEntity(self, ctx, m):
         valspan = m.span('val')
         valspan = (valspan[0]+1, valspan[1]-1)
-        return Entity(ctx, self.postProcessValue, m.span(),
-                      m.span('pre'), m.span('precomment'),
+        pre_comment = unicode(self.last_comment) if self.last_comment else ''
+        self.last_comment = ''
+        return Entity(ctx, self.postProcessValue, pre_comment,
+                      m.span(),
+                      m.span('pre'),
                       m.span('entity'), m.span('key'), valspan,
                       m.span('post'))
 
@@ -334,31 +371,30 @@ class PropertiesParser(Parser):
 
     def __init__(self):
         self.reKey = re.compile('^(\s*)'
-                                '((?:[#!].*?\n\s*)*)'
                                 '([^#!\s\n][^=:\n]*?)\s*[:=][ \t]*', re.M)
-        self.reHeader = re.compile('^\s*([#!].*\s*)+')
-        self.reFooter = re.compile('\s*([#!].*\s*)*$')
+        self.reComment = re.compile('(\s*)(((?:[#!][^\n]*\n?)+))', re.M)
         self._escapedEnd = re.compile(r'\\+$')
-        self._trailingWS = re.compile(r'[ \t]*$')
+        self._trailingWS = re.compile(r'\s*(?:\n|\Z)', re.M)
         Parser.__init__(self)
-
-    def getHeader(self, contents, offset):
-        header = ''
-        h = self.reHeader.match(contents, offset)
-        if h:
-            candidate = h.group()
-            if 'http://mozilla.org/MPL/2.0/' in candidate or \
-                    'LICENSE BLOCK' in candidate:
-                header = candidate
-                offset = h.end()
-        return (header, offset)
 
     def getEntity(self, ctx, offset):
         # overwritten to parse values line by line
         contents = ctx.contents
+        m = self.reComment.match(contents, offset)
+        if m:
+            spans = [m.span(i) for i in xrange(3)]
+            start_trailing = offset = m.end()
+            while offset < len(contents):
+                m = self._trailingWS.match(contents, offset)
+                if not m:
+                    break
+                offset = m.end()
+            spans.append((start_trailing, offset))
+            self.last_comment = Comment(ctx, *spans)
+            return (self.last_comment, offset)
         m = self.reKey.match(contents, offset)
         if m:
-            offset = m.end()
+            startline = offset = m.end()
             while True:
                 endval = nextline = contents.find('\n', offset)
                 if nextline == -1:
@@ -372,26 +408,24 @@ class PropertiesParser(Parser):
                 # backslashes at end of line, if 2*n, not escaped
                 if len(_e.group()) % 2 == 0:
                     break
+                startline = offset
             # strip trailing whitespace
-            ws = self._trailingWS.search(contents, m.end(), offset)
+            ws = self._trailingWS.search(contents, startline)
             if ws:
-                endval -= ws.end() - ws.start()
-            entity = Entity(ctx, self.postProcessValue,
+                endval = ws.start()
+                offset = ws.end()
+            pre_comment = (unicode(self.last_comment) if self.last_comment
+                           else '')
+            self.last_comment = ''
+            entity = Entity(ctx, self.postProcessValue, pre_comment,
                             (m.start(), offset),   # full span
                             m.span(1),  # leading whitespan
-                            m.span(2),  # leading comment span
-                            (m.start(3), offset),   # entity def span
-                            m.span(3),   # key span
+                            (m.start(2), offset),   # entity def span
+                            m.span(2),   # key span
                             (m.end(), endval),   # value span
                             (offset, offset))  # post comment span, empty
             return (entity, offset)
-        m = self.reKey.search(contents, offset)
-        if m:
-            # we didn't match, but search, so there's junk between offset
-            # and start. We'll match() on the next turn
-            junkend = m.start()
-            return (Junk(ctx, (offset, junkend)), junkend)
-        return (None, offset)
+        return self.getTrailing(ctx, offset, self.reKey, self.reComment)
 
     def postProcessValue(self, val):
 
@@ -406,17 +440,76 @@ class PropertiesParser(Parser):
         return val
 
 
+class DefinesInstruction(Entity):
+    '''Entity-like object representing processing instructions in inc files
+    '''
+    def __init__(self, ctx, span, pre_ws_span, def_span, val_span, post_span):
+        self.ctx = ctx
+        self.span = span
+        self.pre_ws_span = pre_ws_span
+        self.def_span = def_span
+        self.key_span = self.val_span = val_span
+        self.post_span = post_span
+        self.pp = lambda v: v
+
+    def __repr__(self):
+        return self.raw_val
+
+
 class DefinesParser(Parser):
     # can't merge, #unfilter needs to be the last item, which we don't support
     canMerge = False
+    tail = re.compile(r'(?!)')  # never match
 
     def __init__(self):
-        self.reKey = re.compile('^(\s*)((?:^#(?!define\s).*\s*)*)'
-                                '(#define[ \t]+(\w+)[ \t]+(.*?))([ \t]*$\n?)',
+        self.reComment = re.compile(
+            '((?:[ \t]*\n)*)'
+            '((?:^# .*?(?:\n|\Z))+)'
+            '((?:[ \t]*(?:\n|\Z))*)', re.M)
+        self.reKey = re.compile('((?:[ \t]*\n)*)'
+                                '(#define[ \t]+(\w+)[ \t]+(.*?)(?:\n|\Z))'
+                                '((?:[ \t]*(?:\n|\Z))*)',
                                 re.M)
-        self.reHeader = re.compile('^\s*(#(?!define\s).*\s*)*')
-        self.reFooter = re.compile('\s*(#(?!define\s).*\s*)*$', re.M)
+        self.rePI = re.compile('((?:[ \t]*\n)*)'
+                               '(#(\w+)[ \t]+(.*?)(?:\n|\Z))'
+                               '((?:[ \t]*(?:\n|\Z))*)',
+                               re.M)
         Parser.__init__(self)
+
+    def getEntity(self, ctx, offset):
+        contents = ctx.contents
+        m = self.reComment.match(contents, offset)
+        if m:
+            offset = m.end()
+            self.last_comment = Comment(ctx, *[m.span(i) for i in xrange(4)])
+            return (self.last_comment, offset)
+        m = self.reKey.match(contents, offset)
+        if m:
+            offset = m.end()
+            return (self.createEntity(ctx, m), offset)
+        m = self.rePI.match(contents, offset)
+        if m:
+            offset = m.end()
+            return (DefinesInstruction(ctx, *[m.span(i) for i in xrange(5)]),
+                    offset)
+        return self.getTrailing(ctx, offset,
+                                self.reComment, self.reKey, self.rePI)
+
+
+class IniSection(Entity):
+    '''Entity-like object representing sections in ini files
+    '''
+    def __init__(self, ctx, span, pre_ws_span, def_span, val_span, post_span):
+        self.ctx = ctx
+        self.span = span
+        self.pre_ws_span = pre_ws_span
+        self.def_span = def_span
+        self.key_span = self.val_span = val_span
+        self.post_span = post_span
+        self.pp = lambda v: v
+
+    def __repr__(self):
+        return self.raw_val
 
 
 class IniParser(Parser):
@@ -430,10 +523,37 @@ class IniParser(Parser):
     ...
     '''
     def __init__(self):
-        self.reHeader = re.compile('^((?:\s*|[;#].*)\n)*\[.+?\]\n', re.M)
-        self.reKey = re.compile('(\s*)((?:[;#].*\n\s*)*)((.+?)=(.*))(\n?)')
-        self.reFooter = re.compile('\s*([;#].*\s*)*$')
+        self.reComment = re.compile(
+            '((?:[ \t]*\n)*)'
+            '((?:^[;#].*?(?:\n|\Z))+)'
+            '((?:[ \t]*(?:\n|\Z))*)', re.M)
+        self.reSection = re.compile(
+            '((?:[ \t]*\n)*)'
+            '(\[(.*?)\])'
+            '((?:[ \t]*(?:\n|\Z))*)', re.M)
+        self.reKey = re.compile(
+            '((?:[ \t]*\n)*)'
+            '((.+?)=(.*))'
+            '((?:[ \t]*(?:\n|\Z))*)', re.M)
         Parser.__init__(self)
+
+    def getEntity(self, ctx, offset):
+        contents = ctx.contents
+        m = self.reComment.match(contents, offset)
+        if m:
+            offset = m.end()
+            self.last_comment = Comment(ctx, *[m.span(i) for i in xrange(4)])
+            return (self.last_comment, offset)
+        m = self.reSection.match(contents, offset)
+        if m:
+            offset = m.end()
+            return (IniSection(ctx, *[m.span(i) for i in xrange(5)]), offset)
+        m = self.reKey.match(contents, offset)
+        if m:
+            offset = m.end()
+            return (self.createEntity(ctx, m), offset)
+        return self.getTrailing(ctx, offset,
+                                self.reComment, self.reSection, self.reKey)
 
 
 __constructors = [('\\.dtd$', DTDParser()),

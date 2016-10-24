@@ -38,7 +38,7 @@ class ParserTestMixin():
         of reference keys and values.
         '''
         self.parser.readContents(content)
-        entities = [entity for entity in self.parser]
+        entities = list(self.parser.walk())
         for entity, ref in izip_longest(entities, refs):
             self.assertTrue(entity, 'excess reference entity ' + unicode(ref))
             self.assertTrue(ref, 'excess parsed entity ' + unicode(entity))
