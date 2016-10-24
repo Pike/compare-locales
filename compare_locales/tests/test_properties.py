@@ -24,7 +24,7 @@ and still has another line coming
             ('one_line', 'This is one line'),
             ('two_line', u'This is the first of two lines'),
             ('one_line_trailing', u'This line ends in \\'),
-            ('_junk_\\d+_113-126$', 'and has junk\n'),
+            ('Junk', 'and has junk\n'),
             ('two_lines_triple', 'This line is one of two and ends in \\'
              'and still has another line coming')))
 

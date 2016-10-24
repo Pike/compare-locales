@@ -56,7 +56,7 @@ TitleText=Some Title
 Junk
 [Strings]
 TitleText=Some Title
-''', (('_junk_\\d+_0-213$', mpl2 + '''\
+''', (('Junk', mpl2 + '''\
 Junk
 [Strings]'''), ('TitleText', 'Some Title')))
         self.assert_('MPL' not in self.parser.header)
@@ -89,7 +89,7 @@ TitleText=Some Title
 Junk
 ;Second stray comment
 
-''', (('TitleText', 'Some Title'), ('_junk_\\d+_231-284$', '''\
+''', (('TitleText', 'Some Title'), ('Junk', '''\
 
 ;Stray trailing comment
 Junk
@@ -106,7 +106,7 @@ TitleText=Some Title
 Junk
 
 Good=other string
-''', (('TitleText', 'Some Title'), ('_junk_\\d+_231-236$', '''\
+''', (('TitleText', 'Some Title'), ('Junk', '''\
 
 Junk'''), ('Good', 'other string')))
         self.assert_('MPL' in self.parser.header)

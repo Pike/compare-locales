@@ -30,9 +30,9 @@ class TestDTD(ParserTestMixin, unittest.TestCase):
 '''
     quoteRef = (
         ('good.one', 'one'),
-        ('_junk_\\d_25-56$', '<!ENTITY bad.one "bad " quote">'),
+        ('Junk', '<!ENTITY bad.one "bad " quote">'),
         ('good.two', 'two'),
-        ('_junk_\\d_82-119$', '<!ENTITY bad.two "bad "quoted" word">'),
+        ('Junk', '<!ENTITY bad.two "bad "quoted" word">'),
         ('good.three', 'three'),
         ('good.four', 'good \' quote'),
         ('good.five', 'good \'quoted\' word'),)
