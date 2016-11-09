@@ -233,6 +233,9 @@ class Parser:
         return self.walk(onlyEntities=True)
 
     def walk(self, onlyEntities=False):
+        if not self.ctx:
+            # loading file failed, or we just didn't load anything
+            return
         ctx = self.ctx
         contents = ctx.contents
         offset = 0

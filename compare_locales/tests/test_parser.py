@@ -30,3 +30,15 @@ third line
             ctx.lines(len(ctx.contents)),
             [(4, 1)]
         )
+
+    def test_empty_parser(self):
+        p = parser.Parser()
+        entities, _map = p.parse()
+        self.assertListEqual(
+            entities,
+            []
+        )
+        self.assertDictEqual(
+            _map,
+            {}
+        )
