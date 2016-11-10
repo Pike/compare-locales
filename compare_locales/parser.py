@@ -277,7 +277,7 @@ class Parser:
         return (Junk(ctx, (offset, junkend)), junkend)
 
     def createEntity(self, ctx, m):
-        pre_comment = str(self.last_comment) if self.last_comment else ''
+        pre_comment = unicode(self.last_comment) if self.last_comment else ''
         self.last_comment = ''
         return Entity(ctx, self.postProcessValue, pre_comment,
                       *[m.span(i) for i in xrange(6)])

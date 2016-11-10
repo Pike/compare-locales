@@ -57,6 +57,21 @@ class TestDefinesParser(ParserTestMixin, unittest.TestCase):
              '<em:contributor>Joe Solon</em:contributor>'),
             ('DefinesInstruction', 'unfilter emptyLines')))
 
+    def testCommentWithNonAsciiCharacters(self):
+        self._test(mpl2 + '''#filter emptyLines
+
+# e.g. #define seamonkey_l10n <DT><A HREF="http://www.mozilla.cz/produkty/seamonkey/">SeaMonkey v češtině</a>
+#define seamonkey_l10n_long\t
+
+#unfilter emptyLines
+
+''', (
+            ('Comment', mpl2),
+            ('DefinesInstruction', 'filter emptyLines'),
+            ('Comment', u'češtině'),
+            ('seamonkey_l10n_long', ''),
+            ('DefinesInstruction', 'unfilter emptyLines')))
+
     def testToolkit(self):
         self._test('''#define MOZ_LANG_TITLE English (US)
 ''', (
