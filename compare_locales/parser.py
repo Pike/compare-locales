@@ -206,15 +206,18 @@ class Parser:
         self.last_comment = None
 
     def readFile(self, file):
-        f = codecs.open(file, 'r', self.encoding)
-        try:
-            self.ctx = Parser.Context(f.read())
-        except UnicodeDecodeError, e:
-            (logging.getLogger('locales')
-                    .error("Can't read file: " + file + '; ' + str(e)))
-        f.close()
+        with open(file, 'rU') as f:
+            try:
+                self.readContents(f.read())
+            except UnicodeDecodeError, e:
+                (logging.getLogger('locales')
+                        .error("Can't read file: " + file + '; ' + str(e)))
 
     def readContents(self, contents):
+        '''Read contents and create parsing context.
+
+        contents are in native encoding, but with normalized line endings.
+        '''
         (contents, length) = codecs.getdecoder(self.encoding)(contents)
         self.ctx = Parser.Context(contents)
 
