@@ -5,7 +5,7 @@
 'Commands exposed to commandlines'
 
 import logging
-from optparse import OptionParser, make_option
+from argparse import ArgumentParser
 
 from compare_locales.paths import EnumerateApp
 from compare_locales.compare import compareApp, compareDirs
@@ -17,23 +17,6 @@ class BaseCommand(object):
     This handles command line parsing, and general sugar for setuptools
     entry_points.
     """
-    options = [
-        make_option('-v', '--verbose', action='count', dest='v', default=0,
-                    help='Make more noise'),
-        make_option('-q', '--quiet', action='count', dest='q', default=0,
-                    help='Make less noise'),
-        make_option('-m', '--merge',
-                    help='''Use this directory to stage merged files,
-use {ab_CD} to specify a different directory for each locale'''),
-    ]
-    data_option = make_option('--data', choices=['text', 'exhibit', 'json'],
-                              default='text',
-                              help='''Choose data and format (one of text,
-exhibit, json); text: (default) Show which files miss which strings, together
-with warnings and errors. Also prints a summary; json: Serialize the internal
-tree, useful for tools. Also always succeeds; exhibit: Serialize the summary
-data in a json useful for Exhibit
-''')
 
     def __init__(self):
         self.parser = None
@@ -42,11 +25,25 @@ data in a json useful for Exhibit
         """Get an OptionParser, with class docstring as usage, and
         self.options.
         """
-        parser = OptionParser()
-        parser.set_usage(self.__doc__)
-        for option in self.options:
-            parser.add_option(option)
+        parser = ArgumentParser(usage=self.__doc__)
+        parser.add_argument('-v', '--verbose', action='count', dest='v',
+                            default=0, help='Make more noise')
+        parser.add_argument('-q', '--quiet', action='count', dest='q',
+                            default=0, help='Make less noise')
+        parser.add_argument('-m', '--merge',
+                            help='''Use this directory to stage merged files,
+use {ab_CD} to specify a different directory for each locale''')
         return parser
+
+    def add_data_argument(self, parser):
+        parser.add_argument('--data', choices=['text', 'exhibit', 'json'],
+                            default='text',
+                            help='''Choose data and format (one of text,
+exhibit, json); text: (default) Show which files miss which strings, together
+with warnings and errors. Also prints a summary; json: Serialize the internal
+tree, useful for tools. Also always succeeds; exhibit: Serialize the summary
+data in a json useful for Exhibit
+''')
 
     @classmethod
     def call(cls):
@@ -76,7 +73,7 @@ data in a json useful for Exhibit
 
 
 class CompareLocales(BaseCommand):
-    """usage: %prog [options] l10n.ini l10n_base_dir [locale ...]
+    """usage: %(prog)s [options] l10n.ini l10n_base_dir [locale ...]
 
 Check the localization status of a gecko application.
 The first argument is a path to the l10n.ini file for the application,
@@ -85,19 +82,21 @@ Then you pass in the list of locale codes you want to compare. If there are
 not locales given, the list of locales will be taken from the all-locales file
 of the application\'s l10n.ini."""
 
-    options = BaseCommand.options + [
-        make_option('--clobber-merge', action="store_true", default=False,
-                    dest='clobber',
-                    help="""WARNING: DATALOSS.
+    def get_parser(self):
+        parser = super(CompareLocales, self).get_parser()
+        parser.add_argument('--clobber-merge', action="store_true",
+                            default=False, dest='clobber',
+                            help="""WARNING: DATALOSS.
 Use this option with care. If specified, the merge directory will
 be clobbered for each module. That means, the subdirectory will
 be completely removed, any files that were there are lost.
-Be careful to specify the right merge directory when using this option."""),
-        make_option('-r', '--reference', default='en-US', dest='reference',
-                    help='Explicitly set the reference '
-                    'localization. [default: en-US]'),
-        BaseCommand.data_option
-    ]
+Be careful to specify the right merge directory when using this option.""")
+        parser.add_argument('-r', '--reference', default='en-US',
+                            dest='reference',
+                            help='Explicitly set the reference '
+                            'localization. [default: en-US]')
+        self.add_data_argument(parser)
+        return parser
 
     def handle(self, args, options):
         if len(args) < 2:
@@ -116,15 +115,16 @@ Be careful to specify the right merge directory when using this option."""),
 
 
 class CompareDirs(BaseCommand):
-    """usage: %prog [options] reference localization
+    """usage: %(prog)s [options] reference localization
 
 Check the localization status of a directory tree.
 The first argument is a path to the reference data,the second is the
 localization to be tested."""
 
-    options = BaseCommand.options + [
-        BaseCommand.data_option
-    ]
+    def get_parser(self):
+        parser = super(CompareDirs, self).get_parser()
+        self.add_data_argument(parser)
+        return parser
 
     def handle(self, args, options):
         if len(args) != 2:
@@ -135,15 +135,17 @@ localization to be tested."""
 
 
 class CompareWebApp(BaseCommand):
-    """usage: %prog [options] webapp [locale locale]
+    """usage: %(prog)s [options] webapp [locale locale]
 
 Check the localization status of a gaia-style web app.
 The first argument is the directory of the web app.
 Following arguments explicitly state the locales to test.
 If none are given, test all locales in manifest.webapp or files."""
 
-    options = BaseCommand.options[:-1] + [
-        BaseCommand.data_option]
+    def get_parser(self):
+        parser = super(CompareWebApp, self).get_parser()
+        self.add_data_argument(parser)
+        return parser
 
     def handle(self, args, options):
         if len(args) < 1:
