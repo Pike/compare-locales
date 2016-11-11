@@ -7,6 +7,7 @@
 import logging
 from argparse import ArgumentParser
 
+from compare_locales import version
 from compare_locales.paths import EnumerateApp
 from compare_locales.compare import compareApp, compareDirs
 from compare_locales.webapps import compare_web_app
@@ -26,6 +27,8 @@ class BaseCommand(object):
         self.options.
         """
         parser = ArgumentParser(usage=self.__doc__)
+        parser.add_argument('--version', action='version',
+                            version='%(prog)s ' + version)
         parser.add_argument('-v', '--verbose', action='count', dest='v',
                             default=0, help='Make more noise')
         parser.add_argument('-q', '--quiet', action='count', dest='q',
