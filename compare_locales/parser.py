@@ -470,7 +470,7 @@ class DefinesParser(Parser):
             '((?:^# .*?(?:\n|\Z))+)'
             '((?:[ \t]*(?:\n|\Z))*)', re.M)
         self.reKey = re.compile('((?:[ \t]*\n)*)'
-                                '(#define[ \t]+(\w+)[ \t]+(.*?)(?:\n|\Z))'
+                                '(#define[ \t]+(\w+)(?:[ \t](.*?))?(?:\n|\Z))'
                                 '((?:[ \t]*(?:\n|\Z))*)',
                                 re.M)
         self.rePI = re.compile('((?:[ \t]*\n)*)'

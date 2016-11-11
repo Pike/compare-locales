@@ -61,7 +61,7 @@ class TestDefinesParser(ParserTestMixin, unittest.TestCase):
         self._test(mpl2 + '''#filter emptyLines
 
 # e.g. #define seamonkey_l10n <DT><A HREF="http://www.mozilla.cz/produkty/seamonkey/">SeaMonkey v češtině</a>
-#define seamonkey_l10n_long\t
+#define seamonkey_l10n_long
 
 #unfilter emptyLines
 
