@@ -23,10 +23,9 @@ class BaseCommand(object):
         self.parser = None
 
     def get_parser(self):
-        """Get an OptionParser, with class docstring as usage, and
-        self.options.
+        """Get an ArgumentParser, with class docstring as description.
         """
-        parser = ArgumentParser(usage=self.__doc__)
+        parser = ArgumentParser(description=self.__doc__)
         parser.add_argument('--version', action='version',
                             version='%(prog)s ' + version)
         parser.add_argument('-v', '--verbose', action='count', dest='v',
@@ -60,15 +59,15 @@ data in a json useful for Exhibit
     def handle_(self):
         """The instance part of the classmethod call."""
         self.parser = self.get_parser()
-        (options, args) = self.parser.parse_args()
+        args = self.parser.parse_args()
         # log as verbose or quiet as we want, warn by default
         logging.basicConfig()
         logging.getLogger().setLevel(logging.WARNING -
-                                     (options.v - options.q)*10)
-        observer = self.handle(args, options)
-        print observer.serialize(type=options.data).encode('utf-8', 'replace')
+                                     (args.v - args.q) * 10)
+        observer = self.handle(args)
+        print observer.serialize(type=args.data).encode('utf-8', 'replace')
 
-    def handle(self, args, options):
+    def handle(self, args):
         """Subclasses need to implement this method for the actual
         command handling.
         """
@@ -76,9 +75,7 @@ data in a json useful for Exhibit
 
 
 class CompareLocales(BaseCommand):
-    """usage: %(prog)s [options] l10n.ini l10n_base_dir [locale ...]
-
-Check the localization status of a gecko application.
+    """Check the localization status of a gecko application.
 The first argument is a path to the l10n.ini file for the application,
 followed by the base directory of the localization repositories.
 Then you pass in the list of locale codes you want to compare. If there are
@@ -87,6 +84,13 @@ of the application\'s l10n.ini."""
 
     def get_parser(self):
         parser = super(CompareLocales, self).get_parser()
+        parser.add_argument('ini_file', metavar='l10n.ini',
+                            help='INI file for the project')
+        parser.add_argument('l10n_base_dir', metavar='l10n-base-dir',
+                            help='Parent directory of localizations')
+        parser.add_argument('locales', nargs='*', metavar='locale-code',
+                            help='Locale code and top-level directory of '
+                                 'each localization')
         parser.add_argument('--clobber-merge', action="store_true",
                             default=False, dest='clobber',
                             help="""WARNING: DATALOSS.
@@ -101,16 +105,12 @@ Be careful to specify the right merge directory when using this option.""")
         self.add_data_argument(parser)
         return parser
 
-    def handle(self, args, options):
-        if len(args) < 2:
-            self.parser.error('Need to pass in list of languages')
-        inipath, l10nbase = args[:2]
-        locales = args[2:]
-        app = EnumerateApp(inipath, l10nbase, locales)
-        app.reference = options.reference
+    def handle(self, args):
+        app = EnumerateApp(args.ini_file, args.l10n_base_dir, args.locales)
+        app.reference = args.reference
         try:
-            observer = compareApp(app, merge_stage=options.merge,
-                                  clobber=options.clobber)
+            observer = compareApp(app, merge_stage=args.merge,
+                                  clobber=args.clobber)
         except (OSError, IOError), exc:
             print "FAIL: " + str(exc)
             self.parser.exit(2)
@@ -118,42 +118,38 @@ Be careful to specify the right merge directory when using this option.""")
 
 
 class CompareDirs(BaseCommand):
-    """usage: %(prog)s [options] reference localization
-
-Check the localization status of a directory tree.
+    """Check the localization status of a directory tree.
 The first argument is a path to the reference data,the second is the
 localization to be tested."""
 
     def get_parser(self):
         parser = super(CompareDirs, self).get_parser()
+        parser.add_argument('reference')
+        parser.add_argument('localization')
         self.add_data_argument(parser)
         return parser
 
-    def handle(self, args, options):
-        if len(args) != 2:
-            self.parser.error('Reference and localizatino required')
-        reference, locale = args
-        observer = compareDirs(reference, locale, merge_stage=options.merge)
+    def handle(self, args):
+        observer = compareDirs(args.reference, args.localization,
+                               merge_stage=args.merge)
         return observer
 
 
 class CompareWebApp(BaseCommand):
-    """usage: %(prog)s [options] webapp [locale locale]
-
-Check the localization status of a gaia-style web app.
+    """Check the localization status of a gaia-style web app.
 The first argument is the directory of the web app.
 Following arguments explicitly state the locales to test.
 If none are given, test all locales in manifest.webapp or files."""
 
     def get_parser(self):
         parser = super(CompareWebApp, self).get_parser()
+        parser.add_argument('webapp')
+        parser.add_argument('locales', nargs='*', metavar='locale-code',
+                            help='Locale code and top-level directory of '
+                                 'each localization')
         self.add_data_argument(parser)
         return parser
 
-    def handle(self, args, options):
-        if len(args) < 1:
-            self.parser.error('Webapp directory required')
-        basedir = args[0]
-        locales = args[1:]
-        observer = compare_web_app(basedir, locales)
+    def handle(self, args):
+        observer = compare_web_app(args.webapp, args.locales)
         return observer
