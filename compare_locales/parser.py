@@ -10,7 +10,7 @@ import logging
 __constructors = []
 
 
-class Entity(object):
+class EntityBase(object):
     '''
     Abstraction layer for a localizable entity.
     Currently supported are grammars of the form:
@@ -100,7 +100,11 @@ class Entity(object):
         return self.key
 
 
-class Comment(Entity):
+class Entity(EntityBase):
+    pass
+
+
+class Comment(EntityBase):
     def __init__(self, ctx, span, pre_ws_span, def_span,
                  post_span):
         self.ctx = ctx
@@ -161,7 +165,7 @@ class Junk(object):
         return self.key
 
 
-class Whitespace(Entity):
+class Whitespace(EntityBase):
     '''Entity-like object representing an empty file with whitespace,
     if allowed
     '''
@@ -446,7 +450,7 @@ class PropertiesParser(Parser):
         return val
 
 
-class DefinesInstruction(Entity):
+class DefinesInstruction(EntityBase):
     '''Entity-like object representing processing instructions in inc files
     '''
     def __init__(self, ctx, span, pre_ws_span, def_span, val_span, post_span):
@@ -502,7 +506,7 @@ class DefinesParser(Parser):
                                 self.reComment, self.reKey, self.rePI)
 
 
-class IniSection(Entity):
+class IniSection(EntityBase):
     '''Entity-like object representing sections in ini files
     '''
     def __init__(self, ctx, span, pre_ws_span, def_span, val_span, post_span):

@@ -42,7 +42,7 @@ class ParserTestMixin():
         for entity, ref in izip_longest(entities, refs):
             self.assertTrue(entity, 'excess reference entity ' + unicode(ref))
             self.assertTrue(ref, 'excess parsed entity ' + unicode(entity))
-            if type(entity) is parser.Entity:
+            if isinstance(entity, parser.Entity):
                 self.assertEqual(entity.key, ref[0])
                 self.assertEqual(entity.val, ref[1])
             else:
