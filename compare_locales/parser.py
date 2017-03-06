@@ -331,7 +331,7 @@ class DTDParser(Parser):
     Name = '[' + NameStartChar + '][' + NameChar + ']*'
     reKey = re.compile('(?:(?P<pre>\s*)(?P<entity><!ENTITY\s+(?P<key>' + Name +
                        ')\s+(?P<val>\"[^\"]*\"|\'[^\']*\'?)\s*>)'
-                       '(?P<post>\s*)?)',
+                       '(?P<post>\s+)?)',
                        re.DOTALL | re.M)
     # add BOM to DTDs, details in bug 435002
     reHeader = re.compile(u'^\ufeff')

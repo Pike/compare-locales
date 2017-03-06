@@ -124,6 +124,14 @@ escaped value">
         self.assertEqual(two.value_position(-1), (3, 14))
         self.assertEqual(two.value_position(10), (3, 5))
 
+    def test_post(self):
+        self.parser.readContents('<!ENTITY a "a"><!ENTITY b "b">')
+        a, b = list(self.parser)
+        self.assertEqual(a.post, '')
+        self.parser.readContents('<!ENTITY a "a"> <!ENTITY b "b">')
+        a, b = list(self.parser)
+        self.assertEqual(a.post, ' ')
+
 
 if __name__ == '__main__':
     unittest.main()
