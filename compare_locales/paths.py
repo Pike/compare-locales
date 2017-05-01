@@ -40,8 +40,6 @@ class L10nConfigParser(object):
 
     def getDepth(self, cp):
         '''Get the depth for the comparison from the parsed l10n.ini.
-
-        Overloadable to get the source depth for fennec and friends.
         '''
         try:
             depth = cp.get('general', 'depth')
@@ -101,14 +99,6 @@ class L10nConfigParser(object):
             self.dirs.extend(cp.get('compare', 'dirs').split())
         except (NoOptionError, NoSectionError):
             pass
-        # try getting a top level compare dir, as used for fennec
-        try:
-            self.tld = cp.get('compare', 'tld')
-            # remove tld from comparison dirs
-            if self.tld in self.dirs:
-                self.dirs.remove(self.tld)
-        except (NoOptionError, NoSectionError):
-            self.tld = None
         # try to set "all_path" and "all_url"
         try:
             self.all_path = cp.get('general', 'all')
@@ -129,21 +119,10 @@ class L10nConfigParser(object):
         cp.loadConfigs()
         self.children.append(cp)
 
-    def getTLDPathsTuple(self, basepath):
-        """Given the basepath, return the path fragments to be used for
-        self.tld. For build runs, this is (basepath, self.tld), for
-        source runs, just (basepath,).
-
-        @see overwritten method in SourceTreeConfigParser.
-        """
-        return (basepath, self.tld)
-
     def dirsIter(self):
         """Iterate over all dirs and our base path for this l10n.ini"""
         url = urlparse(self.baseurl)
         basepath = url2pathname(url.path)
-        if self.tld is not None:
-            yield self.tld, self.getTLDPathsTuple(basepath)
         for dir in self.dirs:
             yield dir, (basepath, dir)
 
@@ -178,21 +157,6 @@ class SourceTreeConfigParser(L10nConfigParser):
         L10nConfigParser.__init__(self, inipath)
         self.basepath = basepath
         self.redirects = redirects
-        self.tld = None
-
-    def getDepth(self, cp):
-        '''Get the depth for the comparison from the parsed l10n.ini.
-
-        Overloaded to get the source depth for fennec and friends.
-        '''
-        try:
-            depth = cp.get('general', 'source-depth')
-        except:
-            try:
-                depth = cp.get('general', 'depth')
-            except:
-                depth = '.'
-        return depth
 
     def addChild(self, title, path, orig_cp):
         # check if there's a section with details for this include
@@ -211,12 +175,6 @@ class SourceTreeConfigParser(L10nConfigParser):
                                     **self.defaults)
         cp.loadConfigs()
         self.children.append(cp)
-
-    def getTLDPathsTuple(self, basepath):
-        """Overwrite L10nConfigParser's getTLDPathsTuple to just return
-        the basepath.
-        """
-        return (basepath, )
 
 
 class File(object):
@@ -376,9 +334,6 @@ class EnumerateSourceTreeApp(EnumerateApp):
     '''Subclass EnumerateApp to work on side-by-side checked out
     repos, and to no pay attention to how the source would actually
     be checked out for building.
-
-    It's supporting applications like Fennec, too, which have
-    'locales/en-US/...' in their root dir, but claim to be 'mobile'.
     '''
 
     def __init__(self, inipath, basepath, l10nbase, redirects,
