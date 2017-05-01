@@ -368,7 +368,6 @@ class ContentComparer:
         of the notify method are used to control the handling of missing
         entities.
         '''
-        self.reference = dict()
         self.observer = Observer()
         self.other_observers = []
         self.merge_stage = None
@@ -444,15 +443,12 @@ class ContentComparer:
         except UserWarning:
             # no comparison, XXX report?
             return
-        if ref_file not in self.reference:
-            # we didn't parse this before
-            try:
-                p.readContents(ref_file.getContents())
-            except Exception, e:
-                self.notify('error', ref_file, str(e))
-                return
-            self.reference[ref_file] = p.parse()
-        ref = self.reference[ref_file]
+        try:
+            p.readContents(ref_file.getContents())
+        except Exception, e:
+            self.notify('error', ref_file, str(e))
+            return
+        ref = p.parse()
         ref_list = ref[1].keys()
         ref_list.sort()
         try:
