@@ -10,7 +10,6 @@ from argparse import ArgumentParser
 from compare_locales import version
 from compare_locales.paths import EnumerateApp
 from compare_locales.compare import compareApp, compareDirs
-from compare_locales.webapps import compare_web_app
 
 
 class BaseCommand(object):
@@ -132,24 +131,4 @@ localization to be tested."""
     def handle(self, args):
         observer = compareDirs(args.reference, args.localization,
                                merge_stage=args.merge)
-        return observer
-
-
-class CompareWebApp(BaseCommand):
-    """Check the localization status of a gaia-style web app.
-The first argument is the directory of the web app.
-Following arguments explicitly state the locales to test.
-If none are given, test all locales in manifest.webapp or files."""
-
-    def get_parser(self):
-        parser = super(CompareWebApp, self).get_parser()
-        parser.add_argument('webapp')
-        parser.add_argument('locales', nargs='*', metavar='locale-code',
-                            help='Locale code and top-level directory of '
-                                 'each localization')
-        self.add_data_argument(parser)
-        return parser
-
-    def handle(self, args):
-        observer = compare_web_app(args.webapp, args.locales)
         return observer

@@ -40,8 +40,7 @@ setup(name="compare-locales",
       platforms=["any"],
       entry_points={'console_scripts': [
           'compare-locales = compare_locales.commands:CompareLocales.call',
-          'compare-dirs = compare_locales.commands:CompareDirs.call',
-          'compare-web-app = compare_locales.commands:CompareWebApp.call']},
+          'compare-dirs = compare_locales.commands:CompareDirs.call']},
       packages=['compare_locales', 'compare_locales.tests'],
       package_data={
           'compare_locales.tests': ['data/*.properties', 'data/*.dtd']
