@@ -493,7 +493,7 @@ class ContentComparer:
                     junk = l10n_entities[l10n_map[item_or_pair]]
                     params = (junk.val,) + junk.position() + junk.position(-1)
                     self.notify('error', l10n,
-                                'Unparsed content "%s" from line %d colum %d'
+                                'Unparsed content "%s" from line %d column %d'
                                 ' to line %d column %d' % params)
                     if self.merge_stage is not None:
                         skips.append(junk)

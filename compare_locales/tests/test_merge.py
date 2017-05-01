@@ -251,7 +251,7 @@ class TestDTD(unittest.TestCase, ContentMixin):
                          {'value': {
                              'error': [u'Unparsed content "<!ENTY bar '
                                        u'\'gimmick\'>" '
-                                       u'from line 2 colum 1 to '
+                                       u'from line 2 column 1 to '
                                        u'line 2 column 22'],
                              'missingEntity': [u'bar']}}
                       )
