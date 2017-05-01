@@ -39,8 +39,7 @@ setup(name="compare-locales",
       classifiers=CLASSIFIERS.split("\n"),
       platforms=["any"],
       entry_points={'console_scripts': [
-          'compare-locales = compare_locales.commands:CompareLocales.call',
-          'compare-dirs = compare_locales.commands:CompareDirs.call']},
+          'compare-locales = compare_locales.commands:CompareLocales.call']},
       packages=['compare_locales', 'compare_locales.tests'],
       package_data={
           'compare_locales.tests': ['data/*.properties', 'data/*.dtd']

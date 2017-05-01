@@ -9,7 +9,7 @@ from argparse import ArgumentParser
 
 from compare_locales import version
 from compare_locales.paths import EnumerateApp
-from compare_locales.compare import compareApp, compareDirs
+from compare_locales.compare import compareApp
 
 
 class BaseCommand(object):
@@ -113,22 +113,4 @@ Be careful to specify the right merge directory when using this option.""")
         except (OSError, IOError), exc:
             print "FAIL: " + str(exc)
             self.parser.exit(2)
-        return observer
-
-
-class CompareDirs(BaseCommand):
-    """Check the localization status of a directory tree.
-The first argument is a path to the reference data,the second is the
-localization to be tested."""
-
-    def get_parser(self):
-        parser = super(CompareDirs, self).get_parser()
-        parser.add_argument('reference')
-        parser.add_argument('localization')
-        self.add_data_argument(parser)
-        return parser
-
-    def handle(self, args):
-        observer = compareDirs(args.reference, args.localization,
-                               merge_stage=args.merge)
         return observer

@@ -612,21 +612,3 @@ def compareApp(app, other_observer=None, merge_stage=None, clobber=False):
                         print "clobbered " + clobberdir
             dir_comp.compareWith(localization)
     return comparer.observer
-
-
-def compareDirs(reference, locale, other_observer=None, merge_stage=None):
-    '''Compare reference and locale dir.
-
-    Optional arguments are:
-    - other_observer. A object implementing
-        notify(category, _file, data)
-      The return values of that callback are ignored.
-    '''
-    comparer = ContentComparer()
-    if other_observer is not None:
-        comparer.add_observer(other_observer)
-    comparer.set_merge_stage(merge_stage)
-    dir_comp = DirectoryCompare(paths.EnumerateDir(reference))
-    dir_comp.setWatcher(comparer)
-    dir_comp.compareWith(paths.EnumerateDir(locale))
-    return comparer.observer
