@@ -10,17 +10,18 @@ import shutil
 from compare_locales.parser import getParser
 from compare_locales.paths import File
 from compare_locales.compare import ContentComparer
+from compare_locales import mozpath
 
 
 class ContentMixin(object):
     extension = None  # OVERLOAD
 
     def reference(self, content):
-        self.ref = os.path.join(self.tmp, "en-reference" + self.extension)
+        self.ref = mozpath.join(self.tmp, "en-reference" + self.extension)
         open(self.ref, "w").write(content)
 
     def localized(self, content):
-        self.l10n = os.path.join(self.tmp, "l10n" + self.extension)
+        self.l10n = mozpath.join(self.tmp, "l10n" + self.extension)
         open(self.l10n, "w").write(content)
 
 
@@ -30,7 +31,7 @@ class TestProperties(unittest.TestCase, ContentMixin):
     def setUp(self):
         self.maxDiff = None
         self.tmp = mkdtemp()
-        os.mkdir(os.path.join(self.tmp, "merge"))
+        os.mkdir(mozpath.join(self.tmp, "merge"))
 
     def tearDown(self):
         shutil.rmtree(self.tmp)
@@ -46,7 +47,7 @@ bar = lBar
 eff = lEff
 """)
         cc = ContentComparer()
-        cc.set_merge_stage(os.path.join(self.tmp, "merge"))
+        cc.set_merge_stage(mozpath.join(self.tmp, "merge"))
         cc.compare(File(self.ref, "en-reference.properties", ""),
                    File(self.l10n, "l10n.properties", ""))
         self.assertDictEqual(
@@ -58,7 +59,7 @@ eff = lEff
              'details': {}
              }
         )
-        self.assert_(not os.path.exists(os.path.join(cc.merge_stage,
+        self.assert_(not os.path.exists(mozpath.join(cc.merge_stage,
                                                      'l10n.properties')))
 
     def testMissing(self):
@@ -69,7 +70,7 @@ eff = effVal""")
         self.localized("""bar = lBar
 """)
         cc = ContentComparer()
-        cc.set_merge_stage(os.path.join(self.tmp, "merge"))
+        cc.set_merge_stage(mozpath.join(self.tmp, "merge"))
         cc.compare(File(self.ref, "en-reference.properties", ""),
                    File(self.l10n, "l10n.properties", ""))
         self.assertDictEqual(
@@ -86,7 +87,7 @@ eff = effVal""")
                  ]}
              }
         )
-        mergefile = os.path.join(self.tmp, "merge", "l10n.properties")
+        mergefile = mozpath.join(self.tmp, "merge", "l10n.properties")
         self.assertTrue(os.path.isfile(mergefile))
         p = getParser(mergefile)
         p.readFile(mergefile)
@@ -103,7 +104,7 @@ bar = %S lBar
 eff = leffVal
 """)
         cc = ContentComparer()
-        cc.set_merge_stage(os.path.join(self.tmp, "merge"))
+        cc.set_merge_stage(mozpath.join(self.tmp, "merge"))
         cc.compare(File(self.ref, "en-reference.properties", ""),
                    File(self.l10n, "l10n.properties", ""))
         self.assertDictEqual(
@@ -123,7 +124,7 @@ eff = leffVal
                  ]}
              }
         )
-        mergefile = os.path.join(self.tmp, "merge", "l10n.properties")
+        mergefile = mozpath.join(self.tmp, "merge", "l10n.properties")
         self.assertTrue(os.path.isfile(mergefile))
         p = getParser(mergefile)
         p.readFile(mergefile)
@@ -140,7 +141,7 @@ other = obsolete
 eff = leffVal
 """)
         cc = ContentComparer()
-        cc.set_merge_stage(os.path.join(self.tmp, "merge"))
+        cc.set_merge_stage(mozpath.join(self.tmp, "merge"))
         cc.compare(File(self.ref, "en-reference.properties", ""),
                    File(self.l10n, "l10n.properties", ""))
         self.assertDictEqual(
@@ -163,7 +164,7 @@ class TestDTD(unittest.TestCase, ContentMixin):
     def setUp(self):
         self.maxDiff = None
         self.tmp = mkdtemp()
-        os.mkdir(os.path.join(self.tmp, "merge"))
+        os.mkdir(mozpath.join(self.tmp, "merge"))
 
     def tearDown(self):
         shutil.rmtree(self.tmp)
@@ -179,7 +180,7 @@ class TestDTD(unittest.TestCase, ContentMixin):
 <!ENTITY eff 'lEff'>
 """)
         cc = ContentComparer()
-        cc.set_merge_stage(os.path.join(self.tmp, "merge"))
+        cc.set_merge_stage(mozpath.join(self.tmp, "merge"))
         cc.compare(File(self.ref, "en-reference.dtd", ""),
                    File(self.l10n, "l10n.dtd", ""))
         self.assertDictEqual(
@@ -192,7 +193,7 @@ class TestDTD(unittest.TestCase, ContentMixin):
              }
         )
         self.assert_(
-            not os.path.exists(os.path.join(cc.merge_stage, 'l10n.dtd')))
+            not os.path.exists(mozpath.join(cc.merge_stage, 'l10n.dtd')))
 
     def testMissing(self):
         self.assertTrue(os.path.isdir(self.tmp))
@@ -202,7 +203,7 @@ class TestDTD(unittest.TestCase, ContentMixin):
         self.localized("""<!ENTITY bar 'lBar'>
 """)
         cc = ContentComparer()
-        cc.set_merge_stage(os.path.join(self.tmp, "merge"))
+        cc.set_merge_stage(mozpath.join(self.tmp, "merge"))
         cc.compare(File(self.ref, "en-reference.dtd", ""),
                    File(self.l10n, "l10n.dtd", ""))
         self.assertDictEqual(
@@ -219,7 +220,7 @@ class TestDTD(unittest.TestCase, ContentMixin):
                  ]}
              }
         )
-        mergefile = os.path.join(self.tmp, "merge", "l10n.dtd")
+        mergefile = mozpath.join(self.tmp, "merge", "l10n.dtd")
         self.assertTrue(os.path.isfile(mergefile))
         p = getParser(mergefile)
         p.readFile(mergefile)
@@ -236,7 +237,7 @@ class TestDTD(unittest.TestCase, ContentMixin):
 <!ENTITY eff 'effVal'>
 """)
         cc = ContentComparer()
-        cc.set_merge_stage(os.path.join(self.tmp, "merge"))
+        cc.set_merge_stage(mozpath.join(self.tmp, "merge"))
         cc.compare(File(self.ref, "en-reference.dtd", ""),
                    File(self.l10n, "l10n.dtd", ""))
         self.assertDictEqual(
@@ -258,7 +259,7 @@ class TestDTD(unittest.TestCase, ContentMixin):
                  ]}
              }
         )
-        mergefile = os.path.join(self.tmp, "merge", "l10n.dtd")
+        mergefile = mozpath.join(self.tmp, "merge", "l10n.dtd")
         self.assertTrue(os.path.isfile(mergefile))
         p = getParser(mergefile)
         p.readFile(mergefile)

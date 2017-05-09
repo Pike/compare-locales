@@ -2,14 +2,10 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-import os.path
 import os
 from ConfigParser import ConfigParser, NoSectionError, NoOptionError
-from urlparse import urlparse, urljoin
-from urllib import pathname2url, url2pathname
-from urllib2 import urlopen
 from collections import defaultdict
-from compare_locales import util
+from compare_locales import util, mozpath
 
 
 class L10nConfigParser(object):
@@ -25,11 +21,7 @@ class L10nConfigParser(object):
         Optional keyword arguments are fowarded to the inner ConfigParser as
         defaults.
         """
-        if os.path.isabs(inipath):
-            self.inipath = 'file:%s' % pathname2url(inipath)
-        else:
-            pwdurl = 'file:%s/' % pathname2url(os.getcwd())
-            self.inipath = urljoin(pwdurl, inipath)
+        self.inipath = mozpath.normpath(inipath)
         # l10n.ini files can import other l10n.ini files, store the
         # corresponding L10nConfigParsers
         self.children = []
@@ -53,10 +45,10 @@ class L10nConfigParser(object):
         Only works with synchronous loads, used by compare-locales, which
         is local anyway.
         '''
-        filterurl = urljoin(self.inipath, 'filter.py')
+        filter_path = mozpath.join(mozpath.dirname(self.inipath), 'filter.py')
         try:
             l = {}
-            execfile(url2pathname(urlparse(filterurl).path), {}, l)
+            execfile(filter_path, {}, l)
             if 'test' in l and callable(l['test']):
                 filters = [l['test']]
             else:
@@ -76,14 +68,10 @@ class L10nConfigParser(object):
         this behaviour. If you do, make sure to pass a file-like object
         to onLoadConfig.
         """
-        self.onLoadConfig(urlopen(self.inipath))
-
-    def onLoadConfig(self, inifile):
-        """Parse a file-like object for the loaded l10n.ini file."""
         cp = ConfigParser(self.defaults)
-        cp.readfp(inifile)
+        cp.read(self.inipath)
         depth = self.getDepth(cp)
-        self.baseurl = urljoin(self.inipath, depth)
+        self.base = mozpath.join(mozpath.dirname(self.inipath), depth)
         # create child loaders for any other l10n.ini files to be included
         try:
             for title, path in cp.items('includes'):
@@ -101,11 +89,9 @@ class L10nConfigParser(object):
             pass
         # try to set "all_path" and "all_url"
         try:
-            self.all_path = cp.get('general', 'all')
-            self.all_url = urljoin(self.baseurl, self.all_path)
+            self.all_path = mozpath.join(self.base, cp.get('general', 'all'))
         except (NoOptionError, NoSectionError):
             self.all_path = None
-            self.all_url = None
         return cp
 
     def addChild(self, title, path, orig_cp):
@@ -115,16 +101,14 @@ class L10nConfigParser(object):
         path -- indicates the path to the module's l10n.ini file
         orig_cp -- the configuration parser of this l10n.ini
         """
-        cp = L10nConfigParser(urljoin(self.baseurl, path), **self.defaults)
+        cp = L10nConfigParser(mozpath.join(self.base, path), **self.defaults)
         cp.loadConfigs()
         self.children.append(cp)
 
     def dirsIter(self):
         """Iterate over all dirs and our base path for this l10n.ini"""
-        url = urlparse(self.baseurl)
-        basepath = url2pathname(url.path)
         for dir in self.dirs:
-            yield dir, (basepath, dir)
+            yield dir, (self.base, dir)
 
     def directories(self):
         """Iterate over all dirs and base paths for this l10n.ini as well
@@ -138,7 +122,7 @@ class L10nConfigParser(object):
 
     def allLocales(self):
         """Return a list of all the locales of this project"""
-        return util.parseLocales(urlopen(self.all_url).read())
+        return util.parseLocales(open(self.all_path).read())
 
 
 class SourceTreeConfigParser(L10nConfigParser):
@@ -147,7 +131,7 @@ class SourceTreeConfigParser(L10nConfigParser):
     we do for real builds.
     '''
 
-    def __init__(self, inipath, basepath, redirects):
+    def __init__(self, inipath, base, redirects):
         '''Add additional arguments basepath.
 
         basepath is used to resolve local paths via branchnames.
@@ -155,7 +139,7 @@ class SourceTreeConfigParser(L10nConfigParser):
         repos to local clones.
         '''
         L10nConfigParser.__init__(self, inipath)
-        self.basepath = basepath
+        self.base = base
         self.redirects = redirects
 
     def addChild(self, title, path, orig_cp):
@@ -168,10 +152,10 @@ class SourceTreeConfigParser(L10nConfigParser):
             branch = orig_cp.get(details, 'mozilla')
             branch = self.redirects.get(branch, branch)
             inipath = orig_cp.get(details, 'l10n.ini')
-            path = self.basepath + '/' + branch + '/' + inipath
+            path = mozpath.join(self.base, branch, inipath)
         else:
-            path = urljoin(self.baseurl, path)
-        cp = SourceTreeConfigParser(path, self.basepath, self.redirects,
+            path = mozpath.join(self.base, path)
+        cp = SourceTreeConfigParser(path, self.base, self.redirects,
                                     **self.defaults)
         cp.loadConfigs()
         self.children.append(cp)
@@ -222,7 +206,7 @@ class EnumerateDir(object):
         '''
         Return a File object that this enumerator would return, if it had it.
         '''
-        return File(os.path.join(self.basepath, other.file), other.file,
+        return File(mozpath.join(self.basepath, other.file), other.file,
                     self.module, self.locale)
 
     def __iter__(self):
@@ -231,7 +215,7 @@ class EnumerateDir(object):
         dirs = [()]
         while dirs:
             dir = dirs.pop(0)
-            fulldir = os.path.join(self.basepath, *dir)
+            fulldir = mozpath.join(self.basepath, *dir)
             try:
                 entries = os.listdir(fulldir)
             except OSError:
@@ -239,10 +223,10 @@ class EnumerateDir(object):
                 continue
             entries.sort()
             for entry in entries:
-                leaf = os.path.join(fulldir, entry)
+                leaf = mozpath.join(fulldir, entry)
                 if os.path.isdir(leaf):
                     if entry not in self.ignore_dirs and \
-                        leaf not in [os.path.join(self.basepath, d)
+                        leaf not in [mozpath.join(self.basepath, d)
                                      for d in self.ignore_subdirs]:
                         dirs.append(dir + (entry,))
                     continue
@@ -260,7 +244,7 @@ class LocalesWrap(object):
 
     def __iter__(self):
         for locale in self.locales:
-            path = os.path.join(self.base, locale, self.module)
+            path = mozpath.join(self.base, locale, self.module)
             yield (locale, EnumerateDir(path, self.module, locale,
                                         self.ignore_subdirs))
 
@@ -271,9 +255,8 @@ class EnumerateApp(object):
     def __init__(self, inipath, l10nbase, locales=None):
         self.setupConfigParser(inipath)
         self.modules = defaultdict(dict)
-        self.l10nbase = os.path.abspath(l10nbase)
+        self.l10nbase = mozpath.abspath(l10nbase)
         self.filters = []
-        drive, tail = os.path.splitdrive(inipath)
         self.addFilters(*self.config.getFilters())
         self.locales = locales or self.config.allLocales()
         self.locales.sort()
@@ -322,9 +305,9 @@ class EnumerateApp(object):
         mods.sort()
         for mod in mods:
             if self.reference == 'en-US':
-                base = os.path.join(*(dirmap[mod] + ('locales', 'en-US')))
+                base = mozpath.join(*(dirmap[mod] + ('locales', 'en-US')))
             else:
-                base = os.path.join(self.l10nbase, self.reference, mod)
+                base = mozpath.join(self.l10nbase, self.reference, mod)
             yield (mod, EnumerateDir(base, mod, self.reference),
                    LocalesWrap(self.l10nbase, mod, self.locales,
                    [m[len(mod)+1:] for m in mods if m.startswith(mod+'/')]))
@@ -346,16 +329,3 @@ class EnumerateSourceTreeApp(EnumerateApp):
         self.config = SourceTreeConfigParser(inipath, self.basepath,
                                              self.redirects)
         self.config.loadConfigs()
-
-
-def get_base_path(mod, loc):
-    'statics for path patterns and conversion'
-    __l10n = 'l10n/%(loc)s/%(mod)s'
-    __en_US = 'mozilla/%(mod)s/locales/en-US'
-    if loc == 'en-US':
-        return __en_US % {'mod': mod}
-    return __l10n % {'mod': mod, 'loc': loc}
-
-
-def get_path(mod, loc, leaf):
-    return get_base_path(mod, loc) + '/' + leaf

@@ -6,7 +6,6 @@
 
 import codecs
 import os
-import os.path
 import shutil
 import re
 from difflib import SequenceMatcher
@@ -18,7 +17,7 @@ except:
     from simplejson import dumps
 
 from compare_locales import parser
-from compare_locales import paths
+from compare_locales import paths, mozpath
 from compare_locales.checks import getChecker
 
 
@@ -383,9 +382,9 @@ class ContentComparer:
 
     def merge(self, ref_entities, ref_map, ref_file, l10n_file, missing,
               skips, ctx, canMerge, encoding):
-        outfile = os.path.join(self.merge_stage, l10n_file.module,
+        outfile = mozpath.join(self.merge_stage, l10n_file.module,
                                l10n_file.file)
-        outdir = os.path.dirname(outfile)
+        outdir = mozpath.dirname(outfile)
         if not os.path.isdir(outdir):
             os.makedirs(outdir)
         if not canMerge:
@@ -602,7 +601,7 @@ def compareApp(app, other_observer=None, merge_stage=None, clobber=False):
                 comparer.set_merge_stage(locale_merge)
                 if clobber:
                     # if clobber, remove the stage for the module if it exists
-                    clobberdir = os.path.join(locale_merge, module)
+                    clobberdir = mozpath.join(locale_merge, module)
                     if os.path.exists(clobberdir):
                         shutil.rmtree(clobberdir)
                         print "clobbered " + clobberdir
