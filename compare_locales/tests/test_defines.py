@@ -60,7 +60,7 @@ class TestDefinesParser(ParserTestMixin, unittest.TestCase):
     def testCommentWithNonAsciiCharacters(self):
         self._test(mpl2 + '''#filter emptyLines
 
-# e.g. #define seamonkey_l10n <DT><A HREF="http://www.mozilla.cz/produkty/seamonkey/">SeaMonkey v češtině</a>
+# e.g. #define seamonkey_l10n <DT><A HREF="urn:foo">SeaMonkey v češtině</a>
 #define seamonkey_l10n_long
 
 #unfilter emptyLines

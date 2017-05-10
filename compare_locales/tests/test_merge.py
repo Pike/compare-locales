@@ -265,5 +265,6 @@ class TestDTD(unittest.TestCase, ContentMixin):
         [m, n] = p.parse()
         self.assertEqual(map(lambda e: e.key,  m), ["foo", "eff", "bar"])
 
+
 if __name__ == '__main__':
     unittest.main()
