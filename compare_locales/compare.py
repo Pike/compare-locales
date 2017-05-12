@@ -436,7 +436,7 @@ class ContentComparer:
         self.notify('obsoleteFile', obsolete, None)
         pass
 
-    def compare(self, ref_file, l10n):
+    def compare(self, ref_file, l10n, extra_tests=None):
         try:
             p = parser.getParser(ref_file.file)
         except UserWarning:
@@ -606,4 +606,46 @@ def compareApp(app, other_observer=None, merge_stage=None, clobber=False):
                         shutil.rmtree(clobberdir)
                         print "clobbered " + clobberdir
             dir_comp.compareWith(localization)
+    return comparer.observer
+
+
+def compareProjects(project_configs, other_observer=None,
+                    merge_stage=None, clobber_merge=False):
+    assert len(project_configs) == 1  # we're not there yet for multiple
+    comparer = ContentComparer()
+    if other_observer is not None:
+        comparer.add_observer(other_observer)
+    project = project_configs[0]
+    comparer.observer.filter = project.filter
+    for locale in project.locales:
+        files = paths.ProjectFiles(locale, project)
+        if merge_stage is not None:
+            mergedir = merge_stage.format(ab_CD=locale)
+            comparer.set_merge_stage(mergedir)
+            if clobber_merge:
+                modules = set(_m.get('module') for _m in files.matchers)
+                modules.discard(None)
+                for module in modules:
+                    clobberdir = mozpath.join(mergedir, module)
+                    if os.path.exists(clobberdir):
+                        shutil.rmtree(clobberdir)
+                        print "clobbered " + clobberdir
+        for l10npath, refpath, extra_tests in files:
+            module = None
+            fpath = None
+            for _m in files.matchers:
+                if _m['l10n'].match(l10npath):
+                    module = _m.get('module')
+                    fpath = mozpath.relpath(l10npath, _m['l10n'].prefix)
+                    break
+            reffile = paths.File(refpath, fpath or refpath, module=module)
+            l10n = paths.File(l10npath, fpath or l10npath,
+                              module=module, locale=locale)
+            if not os.path.exists(l10npath):
+                comparer.add(reffile, l10n)
+                continue
+            if not os.path.exists(refpath):
+                comparer.remove(l10n)
+                continue
+            comparer.compare(reffile, l10n, extra_tests)
     return comparer.observer

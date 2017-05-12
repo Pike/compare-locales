@@ -9,7 +9,7 @@ from argparse import ArgumentParser
 
 from compare_locales import version
 from compare_locales.paths import EnumerateApp
-from compare_locales.compare import compareApp
+from compare_locales.compare import compareProjects
 
 
 class BaseCommand(object):
@@ -106,10 +106,11 @@ Be careful to specify the right merge directory when using this option.""")
 
     def handle(self, args):
         app = EnumerateApp(args.ini_file, args.l10n_base_dir, args.locales)
-        app.reference = args.reference
+        project_config = app.asConfig()
         try:
-            observer = compareApp(app, merge_stage=args.merge,
-                                  clobber=args.clobber)
+            observer = compareProjects(
+                project_config,
+                merge_stage=args.merge, clobber_merge=args.clobber)
         except (OSError, IOError), exc:
             print "FAIL: " + str(exc)
             self.parser.exit(2)
