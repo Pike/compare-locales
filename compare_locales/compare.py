@@ -148,36 +148,6 @@ class AddRemove(SequenceMatcher):
                     yield ('add', item)
 
 
-class DirectoryCompare(SequenceMatcher):
-    def __init__(self, reference):
-        SequenceMatcher.__init__(self, None, [i for i in reference],
-                                 [])
-        self.watcher = None
-
-    def setWatcher(self, watcher):
-        self.watcher = watcher
-
-    def compareWith(self, other):
-        if not self.watcher:
-            return
-        self.set_seq2([i for i in other])
-        for tag, i1, i2, j1, j2 in self.get_opcodes():
-            if tag == 'equal':
-                for i, j in zip(xrange(i1, i2), xrange(j1, j2)):
-                    self.watcher.compare(self.a[i], self.b[j])
-            elif tag == 'delete':
-                for i in xrange(i1, i2):
-                    self.watcher.add(self.a[i], other.cloneFile(self.a[i]))
-            elif tag == 'insert':
-                for j in xrange(j1, j2):
-                    self.watcher.remove(self.b[j])
-            else:
-                for j in xrange(j1, j2):
-                    self.watcher.remove(self.b[j])
-                for i in xrange(i1, i2):
-                    self.watcher.add(self.a[i], other.cloneFile(self.a[i]))
-
-
 class Observer(object):
     stat_cats = ['missing', 'obsolete', 'missingInFiles', 'report',
                  'changed', 'unchanged', 'keys']
@@ -574,39 +544,6 @@ class ContentComparer:
     def doChanged(self, file, ref_entity, l10n_entity):
         # overload this if needed
         pass
-
-
-def compareApp(app, other_observer=None, merge_stage=None, clobber=False):
-    '''Compare locales set in app.
-
-    Optional arguments are:
-    - other_observer. A object implementing
-        notify(category, _file, data)
-      The return values of that callback are ignored.
-    - merge_stage. A directory to be used for staging the output of
-      l10n-merge.
-    - clobber. Clobber the module subdirectories of the merge dir as we go.
-      Use wisely, as it might cause data loss.
-    '''
-    comparer = ContentComparer()
-    if other_observer is not None:
-        comparer.add_observer(other_observer)
-    comparer.observer.filter = app.filter
-    for module, reference, locales in app:
-        dir_comp = DirectoryCompare(reference)
-        dir_comp.setWatcher(comparer)
-        for _, localization in locales:
-            if merge_stage is not None:
-                locale_merge = merge_stage.format(ab_CD=localization.locale)
-                comparer.set_merge_stage(locale_merge)
-                if clobber:
-                    # if clobber, remove the stage for the module if it exists
-                    clobberdir = mozpath.join(locale_merge, module)
-                    if os.path.exists(clobberdir):
-                        shutil.rmtree(clobberdir)
-                        print "clobbered " + clobberdir
-            dir_comp.compareWith(localization)
-    return comparer.observer
 
 
 def compareProjects(project_configs, other_observer=None,

@@ -433,63 +433,6 @@ class File(object):
         return cmp(self.file, other.file)
 
 
-class EnumerateDir(object):
-    ignore_dirs = ['CVS', '.svn', '.hg', '.git']
-
-    def __init__(self, basepath, module='', locale=None, ignore_subdirs=[]):
-        self.basepath = basepath
-        self.module = module
-        self.locale = locale
-        self.ignore_subdirs = ignore_subdirs
-        pass
-
-    def cloneFile(self, other):
-        '''
-        Return a File object that this enumerator would return, if it had it.
-        '''
-        return File(mozpath.join(self.basepath, other.file), other.file,
-                    self.module, self.locale)
-
-    def __iter__(self):
-        # our local dirs are given as a tuple of path segments, starting off
-        # with an empty sequence for the basepath.
-        dirs = [()]
-        while dirs:
-            dir = dirs.pop(0)
-            fulldir = mozpath.join(self.basepath, *dir)
-            try:
-                entries = os.listdir(fulldir)
-            except OSError:
-                # we probably just started off in a non-existing dir, ignore
-                continue
-            entries.sort()
-            for entry in entries:
-                leaf = mozpath.join(fulldir, entry)
-                if os.path.isdir(leaf):
-                    if entry not in self.ignore_dirs and \
-                        leaf not in [mozpath.join(self.basepath, d)
-                                     for d in self.ignore_subdirs]:
-                        dirs.append(dir + (entry,))
-                    continue
-                yield File(leaf, '/'.join(dir + (entry,)),
-                           self.module, self.locale)
-
-
-class LocalesWrap(object):
-
-    def __init__(self, base, module, locales, ignore_subdirs=[]):
-        self.base = base
-        self.module = module
-        self.locales = locales
-        self.ignore_subdirs = ignore_subdirs
-
-    def __iter__(self):
-        for locale in self.locales:
-            path = mozpath.join(self.base, locale, self.module)
-            yield (locale, EnumerateDir(path, self.module, locale,
-                                        self.ignore_subdirs))
-
-
 class EnumerateApp(object):
     reference = 'en-US'
 
@@ -532,50 +475,6 @@ class EnumerateApp(object):
             projectconfig.add_paths(paths)
         for child in aConfig.children:
             self._config_for_ini(projectconfig, child)
-
-    value_map = {None: None, 'error': 0, 'ignore': 1, 'report': 2}
-
-    def filter(self, l10n_file, entity=None):
-        '''Go through all added filters, and,
-        - map "error" -> 0, "ignore" -> 1, "report" -> 2
-        - if filter.test returns a bool, map that to
-            False -> "ignore" (1), True -> "error" (0)
-        - take the max of all reported
-        '''
-        rv = 0
-        for f in reversed(self.filters):
-            try:
-                _r = f(l10n_file.module, l10n_file.file, entity)
-            except:
-                # XXX error handling
-                continue
-            if isinstance(_r, bool):
-                _r = [1, 0][_r]
-            else:
-                # map string return value to int, default to 'error',
-                # None is None
-                _r = self.value_map.get(_r, 0)
-            if _r is not None:
-                rv = max(rv, _r)
-        return ['error', 'ignore', 'report'][rv]
-
-    def __iter__(self):
-        '''
-        Iterate over all modules, return en-US directory enumerator, and an
-        iterator over all locales in each iteration. Per locale, the locale
-        code and an directory enumerator will be given.
-        '''
-        dirmap = dict(self.config.directories())
-        mods = dirmap.keys()
-        mods.sort()
-        for mod in mods:
-            if self.reference == 'en-US':
-                base = mozpath.join(*(dirmap[mod] + ('locales', 'en-US')))
-            else:
-                base = mozpath.join(self.l10nbase, self.reference, mod)
-            yield (mod, EnumerateDir(base, mod, self.reference),
-                   LocalesWrap(self.l10nbase, mod, self.locales,
-                   [m[len(mod)+1:] for m in mods if m.startswith(mod+'/')]))
 
 
 class EnumerateSourceTreeApp(EnumerateApp):
