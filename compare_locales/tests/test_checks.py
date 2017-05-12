@@ -257,7 +257,7 @@ class TestAndroid(unittest.TestCase):
         """
         f = File("embedding/android/strings.dtd", "strings.dtd",
                  "embedding/android")
-        checker = getChecker(f)
+        checker = getChecker(f, extra_tests=['android-dtd'])
         # good string
         ref = self.getDTDEntity("plain string")
         l10n = self.getDTDEntity("plain localized string")
@@ -333,7 +333,7 @@ class TestAndroid(unittest.TestCase):
     def test_android_prop(self):
         f = File("embedding/android/strings.properties", "strings.properties",
                  "embedding/android")
-        checker = getChecker(f)
+        checker = getChecker(f, extra_tests=['android-dtd'])
         # good plain string
         ref = self.getEntity("plain string")
         l10n = self.getEntity("plain localized string")

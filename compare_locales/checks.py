@@ -22,6 +22,9 @@ class Checker(object):
     def use(cls, file):
         return cls.pattern.match(file.file)
 
+    def __init__(self, extra_tests):
+        self.extra_tests = extra_tests
+
     def check(self, refEnt, l10nEnt):
         '''Given the reference and localized Entities, performs checks.
 
@@ -191,7 +194,11 @@ class DTDChecker(Checker):
 '''
     xmllist = set(('amp', 'lt', 'gt', 'apos', 'quot'))
 
-    def __init__(self, reference):
+    def __init__(self, extra_tests, reference):
+        super(DTDChecker, self).__init__(extra_tests)
+        self.processContent = False
+        if self.extra_tests is not None and 'android-dtd' in self.extra_tests:
+            self.processContent = True
         self.reference = reference
         self.__known_entities = None
 
@@ -228,8 +235,6 @@ class DTDChecker(Checker):
     style = re.compile(r'^%(spec)s\s*(;\s*%(spec)s\s*)*;?$' %
                        {'spec': spec.pattern})
 
-    processContent = None
-
     def check(self, refEnt, l10nEnt):
         """Try to parse the refvalue inside a dummy element, and keep
         track of entities that we need to define to make that work.
@@ -263,7 +268,7 @@ class DTDChecker(Checker):
         l10nlist = self.entities_for_value(l10nValue)
         missing = sorted(l10nlist - reflist)
         _entities = entities + ''.join('<!ENTITY %s "">' % s for s in missing)
-        if self.processContent is not None:
+        if self.processContent:
             self.texthandler.textcontent = ''
             parser.setContentHandler(self.texthandler)
         try:
@@ -347,17 +352,10 @@ class DTDChecker(Checker):
                 if msgs:
                     yield ('warning', 0, ', '.join(msgs), 'css')
 
-        if self.processContent is not None:
-            for t in self.processContent(self.texthandler.textcontent):
+        if self.extra_tests is not None and 'android-dtd' in self.extra_tests:
+            for t in self.processAndroidContent(self.texthandler.textcontent):
                 yield t
 
-
-class PrincessAndroid(DTDChecker):
-    """Checker for the string values that Android puts into an XML container.
-
-    http://developer.android.com/guide/topics/resources/string-resource.html#FormattingAndStyling  # noqa
-    has more info. Check for unescaped apostrophes and bad unicode escapes.
-    """
     quoted = re.compile("(?P<q>[\"']).*(?P=q)$")
 
     def unicode_escape(self, str):
@@ -385,15 +383,11 @@ class PrincessAndroid(DTDChecker):
             args[3] = i + len(badstring)
             raise UnicodeDecodeError(*args)
 
-    @classmethod
-    def use(cls, file):
-        """Use this Checker only for DTD files in embedding/android."""
-        return (file.module in ("embedding/android",
-                                "mobile/android/base") and
-                cls.pattern.match(file.file))
+    def processAndroidContent(self, val):
+        """Check for the string values that Android puts into an XML container.
 
-    def processContent(self, val):
-        """Actual check code.
+        http://developer.android.com/guide/topics/resources/string-resource.html#FormattingAndStyling  # noqa
+
         Check for unicode escapes and unescaped quotes and apostrophes,
         if string's not quoted.
         """
@@ -428,11 +422,9 @@ class PrincessAndroid(DTDChecker):
                 yield ('error', m.end(0)+offset, msg, 'android')
 
 
-def getChecker(file, reference=None):
+def getChecker(file, reference=None, extra_tests=None):
     if PropertiesChecker.use(file):
-        return PropertiesChecker()
-    if PrincessAndroid.use(file):
-        return PrincessAndroid(reference)
+        return PropertiesChecker(extra_tests)
     if DTDChecker.use(file):
-        return DTDChecker(reference)
+        return DTDChecker(extra_tests, reference)
     return None

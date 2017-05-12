@@ -436,7 +436,7 @@ class ContentComparer:
         report = missing = obsolete = changed = unchanged = keys = 0
         missings = []
         skips = []
-        checker = getChecker(l10n, reference=ref[0])
+        checker = getChecker(l10n, reference=ref[0], extra_tests=extra_tests)
         for action, item_or_pair in ar:
             if action == 'delete':
                 # missing entity
