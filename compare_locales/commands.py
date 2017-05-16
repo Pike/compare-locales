@@ -6,10 +6,11 @@
 
 import logging
 from argparse import ArgumentParser
+import os
 
 from compare_locales import version
 from compare_locales.paths import EnumerateApp
-from compare_locales.compare import compareProjects
+from compare_locales.compare import compareProjects, Observer
 
 
 class BaseCommand(object):
@@ -63,8 +64,9 @@ data in a json useful for Exhibit
         logging.basicConfig()
         logging.getLogger().setLevel(logging.WARNING -
                                      (args.v - args.q) * 10)
-        observer = self.handle(args)
-        print observer.serialize(type=args.data).encode('utf-8', 'replace')
+        observers = self.handle(args)
+        for observer in observers:
+            print observer.serialize(type=args.data).encode('utf-8', 'replace')
 
     def handle(self, args):
         """Subclasses need to implement this method for the actual
@@ -74,8 +76,8 @@ data in a json useful for Exhibit
 
 
 class CompareLocales(BaseCommand):
-    """Check the localization status of a gecko application.
-The first argument is a path to the l10n.ini file for the application,
+    """Check the localization status of gecko applications.
+The first arguments are paths to the l10n.ini files for the applications,
 followed by the base directory of the localization repositories.
 Then you pass in the list of locale codes you want to compare. If there are
 not locales given, the list of locales will be taken from the all-locales file
@@ -83,13 +85,15 @@ of the application\'s l10n.ini."""
 
     def get_parser(self):
         parser = super(CompareLocales, self).get_parser()
-        parser.add_argument('ini_file', metavar='l10n.ini',
+        parser.add_argument('config', metavar='l10n.ini', nargs='+',
                             help='INI file for the project')
         parser.add_argument('l10n_base_dir', metavar='l10n-base-dir',
                             help='Parent directory of localizations')
         parser.add_argument('locales', nargs='*', metavar='locale-code',
                             help='Locale code and top-level directory of '
                                  'each localization')
+        parser.add_argument('--unified', action="store_true",
+                            help="Show output for all projects unified")
         parser.add_argument('--clobber-merge', action="store_true",
                             default=False, dest='clobber',
                             help="""WARNING: DATALOSS.
@@ -97,21 +101,36 @@ Use this option with care. If specified, the merge directory will
 be clobbered for each module. That means, the subdirectory will
 be completely removed, any files that were there are lost.
 Be careful to specify the right merge directory when using this option.""")
-        parser.add_argument('-r', '--reference', default='en-US',
-                            dest='reference',
-                            help='Explicitly set the reference '
-                            'localization. [default: en-US]')
         self.add_data_argument(parser)
         return parser
 
     def handle(self, args):
-        app = EnumerateApp(args.ini_file, args.l10n_base_dir, args.locales)
-        project_config = app.asConfig()
+        # using nargs multiple times in argparser totally screws things
+        # up, repair that.
+        # First files are configs, then the base dir, everything else is
+        # locales
+        all_args = args.config + [args.l10n_base_dir] + args.locales
+        del args.config[:]
+        del args.locales[:]
+        while all_args and os.path.isfile(all_args[0]):
+            args.config.append(all_args.pop(0))
+        args.l10n_base_dir = all_args.pop(0)
+        args.locales.extend(all_args)
+        configs = []
+        for config_path in args.config:
+            app = EnumerateApp(config_path, args.l10n_base_dir, args.locales)
+            configs.append(app.asConfig())
         try:
-            observer = compareProjects(
-                project_config,
+            unified_observer = None
+            if args.unified:
+                unified_observer = Observer()
+            observers = compareProjects(
+                configs,
+                other_observer=unified_observer,
                 merge_stage=args.merge, clobber_merge=args.clobber)
         except (OSError, IOError), exc:
             print "FAIL: " + str(exc)
             self.parser.exit(2)
-        return observer
+        if args.unified:
+            return [unified_observer]
+        return observers

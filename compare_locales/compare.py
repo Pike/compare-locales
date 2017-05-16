@@ -191,6 +191,11 @@ class Observer(object):
         if category in self.stat_cats:
             # these get called post reporting just for stats
             # return "error" to forward them to other other_observers
+            # in multi-project scenarios, this file might not be ours,
+            # check that.
+            if (self.filter is not None and
+                    self.filter(file) in (None, 'ignore')):
+                return 'ignore'
             self.summary[file.locale][category] += data
             # keep track of how many strings are in a missing file
             # we got the {'missingFile': 'error'} from the first pass
@@ -337,7 +342,7 @@ class ContentComparer:
         of the notify method are used to control the handling of missing
         entities.
         '''
-        self.observer = Observer()
+        self.observers = []
         self.other_observers = []
         self.merge_stage = None
 
@@ -394,13 +399,20 @@ class ContentComparer:
         """Check observer for the found data, and if it's
         not to ignore, notify other_observers.
         """
-        rv = self.observer.notify(category, file, data)
-        if rv == 'ignore':
-            return rv
+        rvs = set(
+            observer.notify(category, file, data)
+            for observer in self.observers
+            )
+        if all(rv == 'ignore' for rv in rvs):
+            return 'ignore'
+        rvs.discard('ignore')
         for obs in self.other_observers:
             # non-filtering other_observers, ignore results
             obs.notify(category, file, data)
-        return rv
+        if 'error' in rvs:
+            return 'error'
+        assert len(rvs) == 1
+        return rvs.pop()
 
     def remove(self, obsolete):
         self.notify('obsoleteFile', obsolete, None)
@@ -548,14 +560,17 @@ class ContentComparer:
 
 def compareProjects(project_configs, other_observer=None,
                     merge_stage=None, clobber_merge=False):
-    assert len(project_configs) == 1  # we're not there yet for multiple
     comparer = ContentComparer()
     if other_observer is not None:
         comparer.add_observer(other_observer)
-    project = project_configs[0]
-    comparer.observer.filter = project.filter
-    for locale in project.locales:
-        files = paths.ProjectFiles(locale, project)
+    locales = set()
+    for project in project_configs:
+        observer = Observer()
+        observer.filter = project.filter
+        comparer.observers.append(observer)
+        locales.update(project.locales)
+    for locale in sorted(locales):
+        files = paths.ProjectFiles(locale, *project_configs)
         if merge_stage is not None:
             mergedir = merge_stage.format(ab_CD=locale)
             comparer.set_merge_stage(mergedir)
@@ -585,4 +600,4 @@ def compareProjects(project_configs, other_observer=None,
                 comparer.remove(l10n)
                 continue
             comparer.compare(reffile, l10n, extra_tests)
-    return comparer.observer
+    return comparer.observers
