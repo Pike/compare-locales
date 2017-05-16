@@ -324,3 +324,43 @@ class TestProjectPaths(unittest.TestCase):
         # 'fr' is not in the locale list, should return no files
         files = MockProjectFiles(mocks, 'fr', cfg)
         self.assertListEqual(list(files), [])
+
+    def test_partial_l10n(self):
+        cfg = ProjectConfig()
+        cfg.locales.extend(['de', 'fr'])
+        cfg.add_paths({
+            'l10n': '/tmp/{locale}/major/*'
+        }, {
+            'l10n': '/tmp/{locale}/minor/*',
+            'locales': ['de']
+        })
+        mocks = {
+            '/tmp/de/major/': [
+                'good.ftl',
+                'not/subdir/bad.ftl'
+            ],
+            '/tmp/de/minor/': [
+                'good.ftl',
+            ],
+            '/tmp/fr/major/': [
+                'good.ftl',
+                'not/subdir/bad.ftl'
+            ],
+            '/tmp/fr/minor/': [
+                'good.ftl',
+            ],
+        }
+        files = MockProjectFiles(mocks, 'de', cfg)
+        self.assertListEqual(
+            list(files),
+            [
+                ('/tmp/de/major/good.ftl', None, set()),
+                ('/tmp/de/minor/good.ftl', None, set()),
+            ])
+        # 'fr' is not in the locale list of minor, should only return major
+        files = MockProjectFiles(mocks, 'fr', cfg)
+        self.assertListEqual(
+            list(files),
+            [
+                ('/tmp/fr/major/good.ftl', None, set()),
+            ])

@@ -64,7 +64,13 @@ class ProjectConfig(object):
 
     def __init__(self):
         self.filter_py = None  # legacy filter code
-        self.paths = []  # {'reference': pattern, 'l10n': pattern, 'test': []}
+        # {
+        #  'l10n': pattern,
+        #  'reference': pattern,  # optional
+        #  'locales': [],  # optional
+        #  'test': [],  # optional
+        # }
+        self.paths = []
         self.rules = []
         self.locales = []
         self.projects = []  # TODO: add support for sub-projects
@@ -86,7 +92,8 @@ class ProjectConfig(object):
                 rv['reference'] = Matcher(d['reference'])
             if 'test' in d:
                 rv['test'] = d['test']
-            # TODO: locale
+            if 'locales' in d:
+                rv['locales'] = d['locales'][:]
             self.paths.append(rv)
 
     def set_filter_py(self, filter):
@@ -177,6 +184,8 @@ class ProjectFiles(object):
             if locale not in pc.locales:
                 continue
             for paths in pc.paths:
+                if 'locales' in paths and locale not in paths['locales']:
+                    continue
                 m = {
                     'l10n': Matcher(paths['l10n'], locale),
                     'module': paths.get('module')
@@ -184,6 +193,8 @@ class ProjectFiles(object):
                 if 'reference' in paths:
                     m['reference'] = paths['reference']
                 m['test'] = set(paths.get('test', []))
+                if 'locales' in paths:
+                    m['locales'] = paths['locales'][:]
                 self.matchers.append(m)
         self.matchers.reverse()  # we always iterate last first
         # Remove duplicate patterns, comparing each matcher
