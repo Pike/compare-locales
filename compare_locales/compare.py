@@ -194,26 +194,28 @@ class Observer(object):
             'details': self.details.toJSON()
         }
 
-    def notify(self, category, file, data):
-        rv = "error"
-        if category in self.stat_cats:
-            # these get called post reporting just for stats
-            # return "error" to forward them to other other_observers
-            # in multi-project scenarios, this file might not be ours,
-            # check that.
-            if (self.filter is not None and
-                    self.filter(file) in (None, 'ignore')):
-                return 'ignore'
-            self.summary[file.locale][category] += data
-            if self.file_stats is not None:
-                # missingInFiles should just be "missing" in file stats
-                cat = category if category != 'missingInFiles' else 'missing'
-                self.file_stats[file.locale][file.localpath][cat] = data
+    def updateStats(self, file, stats):
+        # in multi-project scenarios, this file might not be ours,
+        # check that.
+        if (self.filter is not None and
+                self.filter(file) in (None, 'ignore')):
+            return
+        for category, value in stats.iteritems():
+            self.summary[file.locale][category] += value
+        if self.file_stats is None:
+            return
+        if 'missingInFiles' in stats:
             # keep track of how many strings are in a missing file
-            # we got the {'missingFile': 'error'} from the first pass
-            if category == 'missingInFiles':
-                self.details[file]['strings'] = data
-            return "error"
+            # we got the {'missingFile': 'error'} from the notify pass
+            self.details[file]['strings'] = stats['missingInFiles']
+            # missingInFiles should just be "missing" in file stats
+            self.file_stats[file.locale][file.localpath]['missing'] = \
+                stats['missingInFiles']
+            return  # there are no other stats for missing files
+        self.file_stats[file.locale][file.localpath].update(stats)
+
+    def notify(self, category, file, data):
+        rv = 'error'
         if category in ['missingFile', 'obsoleteFile']:
             if self.filter is not None:
                 rv = self.filter(file)
@@ -426,6 +428,13 @@ class ContentComparer:
         assert len(rvs) == 1
         return rvs.pop()
 
+    def updateStats(self, file, stats):
+        """Check observer for the found data, and if it's
+        not to ignore, notify other_observers.
+        """
+        for observer in self.observers + self.other_observers:
+            observer.updateStats(file, stats)
+
     def remove(self, obsolete):
         self.notify('obsoleteFile', obsolete, None)
         pass
@@ -525,23 +534,22 @@ class ContentComparer:
                                     u"%s at line %d, column %d for %s" %
                                     (msg, _l, col, refent.key))
                 pass
-        if missing:
-            self.notify('missing', l10n, missing)
         if self.merge_stage is not None and (missings or skips):
             self.merge(
                 ref[0], ref[1], ref_file,
                 l10n, missings, skips, l10n_ctx,
                 p.canMerge, p.encoding)
-        if report:
-            self.notify('report', l10n, report)
-        if obsolete:
-            self.notify('obsolete', l10n, obsolete)
-        if changed:
-            self.notify('changed', l10n, changed)
-        if unchanged:
-            self.notify('unchanged', l10n, unchanged)
-        if keys:
-            self.notify('keys', l10n, keys)
+        stats = {}
+        for cat, value in (
+                ('missing', missing),
+                ('report', report),
+                ('obsolete', obsolete),
+                ('changed', changed),
+                ('unchanged', unchanged),
+                ('keys', keys)):
+            if value:
+                stats[cat] = value
+        self.updateStats(l10n, stats)
         pass
 
     def add(self, orig, missing):
@@ -559,7 +567,7 @@ class ContentComparer:
         except Exception, e:
             self.notify('error', f, str(e))
             return
-        self.notify('missingInFiles', missing, len(map))
+        self.updateStats(missing, {'missingInFiles': len(map)})
 
     def doUnchanged(self, entity):
         # overload this if needed

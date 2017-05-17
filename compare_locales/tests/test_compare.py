@@ -96,7 +96,7 @@ class TestObserver(unittest.TestCase):
         obs = compare.Observer()
         f = paths.File('/some/real/sub/path', 'sub/path', locale='de')
         obs.notify('missingEntity', f, ['one', 'two'])
-        obs.notify('missing', f, 15)
+        obs.updateStats(f, {'missing': 15})
         self.assertDictEqual(obs.toJSON(), {
             'summary': {
                 'de': {
@@ -121,7 +121,7 @@ class TestObserver(unittest.TestCase):
         f = paths.File('/some/real/sub/path', 'path',
                        module='sub', locale='de')
         obs.notify('missingEntity', f, ['one', 'two'])
-        obs.notify('missing', f, 15)
+        obs.updateStats(f, {'missing': 15})
         self.assertDictEqual(obs.toJSON(), {
             'summary': {
                 'de': {
@@ -152,7 +152,7 @@ class TestObserver(unittest.TestCase):
         obs = compare.Observer(file_stats=True)
         f = paths.File('/some/real/sub/path', 'sub/path', locale='de')
         obs.notify('missingEntity', f, ['one', 'two'])
-        obs.notify('missing', f, 15)
+        obs.updateStats(f, {'missing': 15})
         self.assertDictEqual(obs.toJSON(), {
             'summary': {
                 'de': {
