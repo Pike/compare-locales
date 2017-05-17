@@ -4,7 +4,8 @@
 
 import unittest
 
-from compare_locales import compare
+from compare_locales import compare, paths
+from cPickle import loads, dumps
 
 
 class TestTree(unittest.TestCase):
@@ -88,3 +89,92 @@ two/other
                 ]
             }
         )
+
+
+class TestObserver(unittest.TestCase):
+    def test_simple(self):
+        obs = compare.Observer()
+        f = paths.File('/some/real/sub/path', 'sub/path', locale='de')
+        obs.notify('missingEntity', f, ['one', 'two'])
+        obs.notify('missing', f, 15)
+        self.assertDictEqual(obs.toJSON(), {
+            'summary': {
+                'de': {
+                    'missing': 15
+                }
+            },
+            'details': {
+                'children': [
+                    ('de/sub/path',
+                     {'value': {'missingEntity': [['one', 'two']]}}
+                     )
+                ]
+            }
+        })
+        clone = loads(dumps(obs))
+        self.assertDictEqual(clone.summary, obs.summary)
+        self.assertDictEqual(clone.details.toJSON(), obs.details.toJSON())
+        self.assertIsNone(clone.file_stats)
+
+    def test_module(self):
+        obs = compare.Observer(file_stats=True)
+        f = paths.File('/some/real/sub/path', 'path',
+                       module='sub', locale='de')
+        obs.notify('missingEntity', f, ['one', 'two'])
+        obs.notify('missing', f, 15)
+        self.assertDictEqual(obs.toJSON(), {
+            'summary': {
+                'de': {
+                    'missing': 15
+                }
+            },
+            'details': {
+                'children': [
+                    ('de/sub/path',
+                     {'value': {'missingEntity': [['one', 'two']]}}
+                     )
+                ]
+            }
+        })
+        self.assertDictEqual(obs.file_stats, {
+            'de': {
+                'sub/path': {
+                    'missing': 15
+                }
+            }
+        })
+        clone = loads(dumps(obs))
+        self.assertDictEqual(clone.summary, obs.summary)
+        self.assertDictEqual(clone.details.toJSON(), obs.details.toJSON())
+        self.assertDictEqual(clone.file_stats, obs.file_stats)
+
+    def test_file_stats(self):
+        obs = compare.Observer(file_stats=True)
+        f = paths.File('/some/real/sub/path', 'sub/path', locale='de')
+        obs.notify('missingEntity', f, ['one', 'two'])
+        obs.notify('missing', f, 15)
+        self.assertDictEqual(obs.toJSON(), {
+            'summary': {
+                'de': {
+                    'missing': 15
+                }
+            },
+            'details': {
+                'children': [
+                    ('de/sub/path',
+                     {'value': {'missingEntity': [['one', 'two']]}}
+                     )
+                ]
+            }
+        })
+        self.assertDictEqual(obs.file_stats, {
+            'de': {
+                'sub/path': {
+                    'missing': 15
+                }
+            }
+        })
+        clone = loads(dumps(obs))
+        self.assertDictEqual(clone.summary, obs.summary)
+        self.assertDictEqual(clone.details.toJSON(), obs.details.toJSON())
+        self.assertDictEqual(clone.file_stats, obs.file_stats)

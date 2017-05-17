@@ -426,11 +426,15 @@ class File(object):
         # open with universal line ending support and read
         return open(self.fullpath, 'rU').read()
 
-    def __hash__(self):
+    @property
+    def localpath(self):
         f = self.file
         if self.module:
-            f = self.module + '/' + f
-        return hash(f)
+            f = mozpath.join(self.module, f)
+        return f
+
+    def __hash__(self):
+        return hash(self.localpath)
 
     def __str__(self):
         return self.fullpath

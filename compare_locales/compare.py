@@ -152,39 +152,47 @@ class Observer(object):
     stat_cats = ['missing', 'obsolete', 'missingInFiles', 'report',
                  'changed', 'unchanged', 'keys']
 
-    def __init__(self):
-        class intdict(defaultdict):
-            def __init__(self):
-                defaultdict.__init__(self, int)
-
-        self.summary = defaultdict(intdict)
+    def __init__(self, file_stats=False):
+        self.summary = defaultdict(lambda: defaultdict(int))
         self.details = Tree(dict)
         self.filter = None
+        self.file_stats = None
+        if file_stats:
+            self.file_stats = defaultdict(lambda: defaultdict(dict))
 
     # support pickling
     def __getstate__(self):
-        return dict(summary=self.getSummary(), details=self.details)
+        state = dict(summary=self._dictify(self.summary), details=self.details)
+        if self.file_stats is not None:
+            state['file_stats'] = self._dictify(self.file_stats)
+        return state
 
     def __setstate__(self, state):
-        class intdict(defaultdict):
-            def __init__(self):
-                defaultdict.__init__(self, int)
-
-        self.summary = defaultdict(intdict)
+        self.summary = defaultdict(lambda: defaultdict(int))
         if 'summary' in state:
             for loc, stats in state['summary'].iteritems():
                 self.summary[loc].update(stats)
+        self.file_stats = None
+        if 'file_stats' in state:
+            self.file_stats = defaultdict(lambda: defaultdict(dict))
+            for k, d in state['file_stats'].iteritems():
+                self.file_stats[k].update(d)
         self.details = state['details']
         self.filter = None
 
-    def getSummary(self):
+    def _dictify(self, d):
         plaindict = {}
-        for k, v in self.summary.iteritems():
+        for k, v in d.iteritems():
             plaindict[k] = dict(v)
         return plaindict
 
     def toJSON(self):
-        return dict(summary=self.getSummary(), details=self.details.toJSON())
+        # Don't export file stats, even if we collected them.
+        # Those are not part of the data we use toJSON for.
+        return {
+            'summary': self._dictify(self.summary),
+            'details': self.details.toJSON()
+        }
 
     def notify(self, category, file, data):
         rv = "error"
@@ -197,6 +205,10 @@ class Observer(object):
                     self.filter(file) in (None, 'ignore')):
                 return 'ignore'
             self.summary[file.locale][category] += data
+            if self.file_stats is not None:
+                # missingInFiles should just be "missing" in file stats
+                cat = category if category != 'missingInFiles' else 'missing'
+                self.file_stats[file.locale][file.localpath][cat] = data
             # keep track of how many strings are in a missing file
             # we got the {'missingFile': 'error'} from the first pass
             if category == 'missingInFiles':
@@ -559,13 +571,14 @@ class ContentComparer:
 
 
 def compareProjects(project_configs, other_observer=None,
+                    file_stats=False,
                     merge_stage=None, clobber_merge=False):
     comparer = ContentComparer()
     if other_observer is not None:
         comparer.add_observer(other_observer)
     locales = set()
     for project in project_configs:
-        observer = Observer()
+        observer = Observer(file_stats=file_stats)
         observer.filter = project.filter
         comparer.observers.append(observer)
         locales.update(project.locales)
