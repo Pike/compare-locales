@@ -133,7 +133,7 @@ class ProjectConfig(object):
                                   entity=entity)
         for rule in reversed(self.rules):
             matcher = Matcher(
-                rule.get('path', '.'),
+                rule['path'],
                 l10n_file.locale)
             if not matcher.match(l10n_file.fullpath):
                 continue

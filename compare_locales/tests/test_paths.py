@@ -20,6 +20,7 @@ class TestMatcher(unittest.TestCase):
         self.assertTrue(other.match('bar/baz'))
         self.assertFalse(other.match('bar/baz/qux'))
         self.assertEqual(one.sub(other, 'foo/baz'), 'bar/baz')
+        self.assertIsNone(one.sub(other, 'bar/baz'))
         one = Matcher('foo/**')
         self.assertTrue(one.match('foo/baz'))
         self.assertTrue(one.match('foo/baz/qux'))
