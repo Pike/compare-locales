@@ -149,8 +149,6 @@ class AddRemove(SequenceMatcher):
 
 
 class Observer(object):
-    stat_cats = ['missing', 'obsolete', 'missingInFiles', 'report',
-                 'changed', 'unchanged', 'keys']
 
     def __init__(self, filter=None, file_stats=False):
         self.summary = defaultdict(lambda: defaultdict(int))
@@ -264,6 +262,9 @@ class Observer(object):
                          for k in ('changed', 'unchanged', 'report', 'missing',
                                    'missingInFiles')
                          if k in summary])
+            total_w = sum([summary[k]
+                           for k in ('changed_w', 'unchanged_w', 'missing_w')
+                           if k in summary])
             rate = (('changed' in summary and summary['changed'] * 100) or
                     0) / total
             item.update((k, summary.get(k, 0))
@@ -275,6 +276,9 @@ class Observer(object):
                 summary.get('missingInFiles', 0)
             item['completion'] = rate
             item['total'] = total
+            item.update((k, summary.get(k, 0))
+                        for k in ('changed_w', 'unchanged_w', 'missing_w'))
+            item['total_w'] = total_w
             result = 'success'
             if item.get('warnings', 0):
                 result = 'warning'
@@ -285,6 +289,7 @@ class Observer(object):
         data = {
             "properties": dict.fromkeys(
                 ("completion", "errors", "warnings", "missing", "report",
+                 "missing_w", "changed_w", "unchanged_w",
                  "unchanged", "changed", "obsolete"),
                 {"valueType": "number"}),
             "types": {
@@ -431,6 +436,17 @@ class ContentComparer:
         for observer in self.observers + self.stat_observers:
             observer.updateStats(file, stats)
 
+    br = re.compile('<br\s*/?>', re.U)
+    sgml = re.compile('</?\w+.*?>', re.U | re.M)
+
+    def countWords(self, value):
+        """Count the words in an English string.
+        Replace a couple of xml markup to make that safer, too.
+        """
+        value = self.br.sub(u'\n', value)
+        value = self.sgml.sub(u'', value)
+        return len(value.split())
+
     def remove(self, obsolete):
         self.notify('obsoleteFile', obsolete, None)
         pass
@@ -463,6 +479,7 @@ class ContentComparer:
         ar.set_left(ref_list)
         ar.set_right(l10n_list)
         report = missing = obsolete = changed = unchanged = keys = 0
+        missing_w = changed_w = unchanged_w = 0  # word stats
         missings = []
         skips = []
         checker = getChecker(l10n, reference=ref[0], extra_tests=extra_tests)
@@ -477,6 +494,8 @@ class ContentComparer:
                     # not report
                     missings.append(item_or_pair)
                     missing += 1
+                    refent = ref[0][ref[1][item_or_pair]]
+                    missing_w += self.countWords(refent.val)
                 else:
                     # just report
                     report += 1
@@ -505,9 +524,11 @@ class ContentComparer:
                     if refent.val == l10nent.val:
                         self.doUnchanged(l10nent)
                         unchanged += 1
+                        unchanged_w += self.countWords(refent.val)
                     else:
                         self.doChanged(ref_file, refent, l10nent)
                         changed += 1
+                        changed_w += self.countWords(refent.val)
                         # run checks:
                 if checker:
                     for tp, pos, msg, cat in checker.check(refent, l10nent):
@@ -538,10 +559,13 @@ class ContentComparer:
         stats = {}
         for cat, value in (
                 ('missing', missing),
+                ('missing_w', missing_w),
                 ('report', report),
                 ('obsolete', obsolete),
                 ('changed', changed),
+                ('changed_w', changed_w),
                 ('unchanged', unchanged),
+                ('unchanged_w', unchanged_w),
                 ('keys', keys)):
             if value:
                 stats[cat] = value
@@ -564,6 +588,10 @@ class ContentComparer:
             self.notify('error', f, str(e))
             return
         self.updateStats(missing, {'missingInFiles': len(map)})
+        missing_w = 0
+        for e in entities:
+            missing_w += self.countWords(e.val)
+        self.updateStats(missing, {'missing_w': missing_w})
 
     def doUnchanged(self, entity):
         # overload this if needed

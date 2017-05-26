@@ -39,12 +39,12 @@ class TestProperties(unittest.TestCase, ContentMixin):
 
     def testGood(self):
         self.assertTrue(os.path.isdir(self.tmp))
-        self.reference("""foo = fooVal
-bar = barVal
+        self.reference("""foo = fooVal word
+bar = barVal word
 eff = effVal""")
         self.localized("""foo = lFoo
 bar = lBar
-eff = lEff
+eff = lEff word
 """)
         cc = ContentComparer([Observer()])
         cc.set_merge_stage(mozpath.join(self.tmp, "merge"))
@@ -54,7 +54,8 @@ eff = lEff
             cc.observers[0].toJSON(),
             {'summary':
                 {None: {
-                    'changed': 3
+                    'changed': 3,
+                    'changed_w': 5
                 }},
              'details': {}
              }
@@ -77,7 +78,10 @@ eff = effVal""")
             cc.observers[0].toJSON(),
             {'summary':
                 {None: {
-                    'changed': 1, 'missing': 2
+                    'changed': 1,
+                    'changed_w': 1,
+                    'missing': 2,
+                    'missing_w': 2
                 }},
              'details': {
                  'children': [
@@ -111,7 +115,11 @@ eff = leffVal
             cc.observers[0].toJSON(),
             {'summary':
                 {None: {
-                    'changed': 2, 'errors': 1, 'missing': 1
+                    'changed': 2,
+                    'changed_w': 3,
+                    'errors': 1,
+                    'missing': 1,
+                    'missing_w': 1
                 }},
              'details': {
                  'children': [
@@ -148,7 +156,11 @@ eff = leffVal
             cc.observers[0].toJSON(),
             {'summary':
                 {None: {
-                    'changed': 1, 'obsolete': 1, 'unchanged': 1
+                    'changed': 1,
+                    'changed_w': 1,
+                    'obsolete': 1,
+                    'unchanged': 1,
+                    'unchanged_w': 1
                 }},
              'details': {
                  'children': [
@@ -187,7 +199,8 @@ class TestDTD(unittest.TestCase, ContentMixin):
             cc.observers[0].toJSON(),
             {'summary':
                 {None: {
-                    'changed': 3
+                    'changed': 3,
+                    'changed_w': 3
                 }},
              'details': {}
              }
@@ -210,7 +223,10 @@ class TestDTD(unittest.TestCase, ContentMixin):
             cc.observers[0].toJSON(),
             {'summary':
                 {None: {
-                    'changed': 1, 'missing': 2
+                    'changed': 1,
+                    'changed_w': 1,
+                    'missing': 2,
+                    'missing_w': 2
                 }},
              'details': {
                  'children': [
@@ -244,7 +260,11 @@ class TestDTD(unittest.TestCase, ContentMixin):
             cc.observers[0].toJSON(),
             {'summary':
                 {None: {
-                    'errors': 1, 'missing': 1, 'unchanged': 2
+                    'errors': 1,
+                    'missing': 1,
+                    'missing_w': 1,
+                    'unchanged': 2,
+                    'unchanged_w': 2
                 }},
              'details': {
                  'children': [
