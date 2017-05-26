@@ -126,7 +126,7 @@ Be careful to specify the right merge directory when using this option.""")
                 unified_observer = Observer()
             observers = compareProjects(
                 configs,
-                other_observer=unified_observer,
+                stat_observer=unified_observer,
                 merge_stage=args.merge, clobber_merge=args.clobber)
         except (OSError, IOError), exc:
             print "FAIL: " + str(exc)

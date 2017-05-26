@@ -152,10 +152,10 @@ class Observer(object):
     stat_cats = ['missing', 'obsolete', 'missingInFiles', 'report',
                  'changed', 'unchanged', 'keys']
 
-    def __init__(self, file_stats=False):
+    def __init__(self, filter=None, file_stats=False):
         self.summary = defaultdict(lambda: defaultdict(int))
         self.details = Tree(dict)
-        self.filter = None
+        self.filter = filter
         self.file_stats = None
         if file_stats:
             self.file_stats = defaultdict(lambda: defaultdict(dict))
@@ -350,21 +350,17 @@ class ContentComparer:
     keyRE = re.compile('[kK]ey')
     nl = re.compile('\n', re.M)
 
-    def __init__(self):
+    def __init__(self, observers, stat_observers=None):
         '''Create a ContentComparer.
         observer is usually a instance of Observer. The return values
         of the notify method are used to control the handling of missing
         entities.
         '''
-        self.observers = []
-        self.other_observers = []
+        self.observers = observers
+        if stat_observers is None:
+            stat_observers = []
+        self.stat_observers = stat_observers
         self.merge_stage = None
-
-    def add_observer(self, obs):
-        '''Add a non-filtering observer.
-        Results from the notify calls are ignored.
-        '''
-        self.other_observers.append(obs)
 
     def set_merge_stage(self, merge_stage):
         self.merge_stage = merge_stage
@@ -411,7 +407,7 @@ class ContentComparer:
 
     def notify(self, category, file, data):
         """Check observer for the found data, and if it's
-        not to ignore, notify other_observers.
+        not to ignore, notify stat_observers.
         """
         rvs = set(
             observer.notify(category, file, data)
@@ -420,8 +416,8 @@ class ContentComparer:
         if all(rv == 'ignore' for rv in rvs):
             return 'ignore'
         rvs.discard('ignore')
-        for obs in self.other_observers:
-            # non-filtering other_observers, ignore results
+        for obs in self.stat_observers:
+            # non-filtering stat_observers, ignore results
             obs.notify(category, file, data)
         if 'error' in rvs:
             return 'error'
@@ -430,9 +426,9 @@ class ContentComparer:
 
     def updateStats(self, file, stats):
         """Check observer for the found data, and if it's
-        not to ignore, notify other_observers.
+        not to ignore, notify stat_observers.
         """
-        for observer in self.observers + self.other_observers:
+        for observer in self.observers + self.stat_observers:
             observer.updateStats(file, stats)
 
     def remove(self, obsolete):
@@ -578,18 +574,20 @@ class ContentComparer:
         pass
 
 
-def compareProjects(project_configs, other_observer=None,
+def compareProjects(project_configs, stat_observer=None,
                     file_stats=False,
                     merge_stage=None, clobber_merge=False):
-    comparer = ContentComparer()
-    if other_observer is not None:
-        comparer.add_observer(other_observer)
     locales = set()
+    observers = []
     for project in project_configs:
-        observer = Observer(file_stats=file_stats)
-        observer.filter = project.filter
-        comparer.observers.append(observer)
+        observers.append(
+            Observer(filter=project.filter, file_stats=file_stats))
         locales.update(project.locales)
+    if stat_observer is not None:
+        stat_observers = [stat_observer]
+    else:
+        stat_observers = None
+    comparer = ContentComparer(observers, stat_observers=stat_observers)
     for locale in sorted(locales):
         files = paths.ProjectFiles(locale, *project_configs)
         if merge_stage is not None:
@@ -621,4 +619,4 @@ def compareProjects(project_configs, other_observer=None,
                 comparer.remove(l10n)
                 continue
             comparer.compare(reffile, l10n, extra_tests)
-    return comparer.observers
+    return observers

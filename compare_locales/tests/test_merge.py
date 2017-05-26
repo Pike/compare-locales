@@ -46,8 +46,7 @@ eff = effVal""")
 bar = lBar
 eff = lEff
 """)
-        cc = ContentComparer()
-        cc.observers.append(Observer())
+        cc = ContentComparer([Observer()])
         cc.set_merge_stage(mozpath.join(self.tmp, "merge"))
         cc.compare(File(self.ref, "en-reference.properties", ""),
                    File(self.l10n, "l10n.properties", ""))
@@ -70,8 +69,7 @@ bar = barVal
 eff = effVal""")
         self.localized("""bar = lBar
 """)
-        cc = ContentComparer()
-        cc.observers.append(Observer())
+        cc = ContentComparer([Observer()])
         cc.set_merge_stage(mozpath.join(self.tmp, "merge"))
         cc.compare(File(self.ref, "en-reference.properties", ""),
                    File(self.l10n, "l10n.properties", ""))
@@ -105,8 +103,7 @@ eff = effVal""")
 bar = %S lBar
 eff = leffVal
 """)
-        cc = ContentComparer()
-        cc.observers.append(Observer())
+        cc = ContentComparer([Observer()])
         cc.set_merge_stage(mozpath.join(self.tmp, "merge"))
         cc.compare(File(self.ref, "en-reference.properties", ""),
                    File(self.l10n, "l10n.properties", ""))
@@ -143,8 +140,7 @@ eff = effVal""")
 other = obsolete
 eff = leffVal
 """)
-        cc = ContentComparer()
-        cc.observers.append(Observer())
+        cc = ContentComparer([Observer()])
         cc.set_merge_stage(mozpath.join(self.tmp, "merge"))
         cc.compare(File(self.ref, "en-reference.properties", ""),
                    File(self.l10n, "l10n.properties", ""))
@@ -183,8 +179,7 @@ class TestDTD(unittest.TestCase, ContentMixin):
 <!ENTITY bar 'lBar'>
 <!ENTITY eff 'lEff'>
 """)
-        cc = ContentComparer()
-        cc.observers.append(Observer())
+        cc = ContentComparer([Observer()])
         cc.set_merge_stage(mozpath.join(self.tmp, "merge"))
         cc.compare(File(self.ref, "en-reference.dtd", ""),
                    File(self.l10n, "l10n.dtd", ""))
@@ -207,8 +202,7 @@ class TestDTD(unittest.TestCase, ContentMixin):
 <!ENTITY eff 'effVal'>""")
         self.localized("""<!ENTITY bar 'lBar'>
 """)
-        cc = ContentComparer()
-        cc.observers.append(Observer())
+        cc = ContentComparer([Observer()])
         cc.set_merge_stage(mozpath.join(self.tmp, "merge"))
         cc.compare(File(self.ref, "en-reference.dtd", ""),
                    File(self.l10n, "l10n.dtd", ""))
@@ -242,8 +236,7 @@ class TestDTD(unittest.TestCase, ContentMixin):
 <!ENTY bar 'gimmick'>
 <!ENTITY eff 'effVal'>
 """)
-        cc = ContentComparer()
-        cc.observers.append(Observer())
+        cc = ContentComparer([Observer()])
         cc.set_merge_stage(mozpath.join(self.tmp, "merge"))
         cc.compare(File(self.ref, "en-reference.dtd", ""),
                    File(self.l10n, "l10n.dtd", ""))
