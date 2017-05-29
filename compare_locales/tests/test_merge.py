@@ -84,13 +84,11 @@ eff = effVal""")
                     'missing_w': 2
                 }},
              'details': {
-                 'children': [
-                     ('l10n.properties',
-                         {'value': {'missingEntity': [u'eff', u'foo']}}
-                      )
-                 ]}
-             }
-        )
+                 'l10n.properties': [
+                     {'missingEntity': u'eff'},
+                     {'missingEntity': u'foo'}]
+                }
+             })
         mergefile = mozpath.join(self.tmp, "merge", "l10n.properties")
         self.assertTrue(os.path.isfile(mergefile))
         p = getParser(mergefile)
@@ -122,16 +120,12 @@ eff = leffVal
                     'missing_w': 1
                 }},
              'details': {
-                 'children': [
-                     ('l10n.properties',
-                         {'value': {
-                          'error': [u'argument 1 `S` should be `d` '
-                                    u'at line 1, column 7 for bar'],
-                          'missingEntity': [u'foo']}}
-                      )
-                 ]}
-             }
-        )
+                 'l10n.properties': [
+                     {'error': u'argument 1 `S` should be `d` '
+                               u'at line 1, column 7 for bar'},
+                     {'missingEntity': u'foo'}]
+                }
+             })
         mergefile = mozpath.join(self.tmp, "merge", "l10n.properties")
         self.assertTrue(os.path.isfile(mergefile))
         p = getParser(mergefile)
@@ -163,11 +157,10 @@ eff = leffVal
                     'unchanged_w': 1
                 }},
              'details': {
-                 'children': [
-                     ('l10n.properties',
-                         {'value': {'obsoleteEntity': [u'other']}})]},
-             }
-        )
+                 'l10n.properties': [
+                     {'obsoleteEntity': u'other'}]
+                }
+             })
 
 
 class TestDTD(unittest.TestCase, ContentMixin):
@@ -229,13 +222,11 @@ class TestDTD(unittest.TestCase, ContentMixin):
                     'missing_w': 2
                 }},
              'details': {
-                 'children': [
-                     ('l10n.dtd',
-                         {'value': {'missingEntity': [u'eff', u'foo']}}
-                      )
-                 ]}
-             }
-        )
+                 'l10n.dtd': [
+                     {'missingEntity': u'eff'},
+                     {'missingEntity': u'foo'}]
+                }
+             })
         mergefile = mozpath.join(self.tmp, "merge", "l10n.dtd")
         self.assertTrue(os.path.isfile(mergefile))
         p = getParser(mergefile)
@@ -267,18 +258,14 @@ class TestDTD(unittest.TestCase, ContentMixin):
                     'unchanged_w': 2
                 }},
              'details': {
-                 'children': [
-                     ('l10n.dtd',
-                         {'value': {
-                             'error': [u'Unparsed content "<!ENTY bar '
-                                       u'\'gimmick\'>" '
-                                       u'from line 2 column 1 to '
-                                       u'line 2 column 22'],
-                             'missingEntity': [u'bar']}}
-                      )
-                 ]}
-             }
-        )
+                 'l10n.dtd': [
+                     {'error': u'Unparsed content "<!ENTY bar '
+                               u'\'gimmick\'>" '
+                               u'from line 2 column 1 to '
+                               u'line 2 column 22'},
+                     {'missingEntity': u'bar'}]
+                }
+             })
         mergefile = mozpath.join(self.tmp, "merge", "l10n.dtd")
         self.assertTrue(os.path.isfile(mergefile))
         p = getParser(mergefile)

@@ -8,7 +8,6 @@ import codecs
 import os
 import shutil
 import re
-from difflib import SequenceMatcher
 from collections import defaultdict
 
 try:
@@ -92,16 +91,10 @@ class Tree(object):
         Returns this Tree as a JSON-able tree of hashes.
         Only the values need to take care that they're JSON-able.
         '''
-        json = {}
-        keys = self.branches.keys()
-        keys.sort()
         if self.value is not None:
-            json['value'] = self.value
-        children = [('/'.join(key), self.branches[key].toJSON())
-                    for key in keys]
-        if children:
-            json['children'] = children
-        return json
+            return self.value
+        return dict(('/'.join(key), self.branches[key].toJSON())
+                    for key in self.branches.keys())
 
     def getStrRows(self):
         def tostr(t):
@@ -115,44 +108,36 @@ class Tree(object):
         return '\n'.join(self.getStrRows())
 
 
-class AddRemove(SequenceMatcher):
-    def __init__(self):
-        SequenceMatcher.__init__(self, None, None, None)
+class AddRemove(object):
+    def __init__(self, key=None):
+        self.left = self.right = None
+        self.key = key
 
     def set_left(self, left):
-        if not isinstance(left, list):
-            left = [l for l in left]
-        self.set_seq1(left)
+        if not isinstance(left, set):
+            left = set(l for l in left)
+        self.left = left
 
     def set_right(self, right):
-        if not isinstance(right, list):
-            right = [l for l in right]
-        self.set_seq2(right)
+        if not isinstance(right, set):
+            right = set(l for l in right)
+        self.right = right
 
     def __iter__(self):
-        for tag, i1, i2, j1, j2 in self.get_opcodes():
-            if tag == 'equal':
-                for pair in zip(self.a[i1:i2], self.b[j1:j2]):
-                    yield ('equal', pair)
-            elif tag == 'delete':
-                for item in self.a[i1:i2]:
-                    yield ('delete', item)
-            elif tag == 'insert':
-                for item in self.b[j1:j2]:
-                    yield ('add', item)
+        for item in sorted(self.left | self.right, key=self.key):
+            if item in self.left and item in self.right:
+                yield ('equal', item)
+            elif item in self.left:
+                yield ('delete', item)
             else:
-                # tag == 'replace'
-                for item in self.a[i1:i2]:
-                    yield ('delete', item)
-                for item in self.b[j1:j2]:
-                    yield ('add', item)
+                yield ('add', item)
 
 
 class Observer(object):
 
     def __init__(self, filter=None, file_stats=False):
         self.summary = defaultdict(lambda: defaultdict(int))
-        self.details = Tree(dict)
+        self.details = Tree(list)
         self.filter = filter
         self.file_stats = None
         if file_stats:
@@ -205,7 +190,7 @@ class Observer(object):
         if 'missingInFiles' in stats:
             # keep track of how many strings are in a missing file
             # we got the {'missingFile': 'error'} from the notify pass
-            self.details[file]['strings'] = stats['missingInFiles']
+            self.details[file].append({'count': stats['missingInFiles']})
             # missingInFiles should just be "missing" in file stats
             self.file_stats[file.locale][file.localpath]['missing'] = \
                 stats['missingInFiles']
@@ -218,31 +203,18 @@ class Observer(object):
             if self.filter is not None:
                 rv = self.filter(file)
             if rv != "ignore":
-                self.details[file][category] = rv
+                self.details[file].append({category: rv})
             return rv
         if category in ['missingEntity', 'obsoleteEntity']:
             if self.filter is not None:
                 rv = self.filter(file, data)
             if rv == "ignore":
                 return rv
-            v = self.details[file]
-            try:
-                v[category].append(data)
-            except KeyError:
-                v[category] = [data]
+            self.details[file].append({category: data})
             return rv
-        if category == 'error':
-            try:
-                self.details[file][category].append(data)
-            except KeyError:
-                self.details[file][category] = [data]
-            self.summary[file.locale]['errors'] += 1
-        elif category == 'warning':
-            try:
-                self.details[file][category].append(data)
-            except KeyError:
-                self.details[file][category] = [data]
-            self.summary[file.locale]['warnings'] += 1
+        if category in ('error', 'warning'):
+            self.details[file].append({category: data})
+            self.summary[file.locale][category + 's'] += 1
         return rv
 
     def toExhibit(self):
@@ -309,26 +281,19 @@ class Observer(object):
                 return '  ' * t[0] + '/'.join(t[2])
             o = []
             indent = '  ' * (t[0] + 1)
-            if 'error' in t[2]:
-                o += [indent + 'ERROR: ' + e for e in t[2]['error']]
-            if 'warning' in t[2]:
-                o += [indent + 'WARNING: ' + e for e in t[2]['warning']]
-            if 'missingEntity' in t[2] or 'obsoleteEntity' in t[2]:
-                missingEntities = ('missingEntity' in t[2] and
-                                   t[2]['missingEntity']) or []
-                obsoleteEntities = ('obsoleteEntity' in t[2] and
-                                    t[2]['obsoleteEntity']) or []
-                entities = missingEntities + obsoleteEntities
-                entities.sort()
-                for entity in entities:
-                    op = '+'
-                    if entity in obsoleteEntities:
-                        op = '-'
-                    o.append(indent + op + entity)
-            elif 'missingFile' in t[2]:
-                o.append(indent + '// add and localize this file')
-            elif 'obsoleteFile' in t[2]:
-                o.append(indent + '// remove this file')
+            for item in t[2]:
+                if 'error' in item:
+                    o += [indent + 'ERROR: ' + item['error']]
+                elif 'warning' in item:
+                    o += [indent + 'WARNING: ' + item['warning']]
+                elif 'missingEntity' in item:
+                    o += [indent + '+' + item['missingEntity']]
+                elif 'obsoleteEntity' in item:
+                    o += [indent + '-' + item['obsoleteEntity']]
+                elif 'missingFile' in item:
+                    o.append(indent + '// add and localize this file')
+                elif 'obsoleteFile' in item:
+                    o.append(indent + '// remove this file')
             return '\n'.join(o)
 
         out = []
@@ -483,27 +448,27 @@ class ContentComparer:
         missings = []
         skips = []
         checker = getChecker(l10n, reference=ref[0], extra_tests=extra_tests)
-        for action, item_or_pair in ar:
+        for action, entity in ar:
             if action == 'delete':
                 # missing entity
-                _rv = self.notify('missingEntity', l10n, item_or_pair)
+                _rv = self.notify('missingEntity', l10n, entity)
                 if _rv == "ignore":
                     continue
                 if _rv == "error":
                     # only add to missing entities for l10n-merge on error,
                     # not report
-                    missings.append(item_or_pair)
+                    missings.append(entity)
                     missing += 1
-                    refent = ref[0][ref[1][item_or_pair]]
+                    refent = ref[0][ref[1][entity]]
                     missing_w += self.countWords(refent.val)
                 else:
                     # just report
                     report += 1
             elif action == 'add':
                 # obsolete entity or junk
-                if isinstance(l10n_entities[l10n_map[item_or_pair]],
+                if isinstance(l10n_entities[l10n_map[entity]],
                               parser.Junk):
-                    junk = l10n_entities[l10n_map[item_or_pair]]
+                    junk = l10n_entities[l10n_map[entity]]
                     params = (junk.val,) + junk.position() + junk.position(-1)
                     self.notify('error', l10n,
                                 'Unparsed content "%s" from line %d column %d'
@@ -511,11 +476,10 @@ class ContentComparer:
                     if self.merge_stage is not None:
                         skips.append(junk)
                 elif self.notify('obsoleteEntity', l10n,
-                                 item_or_pair) != 'ignore':
+                                 entity) != 'ignore':
                     obsolete += 1
             else:
                 # entity found in both ref and l10n, check for changed
-                entity = item_or_pair[0]
                 refent = ref[0][ref[1][entity]]
                 l10nent = l10n_entities[l10n_map[entity]]
                 if self.keyRE.search(entity):

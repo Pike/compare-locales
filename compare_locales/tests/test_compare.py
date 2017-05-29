@@ -38,14 +38,10 @@ class TestTree(unittest.TestCase):
         self.assertDictEqual(
             tree.toJSON(),
             {
-                'children': [
-                    ('one/entry',
-                     {'value': {'leaf': 1}}
-                     ),
-                    ('two/other',
-                     {'value': {'leaf': 2}}
-                     )
-                ]
+                'one/entry':
+                    {'leaf': 1},
+                'two/other':
+                    {'leaf': 2}
             }
         )
         self.assertMultiLineEqual(
@@ -75,18 +71,12 @@ two/other
         self.assertDictEqual(
             tree.toJSON(),
             {
-                'children': [
-                    ('one', {
-                        'children': [
-                            ('entry',
-                             {'value': {'leaf': 1}}
-                             ),
-                            ('other',
-                             {'value': {'leaf': 2}}
-                             )
-                        ]
-                    })
-                ]
+                'one': {
+                    'entry':
+                        {'leaf': 1},
+                    'other':
+                        {'leaf': 2}
+                }
             }
         )
 
@@ -95,7 +85,8 @@ class TestObserver(unittest.TestCase):
     def test_simple(self):
         obs = compare.Observer()
         f = paths.File('/some/real/sub/path', 'sub/path', locale='de')
-        obs.notify('missingEntity', f, ['one', 'two'])
+        obs.notify('missingEntity', f, 'one')
+        obs.notify('missingEntity', f, 'two')
         obs.updateStats(f, {'missing': 15})
         self.assertDictEqual(obs.toJSON(), {
             'summary': {
@@ -104,11 +95,9 @@ class TestObserver(unittest.TestCase):
                 }
             },
             'details': {
-                'children': [
-                    ('de/sub/path',
-                     {'value': {'missingEntity': [['one', 'two']]}}
-                     )
-                ]
+                'de/sub/path':
+                    [{'missingEntity': 'one'},
+                     {'missingEntity': 'two'}]
             }
         })
         clone = loads(dumps(obs))
@@ -120,7 +109,9 @@ class TestObserver(unittest.TestCase):
         obs = compare.Observer(file_stats=True)
         f = paths.File('/some/real/sub/path', 'path',
                        module='sub', locale='de')
-        obs.notify('missingEntity', f, ['one', 'two'])
+        obs.notify('missingEntity', f, 'one')
+        obs.notify('obsoleteEntity', f, 'bar')
+        obs.notify('missingEntity', f, 'two')
         obs.updateStats(f, {'missing': 15})
         self.assertDictEqual(obs.toJSON(), {
             'summary': {
@@ -129,11 +120,12 @@ class TestObserver(unittest.TestCase):
                 }
             },
             'details': {
-                'children': [
-                    ('de/sub/path',
-                     {'value': {'missingEntity': [['one', 'two']]}}
-                     )
-                ]
+                'de/sub/path':
+                    [
+                     {'missingEntity': 'one'},
+                     {'obsoleteEntity': 'bar'},
+                     {'missingEntity': 'two'},
+                    ]
             }
         })
         self.assertDictEqual(obs.file_stats, {
@@ -143,6 +135,14 @@ class TestObserver(unittest.TestCase):
                 }
             }
         })
+        self.assertEqual(obs.serialize(), '''\
+de/sub/path
+    +one
+    -bar
+    +two
+de:
+missing: 15
+0% of entries changed''')
         clone = loads(dumps(obs))
         self.assertDictEqual(clone.summary, obs.summary)
         self.assertDictEqual(clone.details.toJSON(), obs.details.toJSON())
@@ -151,7 +151,8 @@ class TestObserver(unittest.TestCase):
     def test_file_stats(self):
         obs = compare.Observer(file_stats=True)
         f = paths.File('/some/real/sub/path', 'sub/path', locale='de')
-        obs.notify('missingEntity', f, ['one', 'two'])
+        obs.notify('missingEntity', f, 'one')
+        obs.notify('missingEntity', f, 'two')
         obs.updateStats(f, {'missing': 15})
         self.assertDictEqual(obs.toJSON(), {
             'summary': {
@@ -160,11 +161,11 @@ class TestObserver(unittest.TestCase):
                 }
             },
             'details': {
-                'children': [
-                    ('de/sub/path',
-                     {'value': {'missingEntity': [['one', 'two']]}}
-                     )
-                ]
+                'de/sub/path':
+                    [
+                     {'missingEntity': 'one'},
+                     {'missingEntity': 'two'},
+                    ]
             }
         })
         self.assertDictEqual(obs.file_stats, {
