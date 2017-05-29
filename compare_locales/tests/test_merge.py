@@ -85,8 +85,8 @@ eff = effVal""")
                 }},
              'details': {
                  'l10n.properties': [
-                     {'missingEntity': u'eff'},
-                     {'missingEntity': u'foo'}]
+                     {'missingEntity': u'foo'},
+                     {'missingEntity': u'eff'}]
                 }
              })
         mergefile = mozpath.join(self.tmp, "merge", "l10n.properties")
@@ -94,7 +94,7 @@ eff = effVal""")
         p = getParser(mergefile)
         p.readFile(mergefile)
         [m, n] = p.parse()
-        self.assertEqual(map(lambda e: e.key,  m), ["bar", "eff", "foo"])
+        self.assertEqual(map(lambda e: e.key,  m), ["bar", "foo", "eff"])
 
     def testError(self):
         self.assertTrue(os.path.isdir(self.tmp))
@@ -121,9 +121,9 @@ eff = leffVal
                 }},
              'details': {
                  'l10n.properties': [
+                     {'missingEntity': u'foo'},
                      {'error': u'argument 1 `S` should be `d` '
-                               u'at line 1, column 7 for bar'},
-                     {'missingEntity': u'foo'}]
+                               u'at line 1, column 7 for bar'}]
                 }
              })
         mergefile = mozpath.join(self.tmp, "merge", "l10n.properties")
@@ -223,8 +223,8 @@ class TestDTD(unittest.TestCase, ContentMixin):
                 }},
              'details': {
                  'l10n.dtd': [
-                     {'missingEntity': u'eff'},
-                     {'missingEntity': u'foo'}]
+                     {'missingEntity': u'foo'},
+                     {'missingEntity': u'eff'}]
                 }
              })
         mergefile = mozpath.join(self.tmp, "merge", "l10n.dtd")
@@ -232,7 +232,7 @@ class TestDTD(unittest.TestCase, ContentMixin):
         p = getParser(mergefile)
         p.readFile(mergefile)
         [m, n] = p.parse()
-        self.assertEqual(map(lambda e: e.key,  m), ["bar", "eff", "foo"])
+        self.assertEqual(map(lambda e: e.key,  m), ["bar", "foo", "eff"])
 
     def testJunk(self):
         self.assertTrue(os.path.isdir(self.tmp))
@@ -259,11 +259,11 @@ class TestDTD(unittest.TestCase, ContentMixin):
                 }},
              'details': {
                  'l10n.dtd': [
+                     {'missingEntity': u'bar'},
                      {'error': u'Unparsed content "<!ENTY bar '
                                u'\'gimmick\'>" '
                                u'from line 2 column 1 to '
-                               u'line 2 column 22'},
-                     {'missingEntity': u'bar'}]
+                               u'line 2 column 22'}]
                 }
              })
         mergefile = mozpath.join(self.tmp, "merge", "l10n.dtd")

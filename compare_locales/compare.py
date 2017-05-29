@@ -116,17 +116,19 @@ class AddRemove(object):
         self.key = key
 
     def set_left(self, left):
-        if not isinstance(left, set):
-            left = set(l for l in left)
+        if not isinstance(left, list):
+            left = list(l for l in left)
         self.left = left
 
     def set_right(self, right):
-        if not isinstance(right, set):
-            right = set(l for l in right)
+        if not isinstance(right, list):
+            right = list(l for l in right)
         self.right = right
 
     def __iter__(self):
-        for item in sorted(self.left | self.right, key=self.key):
+        all_items = self.left[:]
+        all_items.extend(k for k in self.right if k not in self.left)
+        for item in sorted(all_items, key=self.key):
             if item in self.left and item in self.right:
                 yield ('equal', item)
             elif item in self.left:
@@ -321,6 +323,19 @@ class Observer(object):
         return 'observer'
 
 
+class indexof(object):
+    def __init__(self, ref_map):
+        self.ref_map = ref_map
+        self.off = [-1, 0]
+
+    def __call__(self, key):
+        if key in self.ref_map:
+            self.off = [self.ref_map[key], 0]
+        else:
+            self.off[1] += 1
+        return self.off
+
+
 class ContentComparer:
     keyRE = re.compile('[kK]ey')
     nl = re.compile('\n', re.M)
@@ -427,8 +442,7 @@ class ContentComparer:
             self.notify('error', ref_file, str(e))
             return
         ref = p.parse()
-        ref_list = ref[1].keys()
-        ref_list.sort()
+        ref_list = sorted(ref[1].keys(), key=lambda k: ref[1][k])
         try:
             p.readContents(l10n.getContents())
             l10n_entities, l10n_map = p.parse()
@@ -437,9 +451,8 @@ class ContentComparer:
             self.notify('error', l10n, str(e))
             return
 
-        l10n_list = l10n_map.keys()
-        l10n_list.sort()
-        ar = AddRemove()
+        l10n_list = sorted(l10n_map.keys(), key=lambda k: l10n_map[k])
+        ar = AddRemove(key=indexof(ref[1]))
         ar.set_left(ref_list)
         ar.set_right(l10n_list)
         report = missing = obsolete = changed = unchanged = keys = 0
