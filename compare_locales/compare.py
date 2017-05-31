@@ -180,8 +180,11 @@ class Observer(object):
     def updateStats(self, file, stats):
         # in multi-project scenarios, this file might not be ours,
         # check that.
+        # Pass in a dummy entity key '' to avoid getting in to
+        # generic file filters. If we have stats for those,
+        # we want to aggregate the counts
         if (self.filter is not None and
-                self.filter(file) in (None, 'ignore')):
+                self.filter(file, entity='') == 'ignore'):
             return
         for category, value in stats.iteritems():
             self.summary[file.locale][category] += value
@@ -577,6 +580,7 @@ def compareProjects(project_configs, stat_observer=None,
     for locale in sorted(locales):
         files = paths.ProjectFiles(locale, project_configs,
                                    mergebase=merge_stage)
+        root = mozpath.commonprefix([m['l10n'].prefix for m in files.matchers])
         if merge_stage is not None:
             if clobber_merge:
                 mergematchers = set(_m.get('merge') for _m in files.matchers)
@@ -589,11 +593,15 @@ def compareProjects(project_configs, stat_observer=None,
         for l10npath, refpath, mergepath, extra_tests in files:
             # module and file path are needed for legacy filter.py support
             module = None
-            fpath = None
+            fpath = mozpath.relpath(l10npath, root)
             for _m in files.matchers:
                 if _m['l10n'].match(l10npath):
-                    module = _m.get('module')
-                    fpath = mozpath.relpath(l10npath, _m['l10n'].prefix)
+                    if _m['module']:
+                        # legacy ini support, set module, and resolve
+                        # local path against the matcher prefix,
+                        # which includes the module
+                        module = _m['module']
+                        fpath = mozpath.relpath(l10npath, _m['l10n'].prefix)
                     break
             reffile = paths.File(refpath, fpath or refpath, module=module)
             l10n = paths.File(l10npath, fpath or l10npath,

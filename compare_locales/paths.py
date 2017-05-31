@@ -8,6 +8,7 @@ from ConfigParser import ConfigParser, NoSectionError, NoOptionError
 from collections import defaultdict
 import itertools
 from compare_locales import util, mozpath
+import pytoml as toml
 
 
 class Matcher(object):
@@ -71,7 +72,7 @@ class ProjectConfig(object):
         self.rules = []
         self.locales = []
         self.environ = {}
-        self.projects = []  # TODO: add support for sub-projects
+        self.children = []
 
     variable = re.compile('{\s*([\w]+)\s*}')
 
@@ -91,6 +92,11 @@ class ProjectConfig(object):
         def lazy_l10n_expanded_pattern(env):
             return Matcher(self.expand(pattern, env))
         return lazy_l10n_expanded_pattern
+
+    def add_global_environment(self, **kwargs):
+        self.add_environment(**kwargs)
+        for child in self.children:
+            child.add_global_environment(**kwargs)
 
     def add_environment(self, **kwargs):
         self.environ.update(kwargs)
@@ -145,24 +151,73 @@ class ProjectConfig(object):
         for rule in rules:
             self.rules.extend(self._compile_rule(rule))
 
+    def add_child(self, child):
+        self.children.append(child)
+
+    def set_locales(self, locales):
+        self.locales = locales
+        for child in self.children:
+            if not child.locales:
+                child.set_locales(locales)
+            else:
+                locs = [loc for loc in locales if loc in child.locales]
+                child.set_locales(locs)
+
+    @property
+    def configs(self):
+        'Recursively get all configs in this project and its children'
+        yield self
+        for child in self.children:
+            for config in child.configs:
+                yield config
+
     def filter(self, l10n_file, entity=None):
         '''Filter a localization file or entities within, according to
         this configuration file.'''
         if self.filter_py is not None:
             return self.filter_py(l10n_file.module, l10n_file.file,
                                   entity=entity)
-        for rule in reversed(self.rules):
-            matcher = rule['path']({
-                    "locale": l10n_file.locale
+        rv = self._filter(l10n_file, entity=entity)
+        if rv is None:
+            return 'ignore'
+        return rv
+
+    def _filter(self, l10n_file, entity=None):
+        actions = set(
+            child._filter(l10n_file, entity=entity)
+            for child in self.children)
+        if 'error' in actions:
+            # return early if we know we'll error
+            return 'error'
+
+        found = False
+        for paths in reversed(self.paths):
+            if (paths['l10n']({"locale": l10n_file.locale})
+                    .match(l10n_file.fullpath)):
+                found = True
+                break
+        if found:
+            action = 'error'
+            for rule in reversed(self.rules):
+                matcher = rule['path']({
+                        "locale": l10n_file.locale
                 })
-            if not matcher.match(l10n_file.fullpath):
-                continue
-            if ('key' in rule) ^ (entity is not None):
-                # key/file mismatch, not a matching rule
-                continue
-            if 'key' in rule and not rule['key'].match(entity.key):
-                continue
-            return rule['action']
+                if not matcher.match(l10n_file.fullpath):
+                    continue
+                if ('key' in rule) ^ (entity is not None):
+                    # key/file mismatch, not a matching rule
+                    continue
+                if 'key' in rule and not rule['key'].match(entity):
+                    continue
+                action = rule['action']
+                break
+            actions.add(action)
+        if 'error' in actions:
+            return 'error'
+        if 'warning' in actions:
+            return 'warning'
+        if 'ignore' in actions:
+            return 'ignore'
 
     def _compile_rule(self, rule):
         assert 'path' in rule
@@ -203,7 +258,10 @@ class ProjectFiles(object):
         self.locale = locale
         self.matchers = []
         self.mergebase = mergebase
-        for pc in projects:
+        configs = []
+        for project in projects:
+            configs.extend(project.configs)
+        for pc in configs:
             if locale not in pc.locales:
                 continue
             for paths in pc.paths:
@@ -291,9 +349,101 @@ class ProjectFiles(object):
         Subclasses might replace this method to support different IO
         patterns.
         '''
+        if os.path.isfile(base):
+            yield base
+            return
         for d, dirs, files in os.walk(base):
             for f in files:
                 yield mozpath.join(d, f)
+
+
+class TOMLParser(object):
+    @classmethod
+    def parse(cls, path, env=None):
+        parser = TOMLParser(path, env=env)
+        parser.load()
+        parser.processEnv()
+        parser.processPaths()
+        parser.processFilters()
+        parser.processIncludes()
+        parser.processLocales()
+        return parser.asConfig()
+
+    def __init__(self, path, env=None):
+        self.path = path
+        self.env = env if env is not None else {}
+        self.data = None
+        self.pc = ProjectConfig()
+
+    def load(self):
+        with open(self.path, 'rb') as fin:
+            self.data = toml.load(fin)
+
+    def processEnv(self):
+        assert self.data is not None
+        self.pc.add_environment(**self.data.get('env', {}))
+
+    def processLocales(self):
+        assert self.data is not None
+        if 'locales' in self.data:
+            self.pc.set_locales(self.data['locales'])
+
+    def processPaths(self):
+        assert self.data is not None
+        for data in self.data.get('paths', []):
+            l10n = data['l10n']
+            if not l10n.startswith('{'):
+                # l10n isn't relative to a variable, expand
+                l10n = self.resolvepath(l10n)
+            paths = {
+                "l10n": l10n,
+            }
+            if 'locales' in data:
+                paths['locales'] = data['locales']
+            if 'reference' in data:
+                paths['reference'] = self.resolvepath(data['reference'])
+            self.pc.add_paths(paths)
+
+    def processFilters(self):
+        assert self.data is not None
+        for data in self.data.get('filters', []):
+            paths = data['path']
+            if isinstance(paths, basestring):
+                paths = [paths]
+            # expand if path isn't relative to a variable
+            paths = [
+                self.resolvepath(path) if not path.startswith('{')
+                else path
+                for path in paths
+            ]
+            rule = {
+                "path": paths,
+                "action": data['action']
+            }
+            if 'key' in data:
+                rule['key'] = data['key']
+            self.pc.add_rules(rule)
+
+    def processIncludes(self):
+        assert self.data is not None
+        if 'includes' not in self.data:
+            return
+        for include in self.data['includes']:
+            p = include['path']
+            p = self.resolvepath(p)
+            child = TOMLParser.parse(p, env=self.env)
+            self.pc.add_child(child)
+
+    def resolvepath(self, path):
+        path = self.pc.expand(path, env=self.env)
+        path = mozpath.join(
+            mozpath.dirname(self.path),
+            self.data.get('basepath', '.'),
+            path)
+        return mozpath.normpath(path)
+
+    def asConfig(self):
+        return self.pc
 
 
 class L10nConfigParser(object):
@@ -524,7 +674,7 @@ class EnumerateApp(object):
             if module == 'mobile/android/base':
                 paths['test'] = ['android-dtd']
             projectconfig.add_paths(paths)
-            projectconfig.add_environment(l10n_base=self.l10nbase)
+            projectconfig.add_global_environment(l10n_base=self.l10nbase)
         for child in aConfig.children:
             self._config_for_ini(projectconfig, child)
 

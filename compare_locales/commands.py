@@ -9,7 +9,7 @@ from argparse import ArgumentParser
 import os
 
 from compare_locales import version
-from compare_locales.paths import EnumerateApp
+from compare_locales.paths import EnumerateApp, TOMLParser
 from compare_locales.compare import compareProjects, Observer
 
 
@@ -117,9 +117,18 @@ Be careful to specify the right merge directory when using this option.""")
         args.l10n_base_dir = all_args.pop(0)
         args.locales.extend(all_args)
         configs = []
+        config_env = {}  # Hook up commandline arguments here
         for config_path in args.config:
-            app = EnumerateApp(config_path, args.l10n_base_dir, args.locales)
-            configs.append(app.asConfig())
+            if config_path.endswith('.toml'):
+                config = TOMLParser.parse(config_path, env=config_env)
+                config.add_global_environment(l10n_base=args.l10n_base_dir)
+                if args.locales:
+                    config.set_locales(args.locales)
+                configs.append(config)
+            else:
+                app = EnumerateApp(
+                    config_path, args.l10n_base_dir, args.locales)
+                configs.append(app.asConfig())
         try:
             unified_observer = None
             if args.unified:

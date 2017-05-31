@@ -44,4 +44,7 @@ setup(name="compare-locales",
       package_data={
           'compare_locales.tests': ['data/*.properties', 'data/*.dtd']
       },
+      install_requires=[
+          'pytoml',
+      ],
       test_suite='compare_locales.tests')
