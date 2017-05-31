@@ -47,9 +47,9 @@ bar = lBar
 eff = lEff word
 """)
         cc = ContentComparer([Observer()])
-        cc.set_merge_stage(mozpath.join(self.tmp, "merge"))
         cc.compare(File(self.ref, "en-reference.properties", ""),
-                   File(self.l10n, "l10n.properties", ""))
+                   File(self.l10n, "l10n.properties", ""),
+                   mozpath.join(self.tmp, "merge", "l10n.properties"))
         self.assertDictEqual(
             cc.observers[0].toJSON(),
             {'summary':
@@ -60,7 +60,7 @@ eff = lEff word
              'details': {}
              }
         )
-        self.assert_(not os.path.exists(mozpath.join(cc.merge_stage,
+        self.assert_(not os.path.exists(mozpath.join(self.tmp, "merge",
                                                      'l10n.properties')))
 
     def testMissing(self):
@@ -71,9 +71,9 @@ eff = effVal""")
         self.localized("""bar = lBar
 """)
         cc = ContentComparer([Observer()])
-        cc.set_merge_stage(mozpath.join(self.tmp, "merge"))
         cc.compare(File(self.ref, "en-reference.properties", ""),
-                   File(self.l10n, "l10n.properties", ""))
+                   File(self.l10n, "l10n.properties", ""),
+                   mozpath.join(self.tmp, "merge", "l10n.properties"))
         self.assertDictEqual(
             cc.observers[0].toJSON(),
             {'summary':
@@ -106,9 +106,9 @@ bar = %S lBar
 eff = leffVal
 """)
         cc = ContentComparer([Observer()])
-        cc.set_merge_stage(mozpath.join(self.tmp, "merge"))
         cc.compare(File(self.ref, "en-reference.properties", ""),
-                   File(self.l10n, "l10n.properties", ""))
+                   File(self.l10n, "l10n.properties", ""),
+                   mozpath.join(self.tmp, "merge", "l10n.properties"))
         self.assertDictEqual(
             cc.observers[0].toJSON(),
             {'summary':
@@ -143,9 +143,9 @@ other = obsolete
 eff = leffVal
 """)
         cc = ContentComparer([Observer()])
-        cc.set_merge_stage(mozpath.join(self.tmp, "merge"))
         cc.compare(File(self.ref, "en-reference.properties", ""),
-                   File(self.l10n, "l10n.properties", ""))
+                   File(self.l10n, "l10n.properties", ""),
+                   mozpath.join(self.tmp, "merge", "l10n.properties"))
         self.assertDictEqual(
             cc.observers[0].toJSON(),
             {'summary':
@@ -185,9 +185,9 @@ class TestDTD(unittest.TestCase, ContentMixin):
 <!ENTITY eff 'lEff'>
 """)
         cc = ContentComparer([Observer()])
-        cc.set_merge_stage(mozpath.join(self.tmp, "merge"))
         cc.compare(File(self.ref, "en-reference.dtd", ""),
-                   File(self.l10n, "l10n.dtd", ""))
+                   File(self.l10n, "l10n.dtd", ""),
+                   mozpath.join(self.tmp, "merge", "l10n.dtd"))
         self.assertDictEqual(
             cc.observers[0].toJSON(),
             {'summary':
@@ -199,7 +199,7 @@ class TestDTD(unittest.TestCase, ContentMixin):
              }
         )
         self.assert_(
-            not os.path.exists(mozpath.join(cc.merge_stage, 'l10n.dtd')))
+            not os.path.exists(mozpath.join(self.tmp, "merge", 'l10n.dtd')))
 
     def testMissing(self):
         self.assertTrue(os.path.isdir(self.tmp))
@@ -209,9 +209,9 @@ class TestDTD(unittest.TestCase, ContentMixin):
         self.localized("""<!ENTITY bar 'lBar'>
 """)
         cc = ContentComparer([Observer()])
-        cc.set_merge_stage(mozpath.join(self.tmp, "merge"))
         cc.compare(File(self.ref, "en-reference.dtd", ""),
-                   File(self.l10n, "l10n.dtd", ""))
+                   File(self.l10n, "l10n.dtd", ""),
+                   mozpath.join(self.tmp, "merge", "l10n.dtd"))
         self.assertDictEqual(
             cc.observers[0].toJSON(),
             {'summary':
@@ -244,9 +244,9 @@ class TestDTD(unittest.TestCase, ContentMixin):
 <!ENTITY eff 'effVal'>
 """)
         cc = ContentComparer([Observer()])
-        cc.set_merge_stage(mozpath.join(self.tmp, "merge"))
         cc.compare(File(self.ref, "en-reference.dtd", ""),
-                   File(self.l10n, "l10n.dtd", ""))
+                   File(self.l10n, "l10n.dtd", ""),
+                   mozpath.join(self.tmp, "merge", "l10n.dtd"))
         self.assertDictEqual(
             cc.observers[0].toJSON(),
             {'summary':

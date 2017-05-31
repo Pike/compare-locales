@@ -262,8 +262,9 @@ class TestConfigRules(SetupMixin, unittest.TestCase):
 
 
 class MockProjectFiles(ProjectFiles):
-    def __init__(self, mocks, locale, *projects):
-        super(MockProjectFiles, self).__init__(locale, *projects)
+    def __init__(self, mocks, locale, projects, mergebase=None):
+        (super(MockProjectFiles, self)
+            .__init__(locale, projects, mergebase=mergebase))
         self.mocks = mocks
 
     def _files(self, base):
@@ -276,8 +277,9 @@ class TestProjectPaths(unittest.TestCase):
         cfg = ProjectConfig()
         cfg.locales.append('de')
         cfg.add_paths({
-            'l10n': '/tmp/{locale}/*'
+            'l10n': '{l10n_base}/{locale}/*'
         })
+        cfg.add_environment(l10n_base='/tmp')
         mocks = {
             '/tmp/de/': [
                 'good.ftl',
@@ -288,19 +290,25 @@ class TestProjectPaths(unittest.TestCase):
                 'not/subdir/bad.ftl'
             ],
         }
-        files = MockProjectFiles(mocks, 'de', cfg)
-        self.assertListEqual(list(files), [('/tmp/de/good.ftl', None, set())])
+        files = MockProjectFiles(mocks, 'de', [cfg])
+        self.assertListEqual(
+            list(files), [('/tmp/de/good.ftl', None, None, set())])
+        files = MockProjectFiles(mocks, 'de', [cfg], mergebase='merging')
+        self.assertListEqual(
+            list(files),
+            [('/tmp/de/good.ftl', None, 'merging/de/good.ftl', set())])
         # 'fr' is not in the locale list, should return no files
-        files = MockProjectFiles(mocks, 'fr', cfg)
+        files = MockProjectFiles(mocks, 'fr', [cfg])
         self.assertListEqual(list(files), [])
 
     def test_reference_path(self):
         cfg = ProjectConfig()
         cfg.locales.append('de')
         cfg.add_paths({
-            'l10n': '/tmp/l10n/{locale}/*',
+            'l10n': '{l10n_base}/{locale}/*',
             'reference': '/tmp/reference/*'
         })
+        cfg.add_environment(l10n_base='/tmp/l10n')
         mocks = {
             '/tmp/l10n/de/': [
                 'good.ftl',
@@ -315,15 +323,26 @@ class TestProjectPaths(unittest.TestCase):
                 'not/subdir/bad.ftl'
             ],
         }
-        files = MockProjectFiles(mocks, 'de', cfg)
+        files = MockProjectFiles(mocks, 'de', [cfg])
         self.assertListEqual(
             list(files),
             [
-                ('/tmp/l10n/de/good.ftl', '/tmp/reference/good.ftl', set()),
-                ('/tmp/l10n/de/ref.ftl', '/tmp/reference/ref.ftl', set()),
+                ('/tmp/l10n/de/good.ftl', '/tmp/reference/good.ftl', None,
+                 set()),
+                ('/tmp/l10n/de/ref.ftl', '/tmp/reference/ref.ftl', None,
+                 set()),
+            ])
+        files = MockProjectFiles(mocks, 'de', [cfg], mergebase='merging')
+        self.assertListEqual(
+            list(files),
+            [
+                ('/tmp/l10n/de/good.ftl', '/tmp/reference/good.ftl',
+                 'merging/de/good.ftl', set()),
+                ('/tmp/l10n/de/ref.ftl', '/tmp/reference/ref.ftl',
+                 'merging/de/ref.ftl', set()),
             ])
         # 'fr' is not in the locale list, should return no files
-        files = MockProjectFiles(mocks, 'fr', cfg)
+        files = MockProjectFiles(mocks, 'fr', [cfg])
         self.assertListEqual(list(files), [])
 
     def test_partial_l10n(self):
@@ -351,17 +370,35 @@ class TestProjectPaths(unittest.TestCase):
                 'good.ftl',
             ],
         }
-        files = MockProjectFiles(mocks, 'de', cfg)
+        files = MockProjectFiles(mocks, 'de', [cfg])
         self.assertListEqual(
             list(files),
             [
-                ('/tmp/de/major/good.ftl', None, set()),
-                ('/tmp/de/minor/good.ftl', None, set()),
+                ('/tmp/de/major/good.ftl', None, None, set()),
+                ('/tmp/de/minor/good.ftl', None, None, set()),
             ])
         # 'fr' is not in the locale list of minor, should only return major
-        files = MockProjectFiles(mocks, 'fr', cfg)
+        files = MockProjectFiles(mocks, 'fr', [cfg])
         self.assertListEqual(
             list(files),
             [
-                ('/tmp/fr/major/good.ftl', None, set()),
+                ('/tmp/fr/major/good.ftl', None, None, set()),
             ])
+
+
+class TestProjectConfig(unittest.TestCase):
+    def test_expand_paths(self):
+        pc = ProjectConfig()
+        pc.add_environment(one="first_path")
+        self.assertEqual(pc.expand('foo'), 'foo')
+        self.assertEqual(pc.expand('foo{one}bar'), 'foofirst_pathbar')
+        pc.add_environment(l10n_base='../tmp/localizations')
+        self.assertEqual(
+            pc.expand('{l}dir', {'l': '{l10n_base}/{locale}/'}),
+            '../tmp/localizations/{locale}/dir')
+        self.assertEqual(
+            pc.expand('{l}dir', {
+                'l': '{l10n_base}/{locale}/',
+                'l10n_base': '../merge-base'
+            }),
+            '../merge-base/{locale}/dir')

@@ -330,21 +330,15 @@ class ContentComparer:
         if stat_observers is None:
             stat_observers = []
         self.stat_observers = stat_observers
-        self.merge_stage = None
 
-    def set_merge_stage(self, merge_stage):
-        self.merge_stage = merge_stage
-
-    def merge(self, ref_entities, ref_map, ref_file, l10n_file, missing,
-              skips, ctx, canMerge, encoding):
-        outfile = mozpath.join(self.merge_stage, l10n_file.module,
-                               l10n_file.file)
-        outdir = mozpath.dirname(outfile)
+    def merge(self, ref_entities, ref_map, ref_file, l10n_file, merge_file,
+              missing, skips, ctx, canMerge, encoding):
+        outdir = mozpath.dirname(merge_file)
         if not os.path.isdir(outdir):
             os.makedirs(outdir)
         if not canMerge:
-            shutil.copyfile(ref_file.fullpath, outfile)
-            print "copied reference to " + outfile
+            shutil.copyfile(ref_file.fullpath, merge_file)
+            print "copied reference to " + merge_file
             return
         if skips:
             # skips come in ordered by key name, we need them in file order
@@ -355,7 +349,7 @@ class ContentComparer:
                      if not isinstance(skip, parser.Junk)])
         if skips:
             # we need to skip a few errornous blocks in the input, copy by hand
-            f = codecs.open(outfile, 'wb', encoding)
+            f = codecs.open(merge_file, 'wb', encoding)
             offset = 0
             for skip in skips:
                 chunk = skip.span
@@ -363,9 +357,9 @@ class ContentComparer:
                 offset = chunk[1]
             f.write(ctx.contents[offset:])
         else:
-            shutil.copyfile(l10n_file.fullpath, outfile)
-            f = codecs.open(outfile, 'ab', encoding)
-        print "adding to " + outfile
+            shutil.copyfile(l10n_file.fullpath, merge_file)
+            f = codecs.open(merge_file, 'ab', encoding)
+        print "adding to " + merge_file
 
         def ensureNewline(s):
             if not s.endswith('\n'):
@@ -416,7 +410,7 @@ class ContentComparer:
         self.notify('obsoleteFile', obsolete, None)
         pass
 
-    def compare(self, ref_file, l10n, extra_tests=None):
+    def compare(self, ref_file, l10n, merge_file, extra_tests=None):
         try:
             p = parser.getParser(ref_file.file)
         except UserWarning:
@@ -473,7 +467,7 @@ class ContentComparer:
                     self.notify('error', l10n,
                                 'Unparsed content "%s" from line %d column %d'
                                 ' to line %d column %d' % params)
-                    if self.merge_stage is not None:
+                    if merge_file is not None:
                         skips.append(junk)
                 elif self.notify('obsoleteEntity', l10n,
                                  entity) != 'ignore':
@@ -509,16 +503,16 @@ class ContentComparer:
                         else:
                             _l, col = l10nent.value_position(pos)
                         # skip error entities when merging
-                        if tp == 'error' and self.merge_stage is not None:
+                        if tp == 'error' and merge_file is not None:
                             skips.append(l10nent)
                         self.notify(tp, l10n,
                                     u"%s at line %d, column %d for %s" %
                                     (msg, _l, col, refent.key))
                 pass
-        if self.merge_stage is not None and (missings or skips):
+        if merge_file is not None and (missings or skips):
             self.merge(
                 ref[0], ref[1], ref_file,
-                l10n, missings, skips, l10n_ctx,
+                l10n, merge_file, missings, skips, l10n_ctx,
                 p.canMerge, p.encoding)
         stats = {}
         for cat, value in (
@@ -581,19 +575,19 @@ def compareProjects(project_configs, stat_observer=None,
         stat_observers = None
     comparer = ContentComparer(observers, stat_observers=stat_observers)
     for locale in sorted(locales):
-        files = paths.ProjectFiles(locale, *project_configs)
+        files = paths.ProjectFiles(locale, project_configs,
+                                   mergebase=merge_stage)
         if merge_stage is not None:
-            mergedir = merge_stage.format(ab_CD=locale)
-            comparer.set_merge_stage(mergedir)
             if clobber_merge:
-                modules = set(_m.get('module') for _m in files.matchers)
-                modules.discard(None)
-                for module in modules:
-                    clobberdir = mozpath.join(mergedir, module)
+                mergematchers = set(_m.get('merge') for _m in files.matchers)
+                mergematchers.discard(None)
+                for matcher in mergematchers:
+                    clobberdir = matcher.prefix
                     if os.path.exists(clobberdir):
                         shutil.rmtree(clobberdir)
                         print "clobbered " + clobberdir
-        for l10npath, refpath, extra_tests in files:
+        for l10npath, refpath, mergepath, extra_tests in files:
+            # module and file path are needed for legacy filter.py support
             module = None
             fpath = None
             for _m in files.matchers:
@@ -610,5 +604,5 @@ def compareProjects(project_configs, stat_observer=None,
             if not os.path.exists(refpath):
                 comparer.remove(l10n)
                 continue
-            comparer.compare(reffile, l10n, extra_tests)
+            comparer.compare(reffile, l10n, mergepath, extra_tests)
     return observers

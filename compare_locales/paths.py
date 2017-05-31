@@ -19,13 +19,10 @@ class Matcher(object):
     the own matches in a path on a different Matcher. compare-locales
     uses that to transform l10n and en-US paths back and forth.
     '''
-    _locale = re.compile(r'\{\s*locale\s*\}')
 
-    def __init__(self, pattern, locale=None):
+    def __init__(self, pattern):
         '''Create regular expression similar to mozpath.match().
         '''
-        if locale is not None:
-            pattern = self._locale.sub(locale, pattern)
         prefix = pattern.split("*", 1)[0]
         p = re.escape(pattern)
         p = re.sub(r'(^|\\\/)\\\*\\\*\\\/', r'\1(.+/)?', p)
@@ -73,7 +70,30 @@ class ProjectConfig(object):
         self.paths = []
         self.rules = []
         self.locales = []
+        self.environ = {}
         self.projects = []  # TODO: add support for sub-projects
+
+    variable = re.compile('{\s*([\w]+)\s*}')
+
+    def expand(self, path, env=None):
+        if env is None:
+            env = {}
+
+        def _expand(m):
+            _var = m.group(1)
+            for _env in (env, self.environ):
+                if _var in _env:
+                    return self.expand(_env[_var], env)
+            return '{{{}}}'.format(_var)
+        return self.variable.sub(_expand, path)
+
+    def lazy_expand(self, pattern):
+        def lazy_l10n_expanded_pattern(env):
+            return Matcher(self.expand(pattern, env))
+        return lazy_l10n_expanded_pattern
+
+    def add_environment(self, **kwargs):
+        self.environ.update(kwargs)
 
     def add_paths(self, *paths):
         '''Add path dictionaries to this config.
@@ -81,11 +101,11 @@ class ProjectConfig(object):
         `reference` is also required.
         An optional key `test` is allowed to enable additional tests for this
         path pattern.
-        TODO: We may support an additional locale key in the future.
         '''
+
         for d in paths:
             rv = {
-                'l10n': d['l10n'],
+                'l10n': self.lazy_expand(d['l10n']),
                 'module': d.get('module')
             }
             if 'reference' in d:
@@ -132,9 +152,9 @@ class ProjectConfig(object):
             return self.filter_py(l10n_file.module, l10n_file.file,
                                   entity=entity)
         for rule in reversed(self.rules):
-            matcher = Matcher(
-                rule['path'],
-                l10n_file.locale)
+            matcher = rule['path']({
+                    "locale": l10n_file.locale
+                })
             if not matcher.match(l10n_file.fullpath):
                 continue
             if ('key' in rule) ^ (entity is not None):
@@ -146,13 +166,15 @@ class ProjectConfig(object):
 
     def _compile_rule(self, rule):
         assert 'path' in rule
-        if not isinstance(rule['path'], basestring):
+        if isinstance(rule['path'], list):
             for path in rule['path']:
                 _rule = rule.copy()
-                _rule['path'] = path
+                _rule['path'] = self.lazy_expand(path)
                 for __rule in self._compile_rule(_rule):
                     yield __rule
             return
+        if isinstance(rule['path'], basestring):
+            rule['path'] = self.lazy_expand(rule['path'])
         if 'key' not in rule:
             yield rule
             return
@@ -177,9 +199,10 @@ class ProjectFiles(object):
     '''Iterator object to get all files and tests for a locale and a
     list of ProjectConfigs.
     '''
-    def __init__(self, locale, *projects):
+    def __init__(self, locale, projects, mergebase=None):
         self.locale = locale
         self.matchers = []
+        self.mergebase = mergebase
         for pc in projects:
             if locale not in pc.locales:
                 continue
@@ -187,11 +210,18 @@ class ProjectFiles(object):
                 if 'locales' in paths and locale not in paths['locales']:
                     continue
                 m = {
-                    'l10n': Matcher(paths['l10n'], locale),
-                    'module': paths.get('module')
+                    'l10n': paths['l10n']({
+                        "locale": locale
+                    }),
+                    'module': paths.get('module'),
                 }
                 if 'reference' in paths:
                     m['reference'] = paths['reference']
+                if self.mergebase is not None:
+                    m['merge'] = paths['l10n']({
+                        "locale": locale,
+                        "l10n_base": self.mergebase
+                    })
                 m['test'] = set(paths.get('test', []))
                 if 'locales' in paths:
                     m['locales'] = paths['locales'][:]
@@ -234,6 +264,9 @@ class ProjectFiles(object):
                     if 'reference' in matchers:
                         known[path]['reference'] = matcher.sub(
                             matchers['reference'], path)
+                    if 'merge' in matchers:
+                        known[path]['merge'] = matcher.sub(
+                            matchers['merge'], path)
             if 'reference' not in matchers:
                 continue
             matcher = matchers['reference']
@@ -246,8 +279,11 @@ class ProjectFiles(object):
                         'reference': path,
                         'test': matchers.get('test')
                     }
+                    if 'merge' in matchers:
+                        known[l10npath]['merge'] = \
+                            matcher.sub(matchers['merge'], path)
         for path, d in sorted(known.items()):
-            yield (path, d.get('reference'), d['test'])
+            yield (path, d.get('reference'), d.get('merge'), d['test'])
 
     def _files(self, base):
         '''Base implementation of getting all files in a hierarchy
@@ -482,12 +518,13 @@ class EnumerateApp(object):
                 'module': module,
                 'reference': mozpath.normpath('%s/%s/locales/en-US/**' %
                                               (basepath, module)),
-                'l10n': mozpath.normpath('%s/{locale}/%s/**' %
-                                         (self.l10nbase, module))
+                'l10n': mozpath.normpath('{l10n_base}/{locale}/%s/**' %
+                                         module)
             }
             if module == 'mobile/android/base':
                 paths['test'] = ['android-dtd']
             projectconfig.add_paths(paths)
+            projectconfig.add_environment(l10n_base=self.l10nbase)
         for child in aConfig.children:
             self._config_for_ini(projectconfig, child)
 
