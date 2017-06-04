@@ -73,6 +73,7 @@ class ProjectConfig(object):
         self.locales = []
         self.environ = {}
         self.children = []
+        self._cache = None
 
     variable = re.compile('{\s*([\w]+)\s*}')
 
@@ -182,6 +183,28 @@ class ProjectConfig(object):
             return 'ignore'
         return rv
 
+    class FilterCache(object):
+        def __init__(self, locale):
+            self.locale = locale
+            self.rules = []
+            self.l10n_paths = []
+
+    def cache(self, locale):
+        if self._cache and self._cache.locale == locale:
+            return self._cache
+        self._cache = self.FilterCache(locale)
+        for paths in self.paths:
+            self._cache.l10n_paths.append(paths['l10n']({
+                "locale": locale
+            }))
+        for rule in self.rules:
+            cached_rule = rule.copy()
+            cached_rule['path'] = rule['path']({
+                "locale": locale
+            })
+            self._cache.rules.append(cached_rule)
+        return self._cache
+
     def _filter(self, l10n_file, entity=None):
         actions = set(
             child._filter(l10n_file, entity=entity)
@@ -190,19 +213,11 @@ class ProjectConfig(object):
             # return early if we know we'll error
             return 'error'
 
-        found = False
-        for paths in reversed(self.paths):
-            if (paths['l10n']({"locale": l10n_file.locale})
-                    .match(l10n_file.fullpath)):
-                found = True
-                break
-        if found:
+        cached = self.cache(l10n_file.locale)
+        if any(p.match(l10n_file.fullpath) for p in cached.l10n_paths):
             action = 'error'
-            for rule in reversed(self.rules):
-                matcher = rule['path']({
-                        "locale": l10n_file.locale
-                })
-                if not matcher.match(l10n_file.fullpath):
+            for rule in reversed(cached.rules):
+                if not rule['path'].match(l10n_file.fullpath):
                     continue
                 if ('key' in rule) ^ (entity is not None):
                     # key/file mismatch, not a matching rule
