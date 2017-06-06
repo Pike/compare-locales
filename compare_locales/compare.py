@@ -29,8 +29,10 @@ class Tree(object):
     def __getitem__(self, leaf):
         parts = []
         if isinstance(leaf, paths.File):
-            parts = [p for p in [leaf.locale, leaf.module] if p] + \
-                leaf.file.split('/')
+            parts = [] if not leaf.locale else [leaf.locale]
+            if leaf.module:
+                parts += leaf.module.split('/')
+            parts += leaf.file.split('/')
         else:
             parts = leaf.split('/')
         return self.__get(parts)
