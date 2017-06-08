@@ -77,16 +77,16 @@ data in a json useful for Exhibit
 
 class CompareLocales(BaseCommand):
     """Check the localization status of gecko applications.
-The first arguments are paths to the l10n.ini files for the applications,
-followed by the base directory of the localization repositories.
+The first arguments are paths to the l10n.ini or toml files for the
+applications, followed by the base directory of the localization repositories.
 Then you pass in the list of locale codes you want to compare. If there are
-not locales given, the list of locales will be taken from the all-locales file
-of the application\'s l10n.ini."""
+not locales given, the list of locales will be taken from the l10n.toml file
+or the all-locales file referenced by the application\'s l10n.ini."""
 
     def get_parser(self):
         parser = super(CompareLocales, self).get_parser()
-        parser.add_argument('config', metavar='l10n.ini', nargs='+',
-                            help='INI file for the project')
+        parser.add_argument('config', metavar='l10n.toml', nargs='+',
+                            help='TOML or INI file for the project')
         parser.add_argument('l10n_base_dir', metavar='l10n-base-dir',
                             help='Parent directory of localizations')
         parser.add_argument('locales', nargs='*', metavar='locale-code',
@@ -112,8 +112,15 @@ Be careful to specify the right merge directory when using this option.""")
         all_args = args.config + [args.l10n_base_dir] + args.locales
         del args.config[:]
         del args.locales[:]
-        while all_args and os.path.isfile(all_args[0]):
+        while all_args and not os.path.isdir(all_args[0]):
             args.config.append(all_args.pop(0))
+        if not args.config:
+            self.parser.error('no configuration file given')
+        for cf in args.config:
+            if not os.path.isfile(cf):
+                self.parser.error('config file %s not found' % cf)
+        if not all_args:
+            self.parser.error('l10n-base-dir not found')
         args.l10n_base_dir = all_args.pop(0)
         args.locales.extend(all_args)
         configs = []
