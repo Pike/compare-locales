@@ -5,6 +5,7 @@
 import re
 import bisect
 import codecs
+from collections import Counter
 import logging
 
 from fluent.syntax import FluentParser as FTLParser
@@ -309,6 +310,13 @@ class Parser(object):
         self.last_comment = ''
         return Entity(ctx, pre_comment,
                       *[m.span(i) for i in xrange(6)])
+
+    @classmethod
+    def findDuplicates(cls, entities):
+        found = Counter(entity.key for entity in entities)
+        for entity_id, cnt in found.items():
+            if cnt > 1:
+                yield '{} occurs {} times'.format(entity_id, cnt)
 
 
 def getParser(path):

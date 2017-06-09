@@ -162,6 +162,39 @@ eff = leffVal
                 }
              })
 
+    def test_duplicate(self):
+        self.assertTrue(os.path.isdir(self.tmp))
+        self.reference("""foo = fooVal
+bar = barVal
+eff = effVal
+foo = other val for foo""")
+        self.localized("""foo = localized
+bar = lBar
+eff = localized eff
+bar = duplicated bar
+""")
+        cc = ContentComparer([Observer()])
+        cc.compare(File(self.ref, "en-reference.properties", ""),
+                   File(self.l10n, "l10n.properties", ""),
+                   mozpath.join(self.tmp, "merge", "l10n.properties"))
+        self.assertDictEqual(
+            cc.observers[0].toJSON(),
+            {'summary':
+                {None: {
+                    'errors': 1,
+                    'warnings': 1,
+                    'changed': 3,
+                    'changed_w': 6
+                }},
+             'details': {
+                 'l10n.properties': [
+                     {'warning': u'foo occurs 2 times'},
+                     {'error': u'bar occurs 2 times'}]
+                }
+             })
+        mergefile = mozpath.join(self.tmp, "merge", "l10n.properties")
+        self.assertFalse(os.path.isfile(mergefile))
+
 
 class TestDTD(unittest.TestCase, ContentMixin):
     extension = '.dtd'
@@ -690,6 +723,71 @@ bar = lBar
         # validate merge results
         mergepath = mozpath.join(self.tmp, "merge", "l10n.ftl")
         self.assert_(not os.path.exists(mergepath))
+
+    def test_duplicate(self):
+        self.assertTrue(os.path.isdir(self.tmp))
+        self.reference("""foo = fooVal
+bar = barVal
+eff = effVal
+foo = other val for foo""")
+        self.localized("""foo = localized
+bar = lBar
+eff = localized eff
+bar = duplicated bar
+""")
+        cc = ContentComparer([Observer()])
+        cc.compare(File(self.ref, "en-reference.ftl", ""),
+                   File(self.l10n, "l10n.ftl", ""),
+                   mozpath.join(self.tmp, "merge", "l10n.ftl"))
+        self.assertDictEqual(
+            cc.observers[0].toJSON(),
+            {'summary':
+                {None: {
+                    'errors': 1,
+                    'warnings': 1,
+                    'changed': 3,
+                    'changed_w': 6
+                }},
+             'details': {
+                 'l10n.ftl': [
+                     {'warning': u'foo occurs 2 times'},
+                     {'error': u'bar occurs 2 times'}]
+                }
+             })
+        mergefile = mozpath.join(self.tmp, "merge", "l10n.ftl")
+        self.assertFalse(os.path.isfile(mergefile))
+
+    def test_duplicate_attributes(self):
+        self.assertTrue(os.path.isdir(self.tmp))
+        self.reference("""foo = fooVal
+    .attr = good""")
+        self.localized("""foo = localized
+    .attr = not
+    .attr = so
+    .attr = good
+""")
+        cc = ContentComparer([Observer()])
+        cc.compare(File(self.ref, "en-reference.ftl", ""),
+                   File(self.l10n, "l10n.ftl", ""),
+                   mozpath.join(self.tmp, "merge", "l10n.ftl"))
+        self.assertDictEqual(
+            cc.observers[0].toJSON(),
+            {'summary':
+                {None: {
+                    'warnings': 1,
+                    'changed': 1,
+                    'changed_w': 2
+                }},
+             'details': {
+                 'l10n.ftl': [
+                     {'warning':
+                      u'Attribute "attr" occurs 3 times '
+                      u'at line 4, column 5 for foo'
+                      }]
+                }
+             })
+        mergefile = mozpath.join(self.tmp, "merge", "l10n.ftl")
+        self.assertFalse(os.path.isfile(mergefile))
 
 
 if __name__ == '__main__':

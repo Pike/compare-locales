@@ -3,6 +3,7 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 import re
+from collections import Counter
 from difflib import SequenceMatcher
 from xml import sax
 try:
@@ -445,9 +446,21 @@ class FluentChecker(Checker):
         ref_attr_names = set((attr.id.name for attr in ref_entry.attributes))
         ref_pos = dict((attr.id.name, i)
                        for i, attr in enumerate(ref_entry.attributes))
-        l10n_attr_names = set((attr.id.name for attr in l10n_entry.attributes))
+        l10n_attr_counts = \
+            Counter(attr.id.name for attr in l10n_entry.attributes)
+        l10n_attr_names = set(l10n_attr_counts)
         l10n_pos = dict((attr.id.name, i)
                         for i, attr in enumerate(l10n_entry.attributes))
+        # check for duplicate Attributes
+        # only warn to not trigger a merge skip
+        for attr_name, cnt in l10n_attr_counts.items():
+            if cnt > 1:
+                yield (
+                    'warning',
+                    l10n_entry.attributes[l10n_pos[attr_name]].span.start,
+                    'Attribute "{}" occurs {} times'.format(
+                        attr_name, cnt),
+                    'fluent')
 
         missing_attr_names = sorted(ref_attr_names - l10n_attr_names,
                                     key=lambda k: ref_pos[k])

@@ -474,6 +474,10 @@ class ContentComparer:
         skips = []
         checker = getChecker(l10n,
                              reference=ref_entities, extra_tests=extra_tests)
+        for msg in p.findDuplicates(ref_entities):
+            self.notify('warning', l10n, msg)
+        for msg in p.findDuplicates(l10n_entities):
+            self.notify('error', l10n, msg)
         for action, entity_id in ar:
             if action == 'delete':
                 # missing entity
