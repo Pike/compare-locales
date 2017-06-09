@@ -463,6 +463,9 @@ class ContentComparer:
         for action, entity in ar:
             if action == 'delete':
                 # missing entity
+                if isinstance(ref[0][ref[1][entity]], parser.Junk):
+                    self.notify('warning', l10n, 'Parser error in en-US')
+                    continue
                 _rv = self.notify('missingEntity', l10n, entity)
                 if _rv == "ignore":
                     continue
@@ -563,7 +566,9 @@ class ContentComparer:
         except Exception, e:
             self.notify('error', f, str(e))
             return
-        self.updateStats(missing, {'missingInFiles': len(map)})
+        # strip parse errors
+        entities = [e for e in entities if not isinstance(e, parser.Junk)]
+        self.updateStats(missing, {'missingInFiles': len(entities)})
         missing_w = 0
         for e in entities:
             missing_w += self.countWords(e.val)

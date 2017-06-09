@@ -273,6 +273,61 @@ class TestDTD(unittest.TestCase, ContentMixin):
         [m, n] = p.parse()
         self.assertEqual(map(lambda e: e.key,  m), ["foo", "eff", "bar"])
 
+    def test_reference_junk(self):
+        self.assertTrue(os.path.isdir(self.tmp))
+        self.reference("""<!ENTITY foo 'fooVal'>
+<!ENT bar 'bad val'>
+<!ENTITY eff 'effVal'>""")
+        self.localized("""<!ENTITY foo 'fooVal'>
+<!ENTITY eff 'effVal'>
+""")
+        cc = ContentComparer([Observer()])
+        cc.compare(File(self.ref, "en-reference.dtd", ""),
+                   File(self.l10n, "l10n.dtd", ""),
+                   mozpath.join(self.tmp, "merge", "l10n.dtd"))
+        self.assertDictEqual(
+            cc.observers[0].toJSON(),
+            {'summary':
+                {None: {
+                    'warnings': 1,
+                    'unchanged': 2,
+                    'unchanged_w': 2
+                }},
+             'details': {
+                 'l10n.dtd': [
+                     {'warning': 'Parser error in en-US'}]
+                }
+             })
+
+    def test_reference_xml_error(self):
+        self.assertTrue(os.path.isdir(self.tmp))
+        self.reference("""<!ENTITY foo 'fooVal'>
+<!ENTITY bar 'bad &val'>
+<!ENTITY eff 'effVal'>""")
+        self.localized("""<!ENTITY foo 'fooVal'>
+<!ENTITY bar 'good val'>
+<!ENTITY eff 'effVal'>
+""")
+        cc = ContentComparer([Observer()])
+        cc.compare(File(self.ref, "en-reference.dtd", ""),
+                   File(self.l10n, "l10n.dtd", ""),
+                   mozpath.join(self.tmp, "merge", "l10n.dtd"))
+        self.assertDictEqual(
+            cc.observers[0].toJSON(),
+            {'summary':
+                {None: {
+                    'warnings': 1,
+                    'unchanged': 2,
+                    'unchanged_w': 2,
+                    'changed': 1,
+                    'changed_w': 2
+                }},
+             'details': {
+                 'l10n.dtd': [
+                     {'warning': u"can't parse en-US value at line 1, column 0 for bar"}]
+                }
+             })
+
 
 if __name__ == '__main__':
     unittest.main()
