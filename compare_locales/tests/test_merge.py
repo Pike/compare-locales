@@ -324,7 +324,8 @@ class TestDTD(unittest.TestCase, ContentMixin):
                 }},
              'details': {
                  'l10n.dtd': [
-                     {'warning': u"can't parse en-US value at line 1, column 0 for bar"}]
+                     {'warning': u"can't parse en-US value at line 1, "
+                                 u"column 0 for bar"}]
                 }
              })
 

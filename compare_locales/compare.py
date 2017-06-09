@@ -563,8 +563,8 @@ class ContentComparer:
         try:
             p.readContents(f.getContents())
             entities, map = p.parse()
-        except Exception, e:
-            self.notify('error', f, str(e))
+        except Exception, ex:
+            self.notify('error', f, str(ex))
             return
         # strip parse errors
         entities = [e for e in entities if not isinstance(e, parser.Junk)]
