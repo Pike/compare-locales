@@ -454,8 +454,8 @@ class ContentComparer:
         except Exception, e:
             self.notify('error', ref_file, str(e))
             return
-        ref = p.parse()
-        ref_list = sorted(ref[1].keys(), key=lambda k: ref[1][k])
+        ref_entities, ref_map = p.parse()
+        ref_list = sorted(ref_map.keys(), key=lambda k: ref_map[k])
         try:
             p.readContents(l10n.getContents())
             l10n_entities, l10n_map = p.parse()
@@ -465,38 +465,39 @@ class ContentComparer:
             return
 
         l10n_list = sorted(l10n_map.keys(), key=lambda k: l10n_map[k])
-        ar = AddRemove(key=indexof(ref[1]))
+        ar = AddRemove(key=indexof(ref_map))
         ar.set_left(ref_list)
         ar.set_right(l10n_list)
         report = missing = obsolete = changed = unchanged = keys = 0
         missing_w = changed_w = unchanged_w = 0  # word stats
         missings = []
         skips = []
-        checker = getChecker(l10n, reference=ref[0], extra_tests=extra_tests)
-        for action, entity in ar:
+        checker = getChecker(l10n,
+                             reference=ref_entities, extra_tests=extra_tests)
+        for action, entity_id in ar:
             if action == 'delete':
                 # missing entity
-                if isinstance(ref[0][ref[1][entity]], parser.Junk):
+                if isinstance(ref_entities[ref_map[entity_id]], parser.Junk):
                     self.notify('warning', l10n, 'Parser error in en-US')
                     continue
-                _rv = self.notify('missingEntity', l10n, entity)
+                _rv = self.notify('missingEntity', l10n, entity_id)
                 if _rv == "ignore":
                     continue
                 if _rv == "error":
                     # only add to missing entities for l10n-merge on error,
                     # not report
-                    missings.append(entity)
+                    missings.append(entity_id)
                     missing += 1
-                    refent = ref[0][ref[1][entity]]
+                    refent = ref_entities[ref_map[entity_id]]
                     missing_w += refent.count_words()
                 else:
                     # just report
                     report += 1
             elif action == 'add':
                 # obsolete entity or junk
-                if isinstance(l10n_entities[l10n_map[entity]],
+                if isinstance(l10n_entities[l10n_map[entity_id]],
                               parser.Junk):
-                    junk = l10n_entities[l10n_map[entity]]
+                    junk = l10n_entities[l10n_map[entity_id]]
                     params = (junk.val,) + junk.position() + junk.position(-1)
                     self.notify('error', l10n,
                                 'Unparsed content "%s" from line %d column %d'
@@ -504,13 +505,13 @@ class ContentComparer:
                     if merge_file is not None:
                         skips.append(junk)
                 elif self.notify('obsoleteEntity', l10n,
-                                 entity) != 'ignore':
+                                 entity_id) != 'ignore':
                     obsolete += 1
             else:
                 # entity found in both ref and l10n, check for changed
-                refent = ref[0][ref[1][entity]]
-                l10nent = l10n_entities[l10n_map[entity]]
-                if self.keyRE.search(entity):
+                refent = ref_entities[ref_map[entity_id]]
+                l10nent = l10n_entities[l10n_map[entity_id]]
+                if self.keyRE.search(entity_id):
                     keys += 1
                 else:
                     if refent.equals(l10nent):
@@ -535,7 +536,7 @@ class ContentComparer:
 
         if merge_file is not None:
             self.merge(
-                ref[0], ref[1], ref_file,
+                ref_entities, ref_map, ref_file,
                 l10n, merge_file, missings, skips, l10n_ctx,
                 p.capabilities, p.encoding)
 
