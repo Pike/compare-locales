@@ -7,7 +7,23 @@ import bisect
 import codecs
 import logging
 
+from fluent.syntax import FluentParser as FTLParser
+from fluent.syntax import ast as ftl
+
 __constructors = []
+
+
+# The allowed capabilities for the Parsers.  They define the exact strategy
+# used by ContentComparer.merge.
+
+# Don't perform any merging
+CAN_NONE = 0
+# Copy the entire reference file
+CAN_COPY = 1
+# Remove broken entities from localization
+CAN_SKIP = 2
+# Add missing and broken entities from the reference to localization
+CAN_MERGE = 4
 
 
 class EntityBase(object):
@@ -99,9 +115,35 @@ class EntityBase(object):
     def __repr__(self):
         return self.key
 
+    re_br = re.compile('<br\s*/?>', re.U)
+    re_sgml = re.compile('</?\w+.*?>', re.U | re.M)
+
+    def count_words(self):
+        """Count the words in an English string.
+        Replace a couple of xml markup to make that safer, too.
+        """
+        value = self.re_br.sub(u'\n', self.val)
+        value = self.re_sgml.sub(u'', value)
+        return len(value.split())
+
+    def __eq__(self, other):
+        return self.key == other.key and self.val == other.val
+
 
 class Entity(EntityBase):
-    pass
+    def value_position(self, offset=0):
+        # DTDChecker already returns tuples of (line, col) positions
+        if isinstance(offset, tuple):
+            line_pos, col_pos = offset
+            line, col = super(Entity, self).value_position()
+            if line_pos == 1:
+                col = col + col_pos
+            else:
+                col = col_pos
+                line += line_pos - 1
+            return line, col
+        else:
+            return super(Entity, self).value_position(offset)
 
 
 class Comment(EntityBase):
@@ -180,8 +222,8 @@ class Whitespace(EntityBase):
         return self.raw_val
 
 
-class Parser:
-    canMerge = True
+class Parser(object):
+    capabilities = CAN_SKIP | CAN_MERGE
     tail = re.compile('\s+\Z')
 
     class Context(object):
@@ -468,7 +510,7 @@ class DefinesInstruction(EntityBase):
 
 class DefinesParser(Parser):
     # can't merge, #unfilter needs to be the last item, which we don't support
-    canMerge = False
+    capabilities = CAN_COPY
     tail = re.compile(r'(?!)')  # never match
 
     def __init__(self):
@@ -566,7 +608,91 @@ class IniParser(Parser):
                                 self.reComment, self.reSection, self.reKey)
 
 
+class FluentEntity(Entity):
+    # Fields ignored when comparing two entities.
+    ignored_fields = ['comment', 'span']
+
+    def __init__(self, ctx, entry):
+        start = entry.span.start
+        end = entry.span.end
+
+        self.ctx = ctx
+        self.span = (start, end)
+
+        self.key_span = (entry.id.span.start, entry.id.span.end)
+
+        if entry.value is not None:
+            self.val_span = (entry.value.span.start, entry.value.span.end)
+        else:
+            self.val_span = (0, 0)
+
+        self.entry = entry
+
+    def pp(self, value):
+        # XXX Normalize whitespace?
+        return value
+
+    _word_count = None
+
+    def count_words(self):
+        if self._word_count is None:
+            self._word_count = 0
+
+            def count_words(node):
+                if isinstance(node, ftl.TextElement):
+                    self._word_count += len(node.value.split())
+                return node
+
+            self.entry.traverse(count_words)
+
+        return self._word_count
+
+    def __eq__(self, other):
+        return self.entry.equals(
+            other.entry, ignored_fields=self.ignored_fields)
+
+    # Positions yielded by FluentChecker.check are absolute offsets from the
+    # beginning of the file.  This is different from the base Checker behavior
+    # which yields offsets from the beginning of the current entity's value.
+    def position(self, pos=None):
+        if pos is None:
+            pos = self.entry.span.start
+        return self.ctx.lines(pos)[0]
+
+    # FluentEntities don't differentiate between entity and value positions
+    # because all positions are absolute from the beginning of the file.
+    def value_position(self, pos=None):
+        return self.position(pos)
+
+
+class FluentParser(Parser):
+    capabilities = CAN_SKIP
+
+    def __init__(self):
+        super(FluentParser, self).__init__()
+        self.ftl_parser = FTLParser()
+
+    def walk(self, onlyEntities=False):
+        if not self.ctx:
+            # loading file failed, or we just didn't load anything
+            return
+        resource = self.ftl_parser.parse(self.ctx.contents)
+        for entry in resource.body:
+            if isinstance(entry, ftl.Message):
+                yield FluentEntity(self.ctx, entry)
+            elif isinstance(entry, ftl.Junk):
+                start = entry.span.start
+                end = entry.span.end
+                # strip leading whitespace
+                start += re.match('\s*', entry.content).end()
+                # strip trailing whitespace
+                ws, we = re.search('\s*$', entry.content).span()
+                end -= we - ws
+                yield Junk(self.ctx, (start, end))
+
+
 __constructors = [('\\.dtd$', DTDParser()),
                   ('\\.properties$', PropertiesParser()),
                   ('\\.ini$', IniParser()),
-                  ('\\.inc$', DefinesParser())]
+                  ('\\.inc$', DefinesParser()),
+                  ('\\.ftl$', FluentParser())]

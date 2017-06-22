@@ -179,12 +179,3 @@ missing: 15
         self.assertDictEqual(clone.summary, obs.summary)
         self.assertDictEqual(clone.details.toJSON(), obs.details.toJSON())
         self.assertDictEqual(clone.file_stats, obs.file_stats)
-
-
-class TestContentComparer(unittest.TestCase):
-    def test_word_count(self):
-        cc = compare.ContentComparer([])
-        self.assertEqual(cc.countWords('one'), 1)
-        self.assertEqual(cc.countWords('one<br>two'), 2)
-        self.assertEqual(cc.countWords('one<span>word</span>'), 1)
-        self.assertEqual(cc.countWords('one <a href="foo">two</a> three'), 3)

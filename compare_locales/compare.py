@@ -351,24 +351,35 @@ class ContentComparer:
             stat_observers = []
         self.stat_observers = stat_observers
 
-    def merge(self, ref_entities, ref_map, ref_file, l10n_file, merge_file,
-              missing, skips, ctx, canMerge, encoding):
+    def create_merge_dir(self, merge_file):
         outdir = mozpath.dirname(merge_file)
         if not os.path.isdir(outdir):
             os.makedirs(outdir)
-        if not canMerge:
+
+    def merge(self, ref_entities, ref_map, ref_file, l10n_file, merge_file,
+              missing, skips, ctx, capabilities, encoding):
+
+        if capabilities == parser.CAN_NONE:
+            return
+
+        if capabilities & parser.CAN_COPY and (skips or missing):
+            self.create_merge_dir(merge_file)
             shutil.copyfile(ref_file.fullpath, merge_file)
             print "copied reference to " + merge_file
             return
+
+        if not (capabilities & parser.CAN_SKIP):
+            return
+
+        # Start with None in case the merge file doesn't need to be created.
+        f = None
+
         if skips:
             # skips come in ordered by key name, we need them in file order
             skips.sort(key=lambda s: s.span[0])
-        trailing = (['\n'] +
-                    [ref_entities[ref_map[key]].all for key in missing] +
-                    [ref_entities[ref_map[skip.key]].all for skip in skips
-                     if not isinstance(skip, parser.Junk)])
-        if skips:
-            # we need to skip a few errornous blocks in the input, copy by hand
+
+            # we need to skip a few erroneous blocks in the input, copy by hand
+            self.create_merge_dir(merge_file)
             f = codecs.open(merge_file, 'wb', encoding)
             offset = 0
             for skip in skips:
@@ -376,18 +387,31 @@ class ContentComparer:
                 f.write(ctx.contents[offset:chunk[0]])
                 offset = chunk[1]
             f.write(ctx.contents[offset:])
-        else:
-            shutil.copyfile(l10n_file.fullpath, merge_file)
-            f = codecs.open(merge_file, 'ab', encoding)
-        print "adding to " + merge_file
 
-        def ensureNewline(s):
-            if not s.endswith('\n'):
-                return s + '\n'
-            return s
+        if not (capabilities & parser.CAN_MERGE):
+            return
 
-        f.write(''.join(map(ensureNewline, trailing)))
-        f.close()
+        if skips or missing:
+            if f is None:
+                self.create_merge_dir(merge_file)
+                shutil.copyfile(l10n_file.fullpath, merge_file)
+                f = codecs.open(merge_file, 'ab', encoding)
+
+            trailing = (['\n'] +
+                        [ref_entities[ref_map[key]].all for key in missing] +
+                        [ref_entities[ref_map[skip.key]].all for skip in skips
+                         if not isinstance(skip, parser.Junk)])
+
+            def ensureNewline(s):
+                if not s.endswith('\n'):
+                    return s + '\n'
+                return s
+
+            print "adding to " + merge_file
+            f.write(''.join(map(ensureNewline, trailing)))
+
+        if f is not None:
+            f.close()
 
     def notify(self, category, file, data):
         """Check observer for the found data, and if it's
@@ -414,17 +438,6 @@ class ContentComparer:
         """
         for observer in self.observers + self.stat_observers:
             observer.updateStats(file, stats)
-
-    br = re.compile('<br\s*/?>', re.U)
-    sgml = re.compile('</?\w+.*?>', re.U | re.M)
-
-    def countWords(self, value):
-        """Count the words in an English string.
-        Replace a couple of xml markup to make that safer, too.
-        """
-        value = self.br.sub(u'\n', value)
-        value = self.sgml.sub(u'', value)
-        return len(value.split())
 
     def remove(self, obsolete):
         self.notify('obsoleteFile', obsolete, None)
@@ -475,7 +488,7 @@ class ContentComparer:
                     missings.append(entity)
                     missing += 1
                     refent = ref[0][ref[1][entity]]
-                    missing_w += self.countWords(refent.val)
+                    missing_w += refent.count_words()
                 else:
                     # just report
                     report += 1
@@ -500,41 +513,32 @@ class ContentComparer:
                 if self.keyRE.search(entity):
                     keys += 1
                 else:
-                    if refent.val == l10nent.val:
+                    if refent == l10nent:
                         self.doUnchanged(l10nent)
                         unchanged += 1
-                        unchanged_w += self.countWords(refent.val)
+                        unchanged_w += refent.count_words()
                     else:
                         self.doChanged(ref_file, refent, l10nent)
                         changed += 1
-                        changed_w += self.countWords(refent.val)
+                        changed_w += refent.count_words()
                         # run checks:
                 if checker:
                     for tp, pos, msg, cat in checker.check(refent, l10nent):
-                        # compute real src position, if first line,
-                        # col needs adjustment
-                        if isinstance(pos, tuple):
-                            _l, col = l10nent.value_position()
-                            # line, column
-                            if pos[0] == 1:
-                                col = col + pos[1]
-                            else:
-                                col = pos[1]
-                                _l += pos[0] - 1
-                        else:
-                            _l, col = l10nent.value_position(pos)
+                        line, col = l10nent.value_position(pos)
                         # skip error entities when merging
                         if tp == 'error' and merge_file is not None:
                             skips.append(l10nent)
                         self.notify(tp, l10n,
                                     u"%s at line %d, column %d for %s" %
-                                    (msg, _l, col, refent.key))
+                                    (msg, line, col, refent.key))
                 pass
-        if merge_file is not None and (missings or skips):
+
+        if merge_file is not None:
             self.merge(
                 ref[0], ref[1], ref_file,
                 l10n, merge_file, missings, skips, l10n_ctx,
-                p.canMerge, p.encoding)
+                p.capabilities, p.encoding)
+
         stats = {}
         for cat, value in (
                 ('missing', missing),
@@ -571,7 +575,7 @@ class ContentComparer:
         self.updateStats(missing, {'missingInFiles': len(entities)})
         missing_w = 0
         for e in entities:
-            missing_w += self.countWords(e.val)
+            missing_w += e.count_words()
         self.updateStats(missing, {'missing_w': missing_w})
 
     def doUnchanged(self, entity):

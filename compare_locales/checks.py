@@ -422,9 +422,56 @@ class DTDChecker(Checker):
                 yield ('error', m.end(0)+offset, msg, 'android')
 
 
+class FluentChecker(Checker):
+    '''Tests to run on Fluent (FTL) files.
+    '''
+    pattern = re.compile('.*\.ftl')
+
+    # Positions yielded by FluentChecker.check are absolute offsets from the
+    # beginning of the file.  This is different from the base Checker behavior
+    # which yields offsets from the beginning of the current entity's value.
+    def check(self, refEnt, l10nEnt):
+        ref_entry = refEnt.entry
+        l10n_entry = l10nEnt.entry
+        # verify that values match, either both have a value or none
+        if ref_entry.value is not None and l10n_entry.value is None:
+            yield ('error', l10n_entry.span.start,
+                   'Missing value', 'fluent')
+        if ref_entry.value is None and l10n_entry.value is not None:
+            yield ('error', l10n_entry.value.span.start,
+                   'Obsolete value', 'fluent')
+
+        # verify that we're having the same set of attributes
+        ref_attr_names = set((attr.id.name for attr in ref_entry.attributes))
+        ref_pos = dict((attr.id.name, i)
+                       for i, attr in enumerate(ref_entry.attributes))
+        l10n_attr_names = set((attr.id.name for attr in l10n_entry.attributes))
+        l10n_pos = dict((attr.id.name, i)
+                        for i, attr in enumerate(l10n_entry.attributes))
+
+        missing_attr_names = sorted(ref_attr_names - l10n_attr_names,
+                                    key=lambda k: ref_pos[k])
+        for attr_name in missing_attr_names:
+            yield ('error', l10n_entry.span.start,
+                   'Missing attribute: ' + attr_name, 'fluent')
+
+        obsolete_attr_names = sorted(l10n_attr_names - ref_attr_names,
+                                     key=lambda k: l10n_pos[k])
+        obsolete_attrs = [
+            attr
+            for attr in l10n_entry.attributes
+            if attr.id.name in obsolete_attr_names
+        ]
+        for attr in obsolete_attrs:
+            yield ('error', attr.span.start,
+                   'Obsolete attribute: ' + attr.id.name, 'fluent')
+
+
 def getChecker(file, reference=None, extra_tests=None):
     if PropertiesChecker.use(file):
         return PropertiesChecker(extra_tests)
     if DTDChecker.use(file):
         return DTDChecker(extra_tests, reference)
+    if FluentChecker.use(file):
+        return FluentChecker(extra_tests)
     return None
