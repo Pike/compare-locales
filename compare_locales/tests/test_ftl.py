@@ -21,7 +21,7 @@ class TestFluentParser(ParserTestMixin, unittest.TestCase):
         self.parser.readContents(source)
         [ent2] = list(self.parser)
 
-        self.assertEqual(ent1, ent2)
+        self.assertTrue(ent1.equals(ent2))
 
     def test_equality_different_whitespace(self):
         source1 = 'foo = { $arg }'
@@ -33,7 +33,7 @@ class TestFluentParser(ParserTestMixin, unittest.TestCase):
         self.parser.readContents(source2)
         [ent2] = list(self.parser)
 
-        self.assertEqual(ent1, ent2)
+        self.assertTrue(ent1.equals(ent2))
 
     def test_word_count(self):
         self.parser.readContents('''\

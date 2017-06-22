@@ -513,7 +513,7 @@ class ContentComparer:
                 if self.keyRE.search(entity):
                     keys += 1
                 else:
-                    if refent == l10nent:
+                    if refent.equals(l10nent):
                         self.doUnchanged(l10nent)
                         unchanged += 1
                         unchanged_w += refent.count_words()

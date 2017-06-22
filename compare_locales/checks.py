@@ -10,7 +10,7 @@ try:
 except ImportError:
     from StringIO import StringIO
 
-from compare_locales.parser import DTDParser, PropertiesParser
+from compare_locales.parser import DTDParser, PropertiesEntity
 
 
 class Checker(object):
@@ -80,9 +80,9 @@ class PropertiesChecker(Checker):
             return
         # check for lost escapes
         raw_val = l10nEnt.raw_val
-        for m in PropertiesParser.escape.finditer(raw_val):
+        for m in PropertiesEntity.escape.finditer(raw_val):
             if m.group('single') and \
-               m.group('single') not in PropertiesParser.known_escapes:
+               m.group('single') not in PropertiesEntity.known_escapes:
                 yield ('warning', m.start(),
                        'unknown escape sequence, \\' + m.group('single'),
                        'escape')

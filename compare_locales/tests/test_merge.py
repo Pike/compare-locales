@@ -476,12 +476,13 @@ eff = lEff {
         p.readFile(mergepath)
         merged_entities, merged_map = p.parse()
         self.assertEqual([e.key for e in merged_entities], ["foo"])
+        merged_foo = merged_entities[merged_map['foo']]
+
         # foo should be l10n
         p.readFile(self.l10n)
         l10n_entities, l10n_map = p.parse()
-        self.assertEqual(
-            merged_entities[merged_map['foo']],
-            l10n_entities[l10n_map['foo']])
+        l10n_foo = l10n_entities[l10n_map['foo']]
+        self.assertTrue(merged_foo.equals(l10n_foo))
 
     def testMismatchingAttributes(self):
         self.reference("""
@@ -532,12 +533,13 @@ eff = lEff
         p.readFile(mergepath)
         merged_entities, merged_map = p.parse()
         self.assertEqual([e.key for e in merged_entities], ["eff"])
+        merged_eff = merged_entities[merged_map['eff']]
+
         # eff should be l10n
         p.readFile(self.l10n)
         l10n_entities, l10n_map = p.parse()
-        self.assertEqual(
-            merged_entities[merged_map['eff']],
-            l10n_entities[l10n_map['eff']])
+        l10n_eff = l10n_entities[l10n_map['eff']]
+        self.assertTrue(merged_eff.equals(l10n_eff))
 
     def testMismatchingValues(self):
         self.reference("""

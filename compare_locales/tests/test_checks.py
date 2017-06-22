@@ -6,7 +6,7 @@
 import unittest
 
 from compare_locales.checks import getChecker
-from compare_locales.parser import getParser, Parser, Entity
+from compare_locales.parser import getParser, Parser, DTDEntity
 from compare_locales.paths import File
 
 
@@ -240,16 +240,17 @@ class TestAndroid(unittest.TestCase):
 
     def getEntity(self, v):
         ctx = Parser.Context(v)
-        return Entity(ctx, lambda s: s, '', (0, len(v)), (), (), (),
-                      (0, len(v)), ())
+        return DTDEntity(
+            ctx, '', (0, len(v)), (), (), (), (0, len(v)), ())
 
     def getDTDEntity(self, v):
         v = v.replace('"', '&quot;')
         ctx = Parser.Context('<!ENTITY foo "%s">' % v)
-        return Entity(ctx,
-                      lambda s: s, '',
-                      (0, len(v) + 16), (), (), (9, 12),
-                      (14, len(v) + 14), ())
+        return DTDEntity(
+            ctx,
+            '',
+            (0, len(v) + 16), (), (), (9, 12),
+            (14, len(v) + 14), ())
 
     def test_android_dtd(self):
         """Testing the actual android checks. The logic is involved,

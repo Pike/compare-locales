@@ -41,7 +41,7 @@ class EntityBase(object):
 
     <-------[2]--------->
     '''
-    def __init__(self, ctx, pp, pre_comment,
+    def __init__(self, ctx, pre_comment,
                  span, pre_ws_span, def_span,
                  key_span, val_span, post_span):
         self.ctx = ctx
@@ -51,7 +51,6 @@ class EntityBase(object):
         self.key_span = key_span
         self.val_span = val_span
         self.post_span = post_span
-        self.pp = pp
         self.pre_comment = pre_comment
         pass
 
@@ -93,9 +92,6 @@ class EntityBase(object):
     def get_key(self):
         return self.ctx.contents[self.key_span[0]:self.key_span[1]]
 
-    def get_val(self):
-        return self.pp(self.ctx.contents[self.val_span[0]:self.val_span[1]])
-
     def get_raw_val(self):
         return self.ctx.contents[self.val_span[0]:self.val_span[1]]
 
@@ -108,7 +104,7 @@ class EntityBase(object):
     pre_ws = property(get_pre_ws)
     definition = property(get_def)
     key = property(get_key)
-    val = property(get_val)
+    val = property(get_raw_val)
     raw_val = property(get_raw_val)
     post = property(get_post)
 
@@ -126,24 +122,12 @@ class EntityBase(object):
         value = self.re_sgml.sub(u'', value)
         return len(value.split())
 
-    def __eq__(self, other):
+    def equals(self, other):
         return self.key == other.key and self.val == other.val
 
 
 class Entity(EntityBase):
-    def value_position(self, offset=0):
-        # DTDChecker already returns tuples of (line, col) positions
-        if isinstance(offset, tuple):
-            line_pos, col_pos = offset
-            line, col = super(Entity, self).value_position()
-            if line_pos == 1:
-                col = col + col_pos
-            else:
-                col = col_pos
-                line += line_pos - 1
-            return line, col
-        else:
-            return super(Entity, self).value_position(offset)
+    pass
 
 
 class Comment(EntityBase):
@@ -154,7 +138,6 @@ class Comment(EntityBase):
         self.pre_ws_span = pre_ws_span
         self.def_span = def_span
         self.post_span = post_span
-        self.pp = lambda v: v
 
     @property
     def key(self):
@@ -216,7 +199,6 @@ class Whitespace(EntityBase):
         self.key_span = self.val_span = self.span = span
         self.def_span = self.pre_ws_span = (span[0], span[0])
         self.post_span = (span[1], span[1])
-        self.pp = lambda v: v
 
     def __repr__(self):
         return self.raw_val
@@ -275,9 +257,6 @@ class Parser(object):
             l.append(e)
         return (l, m)
 
-    def postProcessValue(self, val):
-        return val
-
     def __iter__(self):
         return self.walk(onlyEntities=True)
 
@@ -291,7 +270,7 @@ class Parser(object):
         entity, offset = self.getEntity(ctx, offset)
         while entity:
             if (not onlyEntities or
-                    type(entity) is Entity or
+                    isinstance(entity, Entity) or
                     type(entity) is Junk):
                 yield entity
             entity, offset = self.getEntity(ctx, offset)
@@ -328,7 +307,7 @@ class Parser(object):
     def createEntity(self, ctx, m):
         pre_comment = unicode(self.last_comment) if self.last_comment else ''
         self.last_comment = ''
-        return Entity(ctx, self.postProcessValue, pre_comment,
+        return Entity(ctx, pre_comment,
                       *[m.span(i) for i in xrange(6)])
 
 
@@ -351,6 +330,22 @@ def getParser(path):
 # <!ENTITY key "value"> <!-- comment -->
 #
 # <-------[3]---------><------[6]------>
+
+
+class DTDEntity(Entity):
+    def value_position(self, offset=0):
+        # DTDChecker already returns tuples of (line, col) positions
+        if isinstance(offset, tuple):
+            line_pos, col_pos = offset
+            line, col = super(DTDEntity, self).value_position()
+            if line_pos == 1:
+                col = col + col_pos
+            else:
+                col = col_pos
+                line += line_pos - 1
+            return line, col
+        else:
+            return super(DTDEntity, self).value_position(offset)
 
 
 class DTDParser(Parser):
@@ -400,8 +395,7 @@ class DTDParser(Parser):
             if m:
                 inneroffset = m.end()
                 self.last_comment = ''
-                entity = Entity(ctx, self.postProcessValue, '',
-                                *[m.span(i) for i in xrange(6)])
+                entity = DTDEntity(ctx, '', *[m.span(i) for i in xrange(6)])
         return (entity, inneroffset)
 
     def createEntity(self, ctx, m):
@@ -409,18 +403,32 @@ class DTDParser(Parser):
         valspan = (valspan[0]+1, valspan[1]-1)
         pre_comment = unicode(self.last_comment) if self.last_comment else ''
         self.last_comment = ''
-        return Entity(ctx, self.postProcessValue, pre_comment,
-                      m.span(),
-                      m.span('pre'),
-                      m.span('entity'), m.span('key'), valspan,
-                      m.span('post'))
+        return DTDEntity(ctx, pre_comment,
+                         m.span(),
+                         m.span('pre'),
+                         m.span('entity'), m.span('key'), valspan,
+                         m.span('post'))
 
 
-class PropertiesParser(Parser):
+class PropertiesEntity(Entity):
     escape = re.compile(r'\\((?P<uni>u[0-9a-fA-F]{1,4})|'
                         '(?P<nl>\n\s*)|(?P<single>.))', re.M)
     known_escapes = {'n': '\n', 'r': '\r', 't': '\t', '\\': '\\'}
 
+    @property
+    def val(self):
+        def unescape(m):
+            found = m.groupdict()
+            if found['uni']:
+                return unichr(int(found['uni'][1:], 16))
+            if found['nl']:
+                return ''
+            return self.known_escapes.get(found['single'], found['single'])
+
+        return self.escape.sub(unescape, self.raw_val)
+
+
+class PropertiesParser(Parser):
     def __init__(self):
         self.reKey = re.compile('^(\s*)'
                                 '([^#!\s\n][^=:\n]*?)\s*[:=][ \t]*', re.M)
@@ -469,27 +477,16 @@ class PropertiesParser(Parser):
             pre_comment = (unicode(self.last_comment) if self.last_comment
                            else '')
             self.last_comment = ''
-            entity = Entity(ctx, self.postProcessValue, pre_comment,
-                            (m.start(), offset),   # full span
-                            m.span(1),  # leading whitespan
-                            (m.start(2), offset),   # entity def span
-                            m.span(2),   # key span
-                            (m.end(), endval),   # value span
-                            (offset, offset))  # post comment span, empty
+            entity = PropertiesEntity(
+                ctx, pre_comment,
+                (m.start(), offset),   # full span
+                m.span(1),  # leading whitespan
+                (m.start(2), offset),   # entity def span
+                m.span(2),   # key span
+                (m.end(), endval),   # value span
+                (offset, offset))  # post comment span, empty
             return (entity, offset)
         return self.getTrailing(ctx, offset, self.reKey, self.reComment)
-
-    def postProcessValue(self, val):
-
-        def unescape(m):
-            found = m.groupdict()
-            if found['uni']:
-                return unichr(int(found['uni'][1:], 16))
-            if found['nl']:
-                return ''
-            return self.known_escapes.get(found['single'], found['single'])
-        val = self.escape.sub(unescape, val)
-        return val
 
 
 class DefinesInstruction(EntityBase):
@@ -502,7 +499,6 @@ class DefinesInstruction(EntityBase):
         self.def_span = def_span
         self.key_span = self.val_span = val_span
         self.post_span = post_span
-        self.pp = lambda v: v
 
     def __repr__(self):
         return self.raw_val
@@ -558,7 +554,6 @@ class IniSection(EntityBase):
         self.def_span = def_span
         self.key_span = self.val_span = val_span
         self.post_span = post_span
-        self.pp = lambda v: v
 
     def __repr__(self):
         return self.raw_val
@@ -628,10 +623,6 @@ class FluentEntity(Entity):
 
         self.entry = entry
 
-    def pp(self, value):
-        # XXX Normalize whitespace?
-        return value
-
     _word_count = None
 
     def count_words(self):
@@ -647,7 +638,7 @@ class FluentEntity(Entity):
 
         return self._word_count
 
-    def __eq__(self, other):
+    def equals(self, other):
         return self.entry.equals(
             other.entry, ignored_fields=self.ignored_fields)
 
