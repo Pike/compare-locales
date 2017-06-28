@@ -611,6 +611,22 @@ class IniParser(Parser):
                                 self.reComment, self.reSection, self.reKey)
 
 
+class FluentAttribute(EntityBase):
+    ignored_fields = ['span']
+
+    def __init__(self, entity, attr_node):
+        self.ctx = entity.ctx
+        self.attr = attr_node
+        self.key_span = (attr_node.id.span.start, attr_node.id.span.end)
+        self.val_span = (attr_node.value.span.start, attr_node.value.span.end)
+
+    def equals(self, other):
+        if not isinstance(other, FluentAttribute):
+            return False
+        return self.attr.equals(
+            other.attr, ignored_fields=self.ignored_fields)
+
+
 class FluentEntity(Entity):
     # Fields ignored when comparing two entities.
     ignored_fields = ['comment', 'span']
@@ -662,6 +678,11 @@ class FluentEntity(Entity):
     # because all positions are absolute from the beginning of the file.
     def value_position(self, pos=None):
         return self.position(pos)
+
+    @property
+    def attributes(self):
+        for attr_node in self.entry.attributes:
+            yield FluentAttribute(self, attr_node)
 
 
 class FluentParser(Parser):

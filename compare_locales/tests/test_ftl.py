@@ -81,6 +81,8 @@ h =
         self.assertEqual(a.key, 'a')
         self.assertEqual(a.val, 'A')
         self.assertEqual(a.all, 'a = A')
+        attributes = list(a.attributes)
+        self.assertEqual(len(attributes), 0)
 
     def test_complex_message(self):
         self.parser.readContents('abc = A { $arg } B { msg } C')
@@ -124,3 +126,8 @@ abc
         self.assertEqual(abc.key, 'abc')
         self.assertEqual(abc.val, '')
         self.assertEqual(abc.all, 'abc\n    .attr = Attr')
+        attributes = list(abc.attributes)
+        self.assertEqual(len(attributes), 1)
+        attr = attributes[0]
+        self.assertEqual(attr.key, 'attr')
+        self.assertEqual(attr.val, 'Attr')
