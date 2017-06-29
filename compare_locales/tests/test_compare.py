@@ -179,3 +179,86 @@ missing: 15
         self.assertDictEqual(clone.summary, obs.summary)
         self.assertDictEqual(clone.details.toJSON(), obs.details.toJSON())
         self.assertDictEqual(clone.file_stats, obs.file_stats)
+
+
+class TestAddRemove(unittest.TestCase):
+
+    def _test(self, left, right, ref_actions):
+        ar = compare.AddRemove()
+        ar.set_left(left)
+        ar.set_right(right)
+        actions = list(ar)
+        self.assertListEqual(actions, ref_actions)
+
+    def test_equal(self):
+        self._test(['z', 'a', 'p'], ['z', 'a', 'p'], [
+                ('equal', 'z'),
+                ('equal', 'a'),
+                ('equal', 'p'),
+            ])
+
+    def test_add_start(self):
+        self._test(['a', 'p'], ['z', 'a', 'p'], [
+                ('add', 'z'),
+                ('equal', 'a'),
+                ('equal', 'p'),
+            ])
+
+    def test_add_middle(self):
+        self._test(['z', 'p'], ['z', 'a', 'p'], [
+                ('equal', 'z'),
+                ('add', 'a'),
+                ('equal', 'p'),
+            ])
+
+    def test_add_end(self):
+        self._test(['z', 'a'], ['z', 'a', 'p'], [
+                ('equal', 'z'),
+                ('equal', 'a'),
+                ('add', 'p'),
+            ])
+
+    def test_delete_start(self):
+        self._test(['z', 'a', 'p'], ['a', 'p'], [
+                ('delete', 'z'),
+                ('equal', 'a'),
+                ('equal', 'p'),
+            ])
+
+    def test_delete_middle(self):
+        self._test(['z', 'a', 'p'], ['z', 'p'], [
+                ('equal', 'z'),
+                ('delete', 'a'),
+                ('equal', 'p'),
+            ])
+
+    def test_delete_end(self):
+        self._test(['z', 'a', 'p'], ['z', 'a'], [
+                ('equal', 'z'),
+                ('equal', 'a'),
+                ('delete', 'p'),
+            ])
+
+    def test_replace_start(self):
+        self._test(['b', 'a', 'p'], ['z', 'a', 'p'], [
+                ('add', 'z'),
+                ('delete', 'b'),
+                ('equal', 'a'),
+                ('equal', 'p'),
+            ])
+
+    def test_replace_middle(self):
+        self._test(['z', 'b', 'p'], ['z', 'a', 'p'], [
+                ('equal', 'z'),
+                ('add', 'a'),
+                ('delete', 'b'),
+                ('equal', 'p'),
+            ])
+
+    def test_replace_end(self):
+        self._test(['z', 'a', 'b'], ['z', 'a', 'p'], [
+                ('equal', 'z'),
+                ('equal', 'a'),
+                ('add', 'p'),
+                ('delete', 'b'),
+            ])

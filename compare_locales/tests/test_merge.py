@@ -292,11 +292,11 @@ class TestDTD(unittest.TestCase, ContentMixin):
                 }},
              'details': {
                  'l10n.dtd': [
-                     {'missingEntity': u'bar'},
                      {'error': u'Unparsed content "<!ENTY bar '
                                u'\'gimmick\'>" '
                                u'from line 2 column 1 to '
-                               u'line 2 column 22'}]
+                               u'line 2 column 22'},
+                     {'missingEntity': u'bar'}]
                 }
              })
         mergefile = mozpath.join(self.tmp, "merge", "l10n.dtd")
@@ -476,8 +476,6 @@ eff = lEff {
             {
                 'details': {
                     'l10n.ftl': [
-                        {'missingEntity': u'bar'},
-                        {'missingEntity': u'eff'},
                         {'error': u'Unparsed content "-- Invalid Comment" '
                                   u'from line 1 column 1 '
                                   u'to line 1 column 19'},
@@ -487,6 +485,8 @@ eff = lEff {
                         {'error': u'Unparsed content "eff = lEff {" '
                                   u'from line 4 column 1 '
                                   u'to line 4 column 13'},
+                        {'missingEntity': u'bar'},
+                        {'missingEntity': u'eff'},
                     ],
                 },
                 'summary': {

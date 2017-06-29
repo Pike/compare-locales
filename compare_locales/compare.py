@@ -111,9 +111,8 @@ class Tree(object):
 
 
 class AddRemove(object):
-    def __init__(self, key=None):
+    def __init__(self):
         self.left = self.right = None
-        self.key = key
 
     def set_left(self, left):
         if not isinstance(left, list):
@@ -126,12 +125,24 @@ class AddRemove(object):
         self.right = right
 
     def __iter__(self):
-        all_items = self.left[:]
-        all_items.extend(k for k in self.right if k not in self.left)
-        for item in sorted(all_items, key=self.key):
-            if item in self.left and item in self.right:
+        # order_map stores index in left and then index in right
+        order_map = dict((item, (i, -1)) for i, item in enumerate(self.left))
+        left_items = set(order_map)
+        # as we go through the right side, keep track of which left
+        # item we had in right last, and for items not in left,
+        # set the sortmap to (left_offset, right_index)
+        left_offset = -1
+        right_items = set()
+        for i, item in enumerate(self.right):
+            right_items.add(item)
+            if item in order_map:
+                left_offset = order_map[item][0]
+            else:
+                order_map[item] = (left_offset, i)
+        for item in sorted(order_map, key=lambda item: order_map[item]):
+            if item in left_items and item in right_items:
                 yield ('equal', item)
-            elif item in self.left:
+            elif item in left_items:
                 yield ('delete', item)
             else:
                 yield ('add', item)
@@ -323,19 +334,6 @@ class Observer(object):
         return 'observer'
 
 
-class indexof(object):
-    def __init__(self, ref_map):
-        self.ref_map = ref_map
-        self.off = [-1, 0]
-
-    def __call__(self, key):
-        if key in self.ref_map:
-            self.off = [self.ref_map[key], 0]
-        else:
-            self.off[1] += 1
-        return self.off
-
-
 class ContentComparer:
     keyRE = re.compile('[kK]ey')
     nl = re.compile('\n', re.M)
@@ -455,7 +453,6 @@ class ContentComparer:
             self.notify('error', ref_file, str(e))
             return
         ref_entities, ref_map = p.parse()
-        ref_list = sorted(ref_map.keys(), key=lambda k: ref_map[k])
         try:
             p.readContents(l10n.getContents())
             l10n_entities, l10n_map = p.parse()
@@ -464,10 +461,9 @@ class ContentComparer:
             self.notify('error', l10n, str(e))
             return
 
-        l10n_list = sorted(l10n_map.keys(), key=lambda k: l10n_map[k])
-        ar = AddRemove(key=indexof(ref_map))
-        ar.set_left(ref_list)
-        ar.set_right(l10n_list)
+        ar = AddRemove()
+        ar.set_left(e.key for e in ref_entities)
+        ar.set_right(e.key for e in l10n_entities)
         report = missing = obsolete = changed = unchanged = keys = 0
         missing_w = changed_w = unchanged_w = 0  # word stats
         missings = []
