@@ -155,11 +155,11 @@ class ProjectConfig(object):
     def add_child(self, child):
         self.children.append(child)
 
-    def set_locales(self, locales):
+    def set_locales(self, locales, deep=False):
         self.locales = locales
         for child in self.children:
-            if not child.locales:
-                child.set_locales(locales)
+            if not child.locales or deep:
+                child.set_locales(locales, deep=True)
             else:
                 locs = [loc for loc in locales if loc in child.locales]
                 child.set_locales(locs)
@@ -389,6 +389,7 @@ class TOMLParser(object):
         self.env = env if env is not None else {}
         self.data = None
         self.pc = ProjectConfig()
+        self.pc.PATH = path
 
     def load(self):
         with open(self.path, 'rb') as fin:

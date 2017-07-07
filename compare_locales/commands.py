@@ -94,6 +94,8 @@ or the all-locales file referenced by the application\'s l10n.ini."""
                                  'each localization')
         parser.add_argument('--unified', action="store_true",
                             help="Show output for all projects unified")
+        parser.add_argument('--full', action="store_true",
+                            help="Compare projects that are disabled")
         parser.add_argument('--clobber-merge', action="store_true",
                             default=False, dest='clobber',
                             help="""WARNING: DATALOSS.
@@ -123,6 +125,9 @@ Be careful to specify the right merge directory when using this option.""")
             self.parser.error('l10n-base-dir not found')
         args.l10n_base_dir = all_args.pop(0)
         args.locales.extend(all_args)
+        # when we compare disabled projects, we set our locales
+        # on all subconfigs, so deep is True.
+        locales_deep = args.full
         configs = []
         config_env = {}  # Hook up commandline arguments here
         for config_path in args.config:
@@ -130,7 +135,7 @@ Be careful to specify the right merge directory when using this option.""")
                 config = TOMLParser.parse(config_path, env=config_env)
                 config.add_global_environment(l10n_base=args.l10n_base_dir)
                 if args.locales:
-                    config.set_locales(args.locales)
+                    config.set_locales(args.locales, deep=locales_deep)
                 configs.append(config)
             else:
                 app = EnumerateApp(
