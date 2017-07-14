@@ -92,6 +92,9 @@ or the all-locales file referenced by the application\'s l10n.ini."""
         parser.add_argument('locales', nargs='*', metavar='locale-code',
                             help='Locale code and top-level directory of '
                                  'each localization')
+        parser.add_argument('-D', action='append', metavar='var=value',
+                            default=[],
+                            help='Overwrite variables in TOML files')
         parser.add_argument('--unified', action="store_true",
                             help="Show output for all projects unified")
         parser.add_argument('--full', action="store_true",
@@ -129,7 +132,10 @@ Be careful to specify the right merge directory when using this option.""")
         # on all subconfigs, so deep is True.
         locales_deep = args.full
         configs = []
-        config_env = {}  # Hook up commandline arguments here
+        config_env = {}
+        for define in args.D:
+            var, _, value = define.partition('=')
+            config_env[var] = value
         for config_path in args.config:
             if config_path.endswith('.toml'):
                 config = TOMLParser.parse(config_path, env=config_env)
