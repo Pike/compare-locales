@@ -6,7 +6,9 @@ import os
 import re
 from ConfigParser import ConfigParser, NoSectionError, NoOptionError
 from collections import defaultdict
+import errno
 import itertools
+import logging
 from compare_locales import util, mozpath
 import pytoml as toml
 
@@ -372,10 +374,19 @@ class ProjectFiles(object):
                 yield mozpath.join(d, f)
 
 
+class ConfigNotFound(EnvironmentError):
+    def __init__(self, path):
+        super(ConfigNotFound, self).__init__(
+            errno.ENOENT,
+            'Configuration file not found',
+            path)
+
+
 class TOMLParser(object):
     @classmethod
-    def parse(cls, path, env=None):
-        parser = TOMLParser(path, env=env)
+    def parse(cls, path, env=None, ignore_missing_includes=False):
+        parser = cls(path, env=env,
+                     ignore_missing_includes=ignore_missing_includes)
         parser.load()
         parser.processEnv()
         parser.processPaths()
@@ -384,16 +395,20 @@ class TOMLParser(object):
         parser.processLocales()
         return parser.asConfig()
 
-    def __init__(self, path, env=None):
+    def __init__(self, path, env=None, ignore_missing_includes=False):
         self.path = path
         self.env = env if env is not None else {}
+        self.ignore_missing_includes = ignore_missing_includes
         self.data = None
         self.pc = ProjectConfig()
         self.pc.PATH = path
 
     def load(self):
-        with open(self.path, 'rb') as fin:
-            self.data = toml.load(fin)
+        try:
+            with open(self.path, 'rb') as fin:
+                self.data = toml.load(fin)
+        except:
+            raise ConfigNotFound(self.path)
 
     def processEnv(self):
         assert self.data is not None
@@ -447,7 +462,18 @@ class TOMLParser(object):
         for include in self.data['includes']:
             p = include['path']
             p = self.resolvepath(p)
-            child = TOMLParser.parse(p, env=self.env)
+            try:
+                child = self.parse(
+                    p, env=self.env,
+                    ignore_missing_includes=self.ignore_missing_includes
+                )
+            except ConfigNotFound as e:
+                if not self.ignore_missing_includes:
+                    raise
+                (logging
+                    .getLogger('compare-locales.io')
+                    .error('%s: %s', e.strerror, e.filename))
+                continue
             self.pc.add_child(child)
 
     def resolvepath(self, path):

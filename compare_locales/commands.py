@@ -9,7 +9,7 @@ from argparse import ArgumentParser
 import os
 
 from compare_locales import version
-from compare_locales.paths import EnumerateApp, TOMLParser
+from compare_locales.paths import EnumerateApp, TOMLParser, ConfigNotFound
 from compare_locales.compare import compareProjects, Observer
 
 
@@ -138,7 +138,10 @@ Be careful to specify the right merge directory when using this option.""")
             config_env[var] = value
         for config_path in args.config:
             if config_path.endswith('.toml'):
-                config = TOMLParser.parse(config_path, env=config_env)
+                try:
+                    config = TOMLParser.parse(config_path, env=config_env)
+                except ConfigNotFound as e:
+                    self.parser.error('config file %s not found' % e.filename)
                 config.add_global_environment(l10n_base=args.l10n_base_dir)
                 if args.locales:
                     config.set_locales(args.locales, deep=locales_deep)
