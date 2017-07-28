@@ -468,8 +468,9 @@ class ContentComparer:
         missing_w = changed_w = unchanged_w = 0  # word stats
         missings = []
         skips = []
-        checker = getChecker(l10n,
-                             reference=ref_entities, extra_tests=extra_tests)
+        checker = getChecker(l10n, extra_tests=extra_tests)
+        if checker and checker.needs_reference:
+            checker.set_reference(ref_entities)
         for msg in p.findDuplicates(ref_entities):
             self.notify('warning', l10n, msg)
         for msg in p.findDuplicates(l10n_entities):

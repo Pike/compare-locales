@@ -18,6 +18,8 @@ class Checker(object):
     '''Abstract class to implement checks per file type.
     '''
     pattern = None
+    # if a check uses all reference entities, set this to True
+    needs_reference = False
 
     @classmethod
     def use(cls, file):
@@ -25,6 +27,7 @@ class Checker(object):
 
     def __init__(self, extra_tests):
         self.extra_tests = extra_tests
+        self.reference = None
 
     def check(self, refEnt, l10nEnt):
         '''Given the reference and localized Entities, performs checks.
@@ -37,6 +40,12 @@ class Checker(object):
         if True:
             raise NotImplementedError("Need to subclass")
         yield ("error", (0, 0), "This is an example error", "example")
+
+    def set_reference(self, reference):
+        '''Set the reference entities.
+        Only do this if self.needs_reference is True.
+        '''
+        self.reference = reference
 
 
 class PrintfException(Exception):
@@ -188,6 +197,7 @@ class DTDChecker(Checker):
     Also checks for some CSS and number heuristics in the values.
     """
     pattern = re.compile('.*\.dtd$')
+    needs_reference = True  # to cast a wider net for known entity references
 
     eref = re.compile('&(%s);' % DTDParser.Name)
     tmpl = '''<!DOCTYPE elem [%s]>
@@ -195,12 +205,11 @@ class DTDChecker(Checker):
 '''
     xmllist = set(('amp', 'lt', 'gt', 'apos', 'quot'))
 
-    def __init__(self, extra_tests, reference):
+    def __init__(self, extra_tests):
         super(DTDChecker, self).__init__(extra_tests)
         self.processContent = False
         if self.extra_tests is not None and 'android-dtd' in self.extra_tests:
             self.processContent = True
-        self.reference = reference
         self.__known_entities = None
 
     def known_entities(self, refValue):
@@ -480,11 +489,11 @@ class FluentChecker(Checker):
                    'Obsolete attribute: ' + attr.id.name, 'fluent')
 
 
-def getChecker(file, reference=None, extra_tests=None):
+def getChecker(file, extra_tests=None):
     if PropertiesChecker.use(file):
         return PropertiesChecker(extra_tests)
     if DTDChecker.use(file):
-        return DTDChecker(extra_tests, reference)
+        return DTDChecker(extra_tests)
     if FluentChecker.use(file):
         return FluentChecker(extra_tests)
     return None
