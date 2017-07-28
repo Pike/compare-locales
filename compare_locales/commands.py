@@ -54,7 +54,7 @@ data in a json useful for Exhibit
         subclasses.
         """
         cmd = cls()
-        cmd.handle_()
+        return cmd.handle_()
 
     def handle_(self):
         """The instance part of the classmethod call."""
@@ -65,8 +65,20 @@ data in a json useful for Exhibit
         logging.getLogger().setLevel(logging.WARNING -
                                      (args.v - args.q) * 10)
         observers = self.handle(args)
+        rv = 0
         for observer in observers:
             print observer.serialize(type=args.data).encode('utf-8', 'replace')
+            # summary is a dict of lang-summary dicts
+            # find out if any of our results has errors, return 1 if so
+            if rv > 0:
+                continue  # we already have errors
+            for loc, summary in observer.summary.items():
+                if summary.get('errors', 0) > 0:
+                    rv = 1
+                    # no need to check further summaries, but
+                    # continue to run through observers
+                    break
+        return rv
 
     def handle(self, args):
         """Subclasses need to implement this method for the actual
@@ -141,7 +153,7 @@ Be careful to specify the right merge directory when using this option.""")
                 try:
                     config = TOMLParser.parse(config_path, env=config_env)
                 except ConfigNotFound as e:
-                    self.parser.error('config file %s not found' % e.filename)
+                    self.parser.exit('config file %s not found' % e.filename)
                 config.add_global_environment(l10n_base=args.l10n_base_dir)
                 if args.locales:
                     config.set_locales(args.locales, deep=locales_deep)
