@@ -2,10 +2,14 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+from __future__ import absolute_import
 import re
 from collections import Counter
 from difflib import SequenceMatcher
 from xml import sax
+import six
+from six.moves import range
+from six.moves import zip
 try:
     from cStringIO import StringIO
 except ImportError:
@@ -133,7 +137,7 @@ class PropertiesChecker(Checker):
     def checkPrintf(self, refSpecs, l10nValue):
         try:
             l10nSpecs = self.getPrintfSpecs(l10nValue)
-        except PrintfException, e:
+        except PrintfException as e:
             yield ('error', e.pos, e.msg, 'printf')
             return
         if refSpecs != l10nSpecs:
@@ -150,20 +154,20 @@ class PropertiesChecker(Checker):
                         # trailing specs missing, that's just a warning
                         warn = ', '.join('trailing argument %d `%s` missing' %
                                          (i+1, refSpecs[i])
-                                         for i in xrange(i1, i2))
+                                         for i in range(i1, i2))
                     else:
-                        for i in xrange(i1, i2):
+                        for i in range(i1, i2):
                             msgs.append('argument %d `%s` missing' %
                                         (i+1, refSpecs[i]))
                     continue
                 if action == 'insert':
                     # obsolete argument in l10n
-                    for i in xrange(j1, j2):
+                    for i in range(j1, j2):
                         msgs.append('argument %d `%s` obsolete' %
                                     (i+1, l10nSpecs[i]))
                     continue
                 if action == 'replace':
-                    for i, j in zip(xrange(i1, i2), xrange(j1, j2)):
+                    for i, j in zip(range(i1, i2), range(j1, j2)):
                         msgs.append('argument %d `%s` should be `%s`' %
                                     (j+1, l10nSpecs[j], refSpecs[i]))
             if msgs:
@@ -290,7 +294,7 @@ class DTDChecker(Checker):
             parser.parse(StringIO(self.tmpl %
                                   (refEnt.all.encode('utf-8') + entities,
                                    '&%s;' % refEnt.key.encode('utf-8'))))
-        except sax.SAXParseException, e:
+        except sax.SAXParseException as e:
             yield ('warning',
                    (0, 0),
                    "can't parse en-US value", 'xmlparse')
@@ -312,7 +316,7 @@ class DTDChecker(Checker):
             parser.parse(StringIO(self.tmpl % (
                 l10nEnt.all.encode('utf-8') + _entities,
                 '&%s;' % l10nEnt.key.encode('utf-8'))))
-        except sax.SAXParseException, e:
+        except sax.SAXParseException as e:
             # xml parse error, yield error
             # sometimes, the error is reported on our fake closing
             # element, make that the end of the last line
@@ -379,7 +383,7 @@ class DTDChecker(Checker):
                         if u != ru:
                             msgs.append("units for %s don't match "
                                         "(%s != %s)" % (s, u, ru))
-                for s in refMap.iterkeys():
+                for s in six.iterkeys(refMap):
                     msgs.insert(0, '%s only in reference' % s)
                 if msgs:
                     yield ('warning', 0, ', '.join(msgs), 'css')
@@ -407,7 +411,7 @@ class DTDChecker(Checker):
         val = str.encode('ascii', 'backslashreplace')
         try:
             val.decode('unicode-escape')
-        except UnicodeDecodeError, e:
+        except UnicodeDecodeError as e:
             args = list(e.args)
             badstring = args[1][args[2]:args[3]]
             i = len(args[1][:args[2]].decode('unicode-escape'))
@@ -426,7 +430,7 @@ class DTDChecker(Checker):
         # first, try to decode unicode escapes
         try:
             self.unicode_escape(val)
-        except UnicodeDecodeError, e:
+        except UnicodeDecodeError as e:
             yield ('error', e.args[2], e.args[4], 'android')
         # check for unescaped single or double quotes.
         # first, see if the complete string is single or double quoted,

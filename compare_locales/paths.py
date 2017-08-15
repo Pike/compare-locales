@@ -2,15 +2,17 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+from __future__ import absolute_import
 import os
 import re
-from ConfigParser import ConfigParser, NoSectionError, NoOptionError
+from six.moves.configparser import ConfigParser, NoSectionError, NoOptionError
 from collections import defaultdict
 import errno
 import itertools
 import logging
 from compare_locales import util, mozpath
 import pytoml as toml
+import six
 
 
 class Matcher(object):
@@ -36,7 +38,7 @@ class Matcher(object):
         r = re.sub(r'(^|\\\/)\\\*\\\*$', r'\\\\0', r)
         r = r.replace(r'\*', r'\\0')
         backref = itertools.count(1)
-        r = re.sub(r'\\0', lambda m: '\\%s' % backref.next(), r)
+        r = re.sub(r'\\0', lambda m: '\\%s' % next(backref), r)
         r = re.sub(r'\\(.)', r'\1', r)
         self.prefix = prefix
         self.regex = re.compile(p)
@@ -245,12 +247,12 @@ class ProjectConfig(object):
                 for __rule in self._compile_rule(_rule):
                     yield __rule
             return
-        if isinstance(rule['path'], basestring):
+        if isinstance(rule['path'], six.string_types):
             rule['path'] = self.lazy_expand(rule['path'])
         if 'key' not in rule:
             yield rule
             return
-        if not isinstance(rule['key'], basestring):
+        if not isinstance(rule['key'], six.string_types):
             for key in rule['key']:
                 _rule = rule.copy()
                 _rule['key'] = key
@@ -466,7 +468,7 @@ class TOMLParser(object):
         assert self.data is not None
         for data in self.data.get('filters', []):
             paths = data['path']
-            if isinstance(paths, basestring):
+            if isinstance(paths, six.string_types):
                 paths = [paths]
             # expand if path isn't relative to a variable
             paths = [
@@ -555,7 +557,7 @@ class L10nConfigParser(object):
         filter_path = mozpath.join(mozpath.dirname(self.inipath), 'filter.py')
         try:
             local = {}
-            execfile(filter_path, {}, local)
+            exec(compile(open(filter_path).read(), filter_path, 'exec'), {}, local)
             if 'test' in local and callable(local['test']):
                 filters = [local['test']]
             else:

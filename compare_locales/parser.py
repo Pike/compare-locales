@@ -2,6 +2,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+from __future__ import absolute_import
 import re
 import bisect
 import codecs
@@ -17,6 +18,7 @@ except ImportError:
 
 from fluent.syntax import FluentParser as FTLParser
 from fluent.syntax import ast as ftl
+from six import unichr
 
 __constructors = []
 
@@ -245,7 +247,7 @@ class Parser(object):
         with open(file, 'rU') as f:
             try:
                 self.readContents(f.read())
-            except UnicodeDecodeError, e:
+            except UnicodeDecodeError as e:
                 (logging.getLogger('locales')
                         .error("Can't read file: " + file + '; ' + str(e)))
 

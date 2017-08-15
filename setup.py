@@ -8,6 +8,7 @@ a given localization for completeness. For more information see
 https://developer.mozilla.org/en/docs/Compare-locales
 """
 
+from __future__ import absolute_import
 DOCSTRINGS = __doc__.split("\n")
 
 from setuptools import setup
@@ -47,5 +48,6 @@ setup(name="compare-locales",
       install_requires=[
           'fluent >=0.6.4, <0.7',
           'pytoml',
+          'six',
       ],
       test_suite='compare_locales.tests')

@@ -3,11 +3,13 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+from __future__ import absolute_import
 import unittest
 
 from compare_locales.checks import getChecker
 from compare_locales.parser import getParser, Parser, DTDEntity
 from compare_locales.paths import File
+from six.moves import range
 
 
 class BaseHelper(unittest.TestCase):
@@ -286,7 +288,7 @@ class TestAndroid(unittest.TestCase):
                          (('warning', (0, 0),
                            'Referencing unknown entity `ref`', 'xmlparse'),))
         # no report on stray ampersand or quote, if not completely quoted
-        for i in xrange(3):
+        for i in range(3):
             # make sure we're catching unescaped apostrophes,
             # try 0..5 backticks
             l10n = self.getDTDEntity("\\"*(2*i) + "'")

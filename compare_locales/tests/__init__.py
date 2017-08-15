@@ -5,11 +5,14 @@
 '''Mixins for parser tests.
 '''
 
-from itertools import izip_longest
+from __future__ import absolute_import
+
 from pkg_resources import resource_string
 import re
 
 from compare_locales import parser
+import six
+from six.moves import zip_longest
 
 
 class ParserTestMixin():
@@ -39,9 +42,11 @@ class ParserTestMixin():
         '''
         self.parser.readContents(content)
         entities = list(self.parser.walk())
-        for entity, ref in izip_longest(entities, refs):
-            self.assertTrue(entity, 'excess reference entity ' + unicode(ref))
-            self.assertTrue(ref, 'excess parsed entity ' + unicode(entity))
+        for entity, ref in zip_longest(entities, refs):
+            self.assertTrue(entity,
+                            'excess reference entity ' + six.text_type(ref))
+            self.assertTrue(ref,
+                            'excess parsed entity ' + six.text_type(entity))
             if isinstance(entity, parser.Entity):
                 self.assertEqual(entity.key, ref[0])
                 self.assertEqual(entity.val, ref[1])

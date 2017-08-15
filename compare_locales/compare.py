@@ -4,11 +4,16 @@
 
 'Mozilla l10n compare locales tool'
 
+from __future__ import absolute_import
+from __future__ import print_function
 import codecs
 import os
 import shutil
 import re
 from collections import defaultdict
+import six
+from six.moves import map
+from six.moves import zip
 
 from json import dumps
 
@@ -39,7 +44,7 @@ class Tree(object):
         old = None
         new = tuple(parts)
         t = self
-        for k, v in self.branches.iteritems():
+        for k, v in six.iteritems(self.branches):
             for i, part in enumerate(zip(k, parts)):
                 if part[0] != part[1]:
                     i -= 1
@@ -76,8 +81,7 @@ class Tree(object):
         If flag is 'value', key_or_value is a value object, otherwise
         (flag is 'key') it's a key string.
         '''
-        keys = self.branches.keys()
-        keys.sort()
+        keys = sorted(self.branches.keys())
         if self.value is not None:
             yield (depth, 'value', self.value)
         for key in keys:
@@ -101,7 +105,7 @@ class Tree(object):
                 return self.indent * t[0] + '/'.join(t[2])
             return self.indent * (t[0] + 1) + str(t[2])
 
-        return map(tostr, self.getContent())
+        return [tostr(c) for c in self.getContent()]
 
     def __str__(self):
         return '\n'.join(self.getStrRows())
@@ -171,19 +175,19 @@ class Observer(object):
     def __setstate__(self, state):
         self.summary = defaultdict(lambda: defaultdict(int))
         if 'summary' in state:
-            for loc, stats in state['summary'].iteritems():
+            for loc, stats in six.iteritems(state['summary']):
                 self.summary[loc].update(stats)
         self.file_stats = None
         if 'file_stats' in state:
             self.file_stats = defaultdict(lambda: defaultdict(dict))
-            for k, d in state['file_stats'].iteritems():
+            for k, d in six.iteritems(state['file_stats']):
                 self.file_stats[k].update(d)
         self.details = state['details']
         self.filter = None
 
     def _dictify(self, d):
         plaindict = {}
-        for k, v in d.iteritems():
+        for k, v in six.iteritems(d):
             plaindict[k] = dict(v)
         return plaindict
 
@@ -204,7 +208,7 @@ class Observer(object):
         if (self.filter is not None and
                 self.filter(file, entity='') == 'ignore'):
             return
-        for category, value in stats.iteritems():
+        for category, value in six.iteritems(stats):
             self.summary[file.locale][category] += value
         if self.file_stats is None:
             return
@@ -241,7 +245,7 @@ class Observer(object):
 
     def toExhibit(self):
         items = []
-        for locale in sorted(self.summary.iterkeys()):
+        for locale in sorted(six.iterkeys(self.summary)):
             summary = self.summary[locale]
             if locale is not None:
                 item = {'id': 'xxx/' + locale,
@@ -319,10 +323,11 @@ class Observer(object):
             return '\n'.join(o)
 
         out = []
-        for locale, summary in sorted(self.summary.iteritems()):
+        for locale, summary in sorted(six.iteritems(self.summary)):
             if locale is not None:
                 out.append(locale + ':')
-            out += [k + ': ' + str(v) for k, v in sorted(summary.iteritems())]
+            out += [
+                k + ': ' + str(v) for k, v in sorted(six.iteritems(summary))]
             total = sum([summary[k]
                          for k in ['changed', 'unchanged', 'report', 'missing',
                                    'missingInFiles']
@@ -332,7 +337,7 @@ class Observer(object):
                 rate = (('changed' in summary and summary['changed'] * 100) or
                         0) / total
             out.append('%d%% of entries changed' % rate)
-        return '\n'.join(map(tostr, self.details.getContent()) + out)
+        return '\n'.join([tostr(c) for c in self.details.getContent()] + out)
 
     def __str__(self):
         return 'observer'
@@ -367,7 +372,7 @@ class ContentComparer:
         if capabilities & parser.CAN_COPY and (skips or missing):
             self.create_merge_dir(merge_file)
             shutil.copyfile(ref_file.fullpath, merge_file)
-            print "copied reference to " + merge_file
+            print("copied reference to " + merge_file)
             return
 
         if not (capabilities & parser.CAN_SKIP):
@@ -409,7 +414,7 @@ class ContentComparer:
                     return s + '\n'
                 return s
 
-            print "adding to " + merge_file
+            print("adding to " + merge_file)
             f.write(''.join(map(ensureNewline, trailing)))
 
         if f is not None:
@@ -453,7 +458,7 @@ class ContentComparer:
             return
         try:
             p.readContents(ref_file.getContents())
-        except Exception, e:
+        except Exception as e:
             self.notify('error', ref_file, str(e))
             return
         ref_entities, ref_map = p.parse()
@@ -461,7 +466,7 @@ class ContentComparer:
             p.readContents(l10n.getContents())
             l10n_entities, l10n_map = p.parse()
             l10n_ctx = p.ctx
-        except Exception, e:
+        except Exception as e:
             self.notify('error', l10n, str(e))
             return
 
@@ -573,7 +578,7 @@ class ContentComparer:
         try:
             p.readContents(f.getContents())
             entities, map = p.parse()
-        except Exception, ex:
+        except Exception as ex:
             self.notify('error', f, str(ex))
             return
         # strip parse errors
@@ -628,7 +633,7 @@ def compareProjects(
                     clobberdir = matcher.prefix
                     if os.path.exists(clobberdir):
                         shutil.rmtree(clobberdir)
-                        print "clobbered " + clobberdir
+                        print("clobbered " + clobberdir)
         for l10npath, refpath, mergepath, extra_tests in files:
             # module and file path are needed for legacy filter.py support
             module = None

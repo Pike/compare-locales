@@ -2,6 +2,7 @@
 # License, v. 2.0. If a copy of the MPL was not distributed with this
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
+from __future__ import absolute_import
 import unittest
 import os
 from tempfile import mkdtemp
@@ -94,7 +95,7 @@ eff = effVal""")
         p = getParser(mergefile)
         p.readFile(mergefile)
         [m, n] = p.parse()
-        self.assertEqual(map(lambda e: e.key,  m), ["bar", "foo", "eff"])
+        self.assertEqual([e.key for e in m], ["bar", "foo", "eff"])
 
     def testError(self):
         self.assertTrue(os.path.isdir(self.tmp))
@@ -265,7 +266,7 @@ class TestDTD(unittest.TestCase, ContentMixin):
         p = getParser(mergefile)
         p.readFile(mergefile)
         [m, n] = p.parse()
-        self.assertEqual(map(lambda e: e.key,  m), ["bar", "foo", "eff"])
+        self.assertEqual([e.key for e in m], ["bar", "foo", "eff"])
 
     def testJunk(self):
         self.assertTrue(os.path.isdir(self.tmp))
@@ -304,7 +305,7 @@ class TestDTD(unittest.TestCase, ContentMixin):
         p = getParser(mergefile)
         p.readFile(mergefile)
         [m, n] = p.parse()
-        self.assertEqual(map(lambda e: e.key,  m), ["foo", "eff", "bar"])
+        self.assertEqual([e.key for e in m], ["foo", "eff", "bar"])
 
     def test_reference_junk(self):
         self.assertTrue(os.path.isdir(self.tmp))

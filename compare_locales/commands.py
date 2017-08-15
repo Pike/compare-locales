@@ -4,6 +4,8 @@
 
 'Commands exposed to commandlines'
 
+from __future__ import absolute_import
+from __future__ import print_function
 import logging
 from argparse import ArgumentParser
 import os
@@ -153,15 +155,15 @@ data in a json useful for Exhibit
                 quiet=quiet,
                 stat_observer=unified_observer,
                 merge_stage=merge, clobber_merge=clobber)
-        except (OSError, IOError), exc:
-            print "FAIL: " + str(exc)
+        except (OSError, IOError) as exc:
+            print("FAIL: " + str(exc))
             self.parser.exit(2)
         if unified:
             observers = [unified_observer]
 
         rv = 0
         for observer in observers:
-            print observer.serialize(type=data)
+            print(observer.serialize(type=data))
             # summary is a dict of lang-summary dicts
             # find out if any of our results has errors, return 1 if so
             if rv > 0:

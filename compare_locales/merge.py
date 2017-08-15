@@ -6,6 +6,7 @@
 
 from collections import OrderedDict, defaultdict
 from codecs import encode
+import six
 
 
 from compare_locales import parser as cl
@@ -55,7 +56,7 @@ def merge_channels(name, *resources):
 
         return (entity.key, entity)
 
-    entities = reduce(
+    entities = six.moves.reduce(
         lambda x, y: merge_two(comments, x, y),
         map(parse_resource, resources))
 
@@ -107,7 +108,7 @@ def merge_two(comments, newer, older):
         acc.append(cur)
         return acc
 
-    pruned = reduce(prune, contents, [])
+    pruned = six.moves.reduce(prune, contents, [])
     return OrderedDict(pruned)
 
 
