@@ -125,7 +125,7 @@ class ProjectConfig(object):
                 rv['locales'] = d['locales'][:]
             self.paths.append(rv)
 
-    def set_filter_py(self, filter):
+    def set_filter_py(self, filter_function):
         '''Set legacy filter.py code.
         Assert that no rules are set.
         Also, normalize output already here.
@@ -134,7 +134,7 @@ class ProjectConfig(object):
 
         def filter_(module, path, entity=None):
             try:
-                rv = filter(module, path, entity=entity)
+                rv = filter_function(module, path, entity=entity)
             except BaseException:  # we really want to handle EVERYTHING here
                 return 'error'
             rv = {
