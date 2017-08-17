@@ -3,6 +3,7 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 from __future__ import absolute_import
+from __future__ import unicode_literals
 import re
 from collections import Counter
 from difflib import SequenceMatcher
@@ -10,10 +11,6 @@ from xml import sax
 import six
 from six.moves import range
 from six.moves import zip
-try:
-    from cStringIO import StringIO
-except ImportError:
-    from StringIO import StringIO
 
 from fluent.syntax import ast as ftl
 
@@ -225,7 +222,7 @@ class DTDChecker(Checker):
     needs_reference = True  # to cast a wider net for known entity references
 
     eref = re.compile('&(%s);' % DTDParser.Name)
-    tmpl = '''<!DOCTYPE elem [%s]>
+    tmpl = b'''<!DOCTYPE elem [%s]>
 <elem>%s</elem>
 '''
     xmllist = set(('amp', 'lt', 'gt', 'apos', 'quot'))
@@ -247,7 +244,7 @@ class DTDChecker(Checker):
             else self.entities_for_value(refValue)
 
     def entities_for_value(self, value):
-        reflist = set(m.group(1).encode('utf-8')
+        reflist = set(m.group(1)
                       for m in self.eref.finditer(value))
         reflist -= self.xmllist
         return reflist
@@ -288,12 +285,15 @@ class DTDChecker(Checker):
 
         parser.setContentHandler(self.defaulthandler)
         try:
-            parser.parse(StringIO(self.tmpl %
-                                  (entities, refValue.encode('utf-8'))))
+            parser.parse(
+                six.BytesIO(self.tmpl %
+                            (entities.encode('utf-8'),
+                             refValue.encode('utf-8'))))
             # also catch stray %
-            parser.parse(StringIO(self.tmpl %
-                                  (refEnt.all.encode('utf-8') + entities,
-                                   '&%s;' % refEnt.key.encode('utf-8'))))
+            parser.parse(
+                six.BytesIO(self.tmpl %
+                            ((refEnt.all + entities).encode('utf-8'),
+                             b'&%s;' % refEnt.key.encode('utf-8'))))
         except sax.SAXParseException as e:
             yield ('warning',
                    (0, 0),
@@ -308,14 +308,15 @@ class DTDChecker(Checker):
             self.texthandler.textcontent = ''
             parser.setContentHandler(self.texthandler)
         try:
-            parser.parse(StringIO(self.tmpl % (_entities,
+            parser.parse(six.BytesIO(self.tmpl % (_entities.encode('utf-8'),
                          l10nValue.encode('utf-8'))))
             # also catch stray %
             # if this fails, we need to substract the entity definition
             parser.setContentHandler(self.defaulthandler)
-            parser.parse(StringIO(self.tmpl % (
-                l10nEnt.all.encode('utf-8') + _entities,
-                '&%s;' % l10nEnt.key.encode('utf-8'))))
+            parser.parse(
+                six.BytesIO(self.tmpl %
+                            ((l10nEnt.all + _entities).encode('utf-8'),
+                             b'&%s;' % l10nEnt.key.encode('utf-8'))))
         except sax.SAXParseException as e:
             # xml parse error, yield error
             # sometimes, the error is reported on our fake closing
@@ -347,14 +348,14 @@ class DTDChecker(Checker):
             else:
                 warntmpl += ' (%s known)' % ', '.join(sorted(reflist))
         for key in missing:
-            yield ('warning', (0, 0), warntmpl % key.decode('utf-8'),
+            yield ('warning', (0, 0), warntmpl % key,
                    'xmlparse')
         if inContext and l10nlist and l10nlist - inContext - set(missing):
             mismatch = sorted(l10nlist - inContext - set(missing))
             for key in mismatch:
                 yield ('warning', (0, 0),
                        'Entity %s referenced, but %s used in context' % (
-                           key.decode('utf-8'),
+                           key,
                            ', '.join(sorted(inContext))
                 ), 'xmlparse')
 
@@ -449,12 +450,12 @@ class DTDChecker(Checker):
             if len(m.group(0)) % 2:
                 # found an unescaped single or double quote, which message?
                 if m.group(1) == '"':
-                    msg = u"Quotes in Android DTDs need escaping with \\\" "\
-                          u"or \\u0022, or put string in apostrophes."
+                    msg = "Quotes in Android DTDs need escaping with \\\" "\
+                          "or \\u0022, or put string in apostrophes."
                 else:
-                    msg = u"Apostrophes in Android DTDs need escaping with "\
-                          u"\\' or \\u0027, or use \u2019, or put string in "\
-                          u"quotes."
+                    msg = "Apostrophes in Android DTDs need escaping with "\
+                          "\\' or \\u0027, or use \u2019, or put string in "\
+                          "quotes."
                 yield ('error', m.end(0)+offset, msg, 'android')
 
 

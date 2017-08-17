@@ -81,7 +81,7 @@ foo=value
             (Whitespace, '\n')))
 
     def test_escapes(self):
-        self.parser.readContents(r'''
+        self.parser.readContents(br'''
 # unicode escapes
 zero = some \unicode
 one = \u0
@@ -161,7 +161,7 @@ foo = bar
         self._test(' \n\n', ((Whitespace, '\n\n'),))
 
     def test_positions(self):
-        self.parser.readContents('''\
+        self.parser.readContents(b'''\
 one = value
 two = other \\
 escaped value
@@ -176,7 +176,7 @@ escaped value
 
     # Bug 1399059 comment 18
     def test_z(self):
-        self.parser.readContents('''\
+        self.parser.readContents(b'''\
 one = XYZ ABC
 ''')
         one, = list(self.parser)

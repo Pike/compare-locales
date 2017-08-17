@@ -19,11 +19,13 @@ class ContentMixin(object):
 
     def reference(self, content):
         self.ref = mozpath.join(self.tmp, "en-reference" + self.extension)
-        open(self.ref, "w").write(content)
+        with open(self.ref, "w") as f:
+            f.write(content)
 
     def localized(self, content):
         self.l10n = mozpath.join(self.tmp, "l10n" + self.extension)
-        open(self.l10n, "w").write(content)
+        with open(self.l10n, "w") as f:
+            f.write(content)
 
 
 class TestProperties(unittest.TestCase, ContentMixin):

@@ -3,6 +3,7 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 from __future__ import absolute_import
+from __future__ import unicode_literals
 import re
 import bisect
 import codecs
@@ -111,8 +112,8 @@ class EntityBase(object):
         """Count the words in an English string.
         Replace a couple of xml markup to make that safer, too.
         """
-        value = self.re_br.sub(u'\n', self.val)
-        value = self.re_sgml.sub(u'', value)
+        value = self.re_br.sub('\n', self.val)
+        value = self.re_sgml.sub('', value)
         return len(value.split())
 
     def equals(self, other):
@@ -244,7 +245,7 @@ class Parser(object):
         self.last_comment = None
 
     def readFile(self, file):
-        with open(file, 'rU') as f:
+        with open(file, 'rbU') as f:
             try:
                 self.readContents(f.read())
             except UnicodeDecodeError as e:
@@ -364,22 +365,22 @@ class DTDParser(Parser):
     # | [#x200C-#x200D] | [#x2070-#x218F] | [#x2C00-#x2FEF] |
     # [#x3001-#xD7FF] | [#xF900-#xFDCF] | [#xFDF0-#xFFFD] |
     # [#x10000-#xEFFFF]
-    CharMinusDash = u'\x09\x0A\x0D\u0020-\u002C\u002E-\uD7FF\uE000-\uFFFD'
+    CharMinusDash = '\x09\x0A\x0D\u0020-\u002C\u002E-\uD7FF\uE000-\uFFFD'
     XmlComment = '<!--(?:-?[%s])*?-->' % CharMinusDash
-    NameStartChar = u':A-Z_a-z\xC0-\xD6\xD8-\xF6\xF8-\u02FF' + \
-        u'\u0370-\u037D\u037F-\u1FFF\u200C-\u200D\u2070-\u218F' + \
-        u'\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD'
+    NameStartChar = ':A-Z_a-z\xC0-\xD6\xD8-\xF6\xF8-\u02FF' + \
+        '\u0370-\u037D\u037F-\u1FFF\u200C-\u200D\u2070-\u218F' + \
+        '\u2C00-\u2FEF\u3001-\uD7FF\uF900-\uFDCF\uFDF0-\uFFFD'
     # + \U00010000-\U000EFFFF seems to be unsupported in python
 
     # NameChar ::= NameStartChar | "-" | "." | [0-9] | #xB7 |
     #     [#x0300-#x036F] | [#x203F-#x2040]
-    NameChar = NameStartChar + ur'\-\.0-9' + u'\xB7\u0300-\u036F\u203F-\u2040'
+    NameChar = NameStartChar + r'\-\.0-9' + '\xB7\u0300-\u036F\u203F-\u2040'
     Name = '[' + NameStartChar + '][' + NameChar + ']*'
     reKey = re.compile('<!ENTITY\s+(?P<key>' + Name + ')\s+'
                        '(?P<val>\"[^\"]*\"|\'[^\']*\'?)\s*>',
                        re.DOTALL | re.M)
     # add BOM to DTDs, details in bug 435002
-    reHeader = re.compile(u'^\ufeff')
+    reHeader = re.compile('^\ufeff')
     reComment = re.compile('<!--(?P<val>-?[%s])*?-->' % CharMinusDash,
                            re.S)
     rePE = re.compile(u'<!ENTITY\s+%\s+(?P<key>' + Name + ')\s+'
