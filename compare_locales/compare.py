@@ -396,6 +396,8 @@ class ContentComparer:
             f.write(ctx.contents[offset:])
 
         if not (capabilities & parser.CAN_MERGE):
+            if f:
+                f.close()
             return
 
         if skips or missing:

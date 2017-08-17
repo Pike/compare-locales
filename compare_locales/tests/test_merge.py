@@ -63,7 +63,7 @@ eff = lEff word
              'details': {}
              }
         )
-        self.assert_(not os.path.exists(mozpath.join(self.tmp, "merge",
+        self.assertFalse(os.path.exists(mozpath.join(self.tmp, "merge",
                                                      'l10n.properties')))
 
     def testMissing(self):
@@ -234,8 +234,8 @@ class TestDTD(unittest.TestCase, ContentMixin):
              'details': {}
              }
         )
-        self.assert_(
-            not os.path.exists(mozpath.join(self.tmp, "merge", 'l10n.dtd')))
+        self.assertFalse(
+            os.path.exists(mozpath.join(self.tmp, "merge", 'l10n.dtd')))
 
     def testMissing(self):
         self.assertTrue(os.path.isdir(self.tmp))
@@ -371,11 +371,13 @@ class TestFluent(unittest.TestCase):
 
     def reference(self, content):
         self.ref = os.path.join(self.tmp, "en-reference.ftl")
-        open(self.ref, "w").write(content)
+        with open(self.ref, "w") as f:
+            f.write(content)
 
     def localized(self, content):
         self.l10n = os.path.join(self.tmp, "l10n.ftl")
-        open(self.l10n, "w").write(content)
+        with open(self.l10n, "w") as f:
+            f.write(content)
 
     def setUp(self):
         self.tmp = mkdtemp()
@@ -417,7 +419,7 @@ bar = lBar
 
         # validate merge results
         mergepath = mozpath.join(self.tmp, "merge", "l10n.ftl")
-        self.assert_(not os.path.exists(mergepath))
+        self.assertFalse(os.path.exists(mergepath))
 
     def testMissing(self):
         self.reference("""\
@@ -457,7 +459,7 @@ eff = lEff
 
         # validate merge results
         mergepath = mozpath.join(self.tmp, "merge", "l10n.ftl")
-        self.assert_(not os.path.exists(mergepath))
+        self.assertFalse(os.path.exists(mergepath))
 
     def testBroken(self):
         self.reference("""\
@@ -508,7 +510,7 @@ eff = lEff {
 
         # validate merge results
         mergepath = mozpath.join(self.tmp, "merge", "l10n.ftl")
-        self.assert_(os.path.exists(mergepath))
+        self.assertTrue(os.path.exists(mergepath))
 
         p = getParser(mergepath)
         p.readFile(mergepath)
@@ -549,7 +551,7 @@ foo = Localized { bar }
 
         # validate merge results
         mergepath = mozpath.join(self.tmp, "merge", "l10n.ftl")
-        self.assert_(not os.path.exists(mergepath))
+        self.assertFalse(os.path.exists(mergepath))
 
     def testMismatchingReferences(self):
         self.reference("""\
@@ -606,7 +608,7 @@ baz = Localized { qux }
 
         # validate merge results
         mergepath = mozpath.join(self.tmp, "merge", "l10n.ftl")
-        self.assert_(not os.path.exists(mergepath))
+        self.assertFalse(os.path.exists(mergepath))
 
     def testMismatchingAttributes(self):
         self.reference("""
@@ -651,7 +653,7 @@ eff = lEff
 
         # validate merge results
         mergepath = mozpath.join(self.tmp, "merge", "l10n.ftl")
-        self.assert_(os.path.exists(mergepath))
+        self.assertTrue(os.path.exists(mergepath))
 
         p = getParser(mergepath)
         p.readFile(mergepath)
@@ -710,7 +712,7 @@ eff = lEff
 
         # validate merge results
         mergepath = mozpath.join(self.tmp, "merge", "l10n.ftl")
-        self.assert_(not os.path.exists(mergepath))
+        self.assertFalse(os.path.exists(mergepath))
 
     def testMismatchingValues(self):
         self.reference("""
@@ -753,7 +755,7 @@ bar = lBar
 
         # validate merge results
         mergepath = mozpath.join(self.tmp, "merge", "l10n.ftl")
-        self.assert_(os.path.exists(mergepath))
+        self.assertTrue(os.path.exists(mergepath))
 
         p = getParser(mergepath)
         p.readFile(mergepath)
@@ -791,7 +793,7 @@ bar = lBar
 
         # validate merge results
         mergepath = mozpath.join(self.tmp, "merge", "l10n.ftl")
-        self.assert_(not os.path.exists(mergepath))
+        self.assertFalse(os.path.exists(mergepath))
 
     def testMissingAttachedComment(self):
         self.reference("""\
@@ -826,7 +828,7 @@ bar = barVal
 
         # validate merge results
         mergepath = mozpath.join(self.tmp, "merge", "l10n.ftl")
-        self.assert_(not os.path.exists(mergepath))
+        self.assertFalse(os.path.exists(mergepath))
 
     def testObsoleteStandaloneComment(self):
         self.reference("""\
@@ -860,7 +862,7 @@ bar = lBar
 
         # validate merge results
         mergepath = mozpath.join(self.tmp, "merge", "l10n.ftl")
-        self.assert_(not os.path.exists(mergepath))
+        self.assertFalse(os.path.exists(mergepath))
 
     def test_duplicate(self):
         self.assertTrue(os.path.isdir(self.tmp))

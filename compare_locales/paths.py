@@ -10,6 +10,7 @@ from collections import defaultdict
 import errno
 import itertools
 import logging
+import warnings
 from compare_locales import util, mozpath
 import pytoml as toml
 import six
@@ -557,7 +558,8 @@ class L10nConfigParser(object):
         filter_path = mozpath.join(mozpath.dirname(self.inipath), 'filter.py')
         try:
             local = {}
-            exec(compile(open(filter_path).read(), filter_path, 'exec'), {}, local)
+            with open(filter_path) as f:
+                exec(compile(f.read(), filter_path, 'exec'), {}, local)
             if 'test' in local and callable(local['test']):
                 filters = [local['test']]
             else:
@@ -631,7 +633,8 @@ class L10nConfigParser(object):
 
     def allLocales(self):
         """Return a list of all the locales of this project"""
-        return util.parseLocales(open(self.all_path).read())
+        with open(self.all_path) as f:
+            return util.parseLocales(f.read())
 
 
 class SourceTreeConfigParser(L10nConfigParser):
@@ -681,7 +684,11 @@ class File(object):
 
     def getContents(self):
         # open with universal line ending support and read
-        return open(self.fullpath, 'rU').read()
+        # ignore universal newlines deprecation
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            with open(self.fullpath, 'rbU') as f:
+                return f.read()
 
     @property
     def localpath(self):

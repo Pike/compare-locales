@@ -89,7 +89,7 @@ class TestDTD(ParserTestMixin, unittest.TestCase):
         self.assertIsInstance(entities[0], parser.Comment)
         self.assertIn('MPL', entities[0].all)
         e = entities[2]
-        self.assert_(isinstance(e, parser.Entity))
+        self.assertIsInstance(e, parser.Entity)
         self.assertEqual(e.key, 'foo')
         self.assertEqual(e.val, 'value')
         self.assertEqual(len(entities), 4)
@@ -100,10 +100,10 @@ class TestDTD(ParserTestMixin, unittest.TestCase):
 <!ENTITY foo "value">
 ''')
         entities = list(p.walk())
-        self.assert_(isinstance(entities[0], parser.Comment))
+        self.assertIsInstance(entities[0], parser.Comment)
         self.assertIn('MPL', entities[0].all)
         e = entities[2]
-        self.assert_(isinstance(e, parser.Entity))
+        self.assertIsInstance(e, parser.Entity)
         self.assertEqual(e.key, 'foo')
         self.assertEqual(e.val, 'value')
         self.assertEqual(len(entities), 4)

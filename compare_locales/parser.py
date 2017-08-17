@@ -9,6 +9,7 @@ import bisect
 import codecs
 from collections import Counter
 import logging
+import warnings
 
 try:
     from html import unescape as html_unescape
@@ -245,12 +246,15 @@ class Parser(object):
         self.last_comment = None
 
     def readFile(self, file):
-        with open(file, 'rbU') as f:
-            try:
-                self.readContents(f.read())
-            except UnicodeDecodeError as e:
-                (logging.getLogger('locales')
-                        .error("Can't read file: " + file + '; ' + str(e)))
+        # ignore universal newlines deprecation
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            with open(file, 'rbU') as f:
+                try:
+                    self.readContents(f.read())
+                except UnicodeDecodeError as e:
+                    (logging.getLogger('locales')
+                            .error("Can't read file: " + file + '; ' + str(e)))
 
     def readContents(self, contents):
         '''Read contents and create parsing context.
