@@ -333,8 +333,8 @@ class ProjectFiles(object):
         known = {}
         for matchers in self.matchers:
             matcher = matchers['l10n']
-            for path in self._files(matcher.prefix):
-                if matcher.match(path) and path not in known:
+            for path in self._files(matcher):
+                if path not in known:
                     known[path] = {'test': matchers.get('test')}
                     if 'reference' in matchers:
                         known[path]['reference'] = matcher.sub(
@@ -345,9 +345,7 @@ class ProjectFiles(object):
             if 'reference' not in matchers:
                 continue
             matcher = matchers['reference']
-            for path in self._files(matcher.prefix):
-                if not matcher.match(path):
-                    continue
+            for path in self._files(matcher):
                 l10npath = matcher.sub(matchers['l10n'], path)
                 if l10npath not in known:
                     known[l10npath] = {
@@ -360,18 +358,22 @@ class ProjectFiles(object):
         for path, d in sorted(known.items()):
             yield (path, d.get('reference'), d.get('merge'), d['test'])
 
-    def _files(self, base):
+    def _files(self, matcher):
         '''Base implementation of getting all files in a hierarchy
         using the file system.
         Subclasses might replace this method to support different IO
         patterns.
         '''
+        base = matcher.prefix
         if os.path.isfile(base):
-            yield base
+            if matcher.match(base):
+                yield base
             return
         for d, dirs, files in os.walk(base):
             for f in files:
-                yield mozpath.join(d, f)
+                p = mozpath.join(d, f)
+                if matcher.match(p):
+                    yield p
 
 
 class ConfigNotFound(EnvironmentError):

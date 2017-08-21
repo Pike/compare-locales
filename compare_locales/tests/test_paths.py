@@ -293,9 +293,12 @@ class MockProjectFiles(ProjectFiles):
             .__init__(locale, projects, mergebase=mergebase))
         self.mocks = mocks
 
-    def _files(self, base):
+    def _files(self, matcher):
+        base = matcher.prefix
         for path in self.mocks.get(base, []):
-            yield mozpath.join(base, path)
+            p = mozpath.join(base, path)
+            if matcher.match(p):
+                yield p
 
 
 class TestProjectPaths(unittest.TestCase):
