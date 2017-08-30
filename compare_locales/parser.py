@@ -629,7 +629,7 @@ class FluentAttribute(EntityBase):
 
 class FluentEntity(Entity):
     # Fields ignored when comparing two entities.
-    ignored_fields = ['comment', 'span']
+    ignored_fields = ['comment', 'span', 'tags']
 
     def __init__(self, ctx, entry):
         start = entry.span.start

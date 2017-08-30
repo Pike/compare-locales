@@ -789,6 +789,54 @@ bar = duplicated bar
         mergefile = mozpath.join(self.tmp, "merge", "l10n.ftl")
         self.assertFalse(os.path.isfile(mergefile))
 
+    def test_unmatched_tags(self):
+        self.assertTrue(os.path.isdir(self.tmp))
+        self.reference("""foo = fooVal
+    #yes
+""")
+        self.localized("""foo = fooVal
+    #no
+""")
+        cc = ContentComparer([Observer()])
+        cc.compare(File(self.ref, "en-reference.ftl", ""),
+                   File(self.l10n, "l10n.ftl", ""),
+                   mozpath.join(self.tmp, "merge", "l10n.ftl"))
+        self.assertDictEqual(
+            cc.observers[0].toJSON(),
+            {'summary':
+                {None: {
+                    'unchanged': 1,
+                    'unchanged_w': 1
+                }},
+             'details': {}
+             })
+        mergefile = mozpath.join(self.tmp, "merge", "l10n.ftl")
+        self.assertFalse(os.path.isfile(mergefile))
+
+    def test_matching_tags(self):
+        self.assertTrue(os.path.isdir(self.tmp))
+        self.reference("""foo = fooVal
+    #yes
+""")
+        self.localized("""foo = fooVal
+    #yes
+""")
+        cc = ContentComparer([Observer()])
+        cc.compare(File(self.ref, "en-reference.ftl", ""),
+                   File(self.l10n, "l10n.ftl", ""),
+                   mozpath.join(self.tmp, "merge", "l10n.ftl"))
+        self.assertDictEqual(
+            cc.observers[0].toJSON(),
+            {'summary':
+                {None: {
+                    'unchanged': 1,
+                    'unchanged_w': 1
+                }},
+             'details': {}
+             })
+        mergefile = mozpath.join(self.tmp, "merge", "l10n.ftl")
+        self.assertFalse(os.path.isfile(mergefile))
+
 
 if __name__ == '__main__':
     unittest.main()
