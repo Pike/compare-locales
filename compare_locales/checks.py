@@ -172,10 +172,6 @@ class PropertiesChecker(Checker):
                     specs[ls:pos] = nones*[None]
                     specs.append(m.group('spec'))
                 else:
-                    if specs[pos] is not None:
-                        raise PrintfException('Double ordered argument %d' %
-                                              (pos+1),
-                                              m.start())
                     specs[pos] = m.group('spec')
             else:
                 specs.append(m.group('spec'))
