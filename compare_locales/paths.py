@@ -268,7 +268,7 @@ class ProjectConfig(object):
 
 
 class ProjectFiles(object):
-    '''Iterator object to get all files and tests for a locale and a
+    '''Iterable object to get all files and tests for a locale and a
     list of ProjectConfigs.
     '''
     def __init__(self, locale, projects, mergebase=None):
@@ -374,6 +374,31 @@ class ProjectFiles(object):
                 p = mozpath.join(d, f)
                 if matcher.match(p):
                     yield p
+
+    def match(self, path):
+        '''Return the tuple of l10n_path, reference, mergepath, tests
+        if the given path matches any config, otherwise None.
+
+        This routine doesn't check that the files actually exist.
+        '''
+        for matchers in self.matchers:
+            matcher = matchers['l10n']
+            if matcher.match(path):
+                ref = merge = None
+                if 'reference' in matchers:
+                    ref = matcher.sub(matchers['reference'], path)
+                if 'merge' in matchers:
+                    merge = matcher.sub(matchers['merge'], path)
+                return path, ref, merge, matchers.get('test')
+            if 'reference' not in matchers:
+                continue
+            matcher = matchers['reference']
+            if matcher.match(path):
+                merge = None
+                l10n = matcher.sub(matchers['l10n'], path)
+                if 'merge' in matchers:
+                    merge = matcher.sub(matchers['merge'], path)
+                return l10n, path, merge, matchers.get('test')
 
 
 class ConfigNotFound(EnvironmentError):

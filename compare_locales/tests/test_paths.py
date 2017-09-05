@@ -322,10 +322,17 @@ class TestProjectPaths(unittest.TestCase):
         files = MockProjectFiles(mocks, 'de', [cfg])
         self.assertListEqual(
             list(files), [('/tmp/de/good.ftl', None, None, set())])
+        self.assertTupleEqual(
+            files.match('/tmp/de/something.ftl'),
+            ('/tmp/de/something.ftl', None, None, set()))
+        self.assertIsNone(files.match('/tmp/fr/something.ftl'))
         files = MockProjectFiles(mocks, 'de', [cfg], mergebase='merging')
         self.assertListEqual(
             list(files),
             [('/tmp/de/good.ftl', None, 'merging/de/good.ftl', set())])
+        self.assertTupleEqual(
+            files.match('/tmp/de/something.ftl'),
+            ('/tmp/de/something.ftl', None, 'merging/de/something.ftl', set()))
         # 'fr' is not in the locale list, should return no files
         files = MockProjectFiles(mocks, 'fr', [cfg])
         self.assertListEqual(list(files), [])
@@ -361,6 +368,18 @@ class TestProjectPaths(unittest.TestCase):
                 ('/tmp/l10n/de/ref.ftl', '/tmp/reference/ref.ftl', None,
                  set()),
             ])
+        self.assertTupleEqual(
+            files.match('/tmp/l10n/de/good.ftl'),
+            ('/tmp/l10n/de/good.ftl', '/tmp/reference/good.ftl', None,
+             set()),
+            )
+        self.assertTupleEqual(
+            files.match('/tmp/reference/good.ftl'),
+            ('/tmp/l10n/de/good.ftl', '/tmp/reference/good.ftl', None,
+             set()),
+            )
+        self.assertIsNone(files.match('/tmp/l10n/de/subdir/bad.ftl'))
+        self.assertIsNone(files.match('/tmp/reference/subdir/bad.ftl'))
         files = MockProjectFiles(mocks, 'de', [cfg], mergebase='merging')
         self.assertListEqual(
             list(files),
@@ -370,6 +389,16 @@ class TestProjectPaths(unittest.TestCase):
                 ('/tmp/l10n/de/ref.ftl', '/tmp/reference/ref.ftl',
                  'merging/de/ref.ftl', set()),
             ])
+        self.assertTupleEqual(
+            files.match('/tmp/l10n/de/good.ftl'),
+            ('/tmp/l10n/de/good.ftl', '/tmp/reference/good.ftl',
+             'merging/de/good.ftl', set()),
+            )
+        self.assertTupleEqual(
+            files.match('/tmp/reference/good.ftl'),
+            ('/tmp/l10n/de/good.ftl', '/tmp/reference/good.ftl',
+             'merging/de/good.ftl', set()),
+            )
         # 'fr' is not in the locale list, should return no files
         files = MockProjectFiles(mocks, 'fr', [cfg])
         self.assertListEqual(list(files), [])
@@ -406,6 +435,10 @@ class TestProjectPaths(unittest.TestCase):
                 ('/tmp/de/major/good.ftl', None, None, set()),
                 ('/tmp/de/minor/good.ftl', None, None, set()),
             ])
+        self.assertTupleEqual(
+            files.match('/tmp/de/major/some.ftl'),
+            ('/tmp/de/major/some.ftl', None, None, set()))
+        self.assertIsNone(files.match('/tmp/de/other/some.ftl'))
         # 'fr' is not in the locale list of minor, should only return major
         files = MockProjectFiles(mocks, 'fr', [cfg])
         self.assertListEqual(
@@ -413,6 +446,7 @@ class TestProjectPaths(unittest.TestCase):
             [
                 ('/tmp/fr/major/good.ftl', None, None, set()),
             ])
+        self.assertIsNone(files.match('/tmp/fr/minor/some.ftl'))
 
 
 class TestProjectConfig(unittest.TestCase):
