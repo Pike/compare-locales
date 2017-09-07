@@ -306,8 +306,8 @@ class Parser(object):
         return (Junk(ctx, (offset, junkend)), junkend)
 
     def createEntity(self, ctx, m):
-        pre_comment = unicode(self.last_comment) if self.last_comment else ''
-        self.last_comment = ''
+        pre_comment = self.last_comment
+        self.last_comment = None
         return Entity(ctx, pre_comment,
                       *[m.span(i) for i in xrange(6)])
 
@@ -402,15 +402,15 @@ class DTDParser(Parser):
             m = self.rePE.match(ctx.contents, offset)
             if m:
                 inneroffset = m.end()
-                self.last_comment = ''
+                self.last_comment = None
                 entity = DTDEntity(ctx, '', *[m.span(i) for i in xrange(6)])
         return (entity, inneroffset)
 
     def createEntity(self, ctx, m):
         valspan = m.span('val')
         valspan = (valspan[0]+1, valspan[1]-1)
-        pre_comment = unicode(self.last_comment) if self.last_comment else ''
-        self.last_comment = ''
+        pre_comment = self.last_comment
+        self.last_comment = None
         return DTDEntity(ctx, pre_comment,
                          m.span(),
                          m.span('pre'),
@@ -482,9 +482,8 @@ class PropertiesParser(Parser):
             if ws:
                 endval = ws.start()
                 offset = ws.end()
-            pre_comment = (unicode(self.last_comment) if self.last_comment
-                           else '')
-            self.last_comment = ''
+            pre_comment = self.last_comment
+            self.last_comment = None
             entity = PropertiesEntity(
                 ctx, pre_comment,
                 (m.start(), offset),   # full span

@@ -71,7 +71,8 @@ class PropertiesChecker(Checker):
         refSpecs = None
         # check for PluralForm.jsm stuff, should have the docs in the
         # comment
-        if 'Localization_and_Plurals' in refEnt.pre_comment:
+        if (refEnt.pre_comment
+                and 'Localization_and_Plurals' in refEnt.pre_comment.all):
             # For plurals, common variable pattern is #1. Try that.
             pats = set(int(m.group(1)) for m in re.finditer('#([0-9]+)',
                                                             refValue))
