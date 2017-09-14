@@ -85,21 +85,7 @@ data in a json useful for Exhibit
         logging.basicConfig()
         logging.getLogger().setLevel(logging.WARNING -
                                      (args.v - args.q) * 10)
-        observers = self.handle(args)
-        rv = 0
-        for observer in observers:
-            print observer.serialize(type=args.data).encode('utf-8', 'replace')
-            # summary is a dict of lang-summary dicts
-            # find out if any of our results has errors, return 1 if so
-            if rv > 0:
-                continue  # we already have errors
-            for loc, summary in observer.summary.items():
-                if summary.get('errors', 0) > 0:
-                    rv = 1
-                    # no need to check further summaries, but
-                    # continue to run through observers
-                    break
-        return rv
+        return self.handle(args)
 
     def handle(self, args):
         # using nargs multiple times in argparser totally screws things
@@ -155,4 +141,18 @@ data in a json useful for Exhibit
             self.parser.exit(2)
         if args.unified:
             return [unified_observer]
-        return observers
+
+        rv = 0
+        for observer in observers:
+            print observer.serialize(type=args.data).encode('utf-8', 'replace')
+            # summary is a dict of lang-summary dicts
+            # find out if any of our results has errors, return 1 if so
+            if rv > 0:
+                continue  # we already have errors
+            for loc, summary in observer.summary.items():
+                if summary.get('errors', 0) > 0:
+                    rv = 1
+                    # no need to check further summaries, but
+                    # continue to run through observers
+                    break
+        return rv
