@@ -37,7 +37,7 @@ or the all-locales file referenced by the application\'s l10n.ini."""
         parser.add_argument('-m', '--merge',
                             help='''Use this directory to stage merged files,
 use {ab_CD} to specify a different directory for each locale''')
-        parser.add_argument('config', metavar='l10n.toml', nargs='+',
+        parser.add_argument('config_paths', metavar='l10n.toml', nargs='+',
                             help='TOML or INI file for the project')
         parser.add_argument('l10n_base_dir', metavar='l10n-base-dir',
                             help='Parent directory of localizations')
@@ -45,7 +45,7 @@ use {ab_CD} to specify a different directory for each locale''')
                             help='Locale code and top-level directory of '
                                  'each localization')
         parser.add_argument('-D', action='append', metavar='var=value',
-                            default=[],
+                            default=[], dest='defines',
                             help='Overwrite variables in TOML files')
         parser.add_argument('--unified', action="store_true",
                             help="Show output for all projects unified")
@@ -85,66 +85,74 @@ data in a json useful for Exhibit
         logging.basicConfig()
         logging.getLogger().setLevel(logging.WARNING -
                                      (args.v - args.q) * 10)
-        return self.handle(args)
+        kwargs = vars(args)
+        # strip handeld arguments
+        kwargs.pop('q')
+        kwargs.pop('v')
+        return self.handle(**kwargs)
 
-    def handle(self, args):
+    def handle(self, config_paths, l10n_base_dir, locales,
+               merge=None, defines=None, unified=False, full=False,
+               clobber=False, data='text'):
         # using nargs multiple times in argparser totally screws things
         # up, repair that.
         # First files are configs, then the base dir, everything else is
         # locales
-        all_args = args.config + [args.l10n_base_dir] + args.locales
-        del args.config[:]
-        del args.locales[:]
+        all_args = config_paths + [l10n_base_dir] + locales
+        config_paths = []
+        locales = []
+        if defines is None:
+            defines = []
         while all_args and not os.path.isdir(all_args[0]):
-            args.config.append(all_args.pop(0))
-        if not args.config:
+            config_paths.append(all_args.pop(0))
+        if not config_paths:
             self.parser.error('no configuration file given')
-        for cf in args.config:
+        for cf in config_paths:
             if not os.path.isfile(cf):
                 self.parser.error('config file %s not found' % cf)
         if not all_args:
             self.parser.error('l10n-base-dir not found')
-        args.l10n_base_dir = all_args.pop(0)
-        args.locales.extend(all_args)
+        l10n_base_dir = all_args.pop(0)
+        locales.extend(all_args)
         # when we compare disabled projects, we set our locales
         # on all subconfigs, so deep is True.
-        locales_deep = args.full
+        locales_deep = full
         configs = []
         config_env = {}
-        for define in args.D:
+        for define in defines:
             var, _, value = define.partition('=')
             config_env[var] = value
-        for config_path in args.config:
+        for config_path in config_paths:
             if config_path.endswith('.toml'):
                 try:
                     config = TOMLParser.parse(config_path, env=config_env)
                 except ConfigNotFound as e:
                     self.parser.exit('config file %s not found' % e.filename)
-                config.add_global_environment(l10n_base=args.l10n_base_dir)
-                if args.locales:
-                    config.set_locales(args.locales, deep=locales_deep)
+                config.add_global_environment(l10n_base=l10n_base_dir)
+                if locales:
+                    config.set_locales(locales, deep=locales_deep)
                 configs.append(config)
             else:
                 app = EnumerateApp(
-                    config_path, args.l10n_base_dir, args.locales)
+                    config_path, l10n_base_dir, locales)
                 configs.append(app.asConfig())
         try:
             unified_observer = None
-            if args.unified:
+            if unified:
                 unified_observer = Observer()
             observers = compareProjects(
                 configs,
                 stat_observer=unified_observer,
-                merge_stage=args.merge, clobber_merge=args.clobber)
+                merge_stage=merge, clobber_merge=clobber)
         except (OSError, IOError), exc:
             print "FAIL: " + str(exc)
             self.parser.exit(2)
-        if args.unified:
-            return [unified_observer]
+        if unified:
+            observers = [unified_observer]
 
         rv = 0
         for observer in observers:
-            print observer.serialize(type=args.data).encode('utf-8', 'replace')
+            print observer.serialize(type=data).encode('utf-8', 'replace')
             # summary is a dict of lang-summary dicts
             # find out if any of our results has errors, return 1 if so
             if rv > 0:
