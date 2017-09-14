@@ -13,11 +13,13 @@ from compare_locales.paths import EnumerateApp, TOMLParser, ConfigNotFound
 from compare_locales.compare import compareProjects, Observer
 
 
-class BaseCommand(object):
-    """Base class for compare-locales commands.
-    This handles command line parsing, and general sugar for setuptools
-    entry_points.
-    """
+class CompareLocales(object):
+    """Check the localization status of gecko applications.
+The first arguments are paths to the l10n.ini or toml files for the
+applications, followed by the base directory of the localization repositories.
+Then you pass in the list of locale codes you want to compare. If there are
+not locales given, the list of locales will be taken from the l10n.toml file
+or the all-locales file referenced by the application\'s l10n.ini."""
 
     def __init__(self):
         self.parser = None
@@ -35,9 +37,27 @@ class BaseCommand(object):
         parser.add_argument('-m', '--merge',
                             help='''Use this directory to stage merged files,
 use {ab_CD} to specify a different directory for each locale''')
-        return parser
-
-    def add_data_argument(self, parser):
+        parser.add_argument('config', metavar='l10n.toml', nargs='+',
+                            help='TOML or INI file for the project')
+        parser.add_argument('l10n_base_dir', metavar='l10n-base-dir',
+                            help='Parent directory of localizations')
+        parser.add_argument('locales', nargs='*', metavar='locale-code',
+                            help='Locale code and top-level directory of '
+                                 'each localization')
+        parser.add_argument('-D', action='append', metavar='var=value',
+                            default=[],
+                            help='Overwrite variables in TOML files')
+        parser.add_argument('--unified', action="store_true",
+                            help="Show output for all projects unified")
+        parser.add_argument('--full', action="store_true",
+                            help="Compare projects that are disabled")
+        parser.add_argument('--clobber-merge', action="store_true",
+                            default=False, dest='clobber',
+                            help="""WARNING: DATALOSS.
+Use this option with care. If specified, the merge directory will
+be clobbered for each module. That means, the subdirectory will
+be completely removed, any files that were there are lost.
+Be careful to specify the right merge directory when using this option.""")
         parser.add_argument('--data', choices=['text', 'exhibit', 'json'],
                             default='text',
                             help='''Choose data and format (one of text,
@@ -46,6 +66,7 @@ with warnings and errors. Also prints a summary; json: Serialize the internal
 tree, useful for tools. Also always succeeds; exhibit: Serialize the summary
 data in a json useful for Exhibit
 ''')
+        return parser
 
     @classmethod
     def call(cls):
@@ -79,47 +100,6 @@ data in a json useful for Exhibit
                     # continue to run through observers
                     break
         return rv
-
-    def handle(self, args):
-        """Subclasses need to implement this method for the actual
-        command handling.
-        """
-        raise NotImplementedError
-
-
-class CompareLocales(BaseCommand):
-    """Check the localization status of gecko applications.
-The first arguments are paths to the l10n.ini or toml files for the
-applications, followed by the base directory of the localization repositories.
-Then you pass in the list of locale codes you want to compare. If there are
-not locales given, the list of locales will be taken from the l10n.toml file
-or the all-locales file referenced by the application\'s l10n.ini."""
-
-    def get_parser(self):
-        parser = super(CompareLocales, self).get_parser()
-        parser.add_argument('config', metavar='l10n.toml', nargs='+',
-                            help='TOML or INI file for the project')
-        parser.add_argument('l10n_base_dir', metavar='l10n-base-dir',
-                            help='Parent directory of localizations')
-        parser.add_argument('locales', nargs='*', metavar='locale-code',
-                            help='Locale code and top-level directory of '
-                                 'each localization')
-        parser.add_argument('-D', action='append', metavar='var=value',
-                            default=[],
-                            help='Overwrite variables in TOML files')
-        parser.add_argument('--unified', action="store_true",
-                            help="Show output for all projects unified")
-        parser.add_argument('--full', action="store_true",
-                            help="Compare projects that are disabled")
-        parser.add_argument('--clobber-merge', action="store_true",
-                            default=False, dest='clobber',
-                            help="""WARNING: DATALOSS.
-Use this option with care. If specified, the merge directory will
-be clobbered for each module. That means, the subdirectory will
-be completely removed, any files that were there are lost.
-Be careful to specify the right merge directory when using this option.""")
-        self.add_data_argument(parser)
-        return parser
 
     def handle(self, args):
         # using nargs multiple times in argparser totally screws things
