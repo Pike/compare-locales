@@ -5,6 +5,7 @@
 
 import unittest
 
+from compare_locales import parser
 from compare_locales.tests import ParserTestMixin
 
 
@@ -131,3 +132,53 @@ abc
         attr = attributes[0]
         self.assertEqual(attr.key, 'attr')
         self.assertEqual(attr.val, 'Attr')
+
+    def test_whitespace(self):
+        self.parser.readContents('''\
+// Resource Comment
+
+foo = Foo
+
+// Section Comment
+[[ Section ]]
+
+bar = Bar
+
+// Standalone Comment
+
+// Baz Comment
+baz = Baz
+''')
+        entities = list(self.parser.walk())
+
+        self.assertTrue(isinstance(entities[0], parser.Whitespace))
+        self.assertEqual(entities[0].all, '\n')
+
+        self.assertTrue(isinstance(entities[1], parser.FluentEntity))
+        self.assertEqual(entities[1].val, 'Foo')
+
+        self.assertTrue(isinstance(entities[2], parser.Whitespace))
+        self.assertEqual(entities[2].all, '\n\n')
+
+        # XXX We don't yield Sections yet (bug 1399057).
+
+        self.assertTrue(isinstance(entities[3], parser.Whitespace))
+        self.assertEqual(entities[3].all, '\n')
+
+        self.assertTrue(isinstance(entities[4], parser.FluentEntity))
+        self.assertEqual(entities[4].val, 'Bar')
+
+        self.assertTrue(isinstance(entities[5], parser.Whitespace))
+        self.assertEqual(entities[5].all, '\n\n')
+
+        # XXX We don't yield Comments yet (bug 1399057).
+
+        self.assertTrue(isinstance(entities[6], parser.Whitespace))
+        self.assertEqual(entities[6].all, '\n')
+
+        self.assertTrue(isinstance(entities[7], parser.FluentEntity))
+        self.assertEqual(entities[7].val, 'Baz')
+        self.assertEqual(entities[7].entry.comment.content, 'Baz Comment')
+
+        self.assertTrue(isinstance(entities[8], parser.Whitespace))
+        self.assertEqual(entities[8].all, '\n')

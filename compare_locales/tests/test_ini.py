@@ -11,8 +11,7 @@ from compare_locales.tests import ParserTestMixin
 mpl2 = '''\
 ; This Source Code Form is subject to the terms of the Mozilla Public
 ; License, v. 2.0. If a copy of the MPL was not distributed with this file,
-; You can obtain one at http://mozilla.org/MPL/2.0/.
-'''
+; You can obtain one at http://mozilla.org/MPL/2.0/.'''
 
 
 class TestIniParser(ParserTestMixin, unittest.TestCase):
@@ -25,31 +24,43 @@ class TestIniParser(ParserTestMixin, unittest.TestCase):
 TitleText=Some Title
 ''', (
             ('Comment', 'UTF-8 encoding'),
+            ('Whitespace', '\n'),
             ('IniSection', 'Strings'),
-            ('TitleText', 'Some Title'),))
+            ('Whitespace', '\n'),
+            ('TitleText', 'Some Title'),
+            ('Whitespace', '\n')))
 
     def testMPL2_Space_UTF(self):
         self._test(mpl2 + '''
+
 ; This file is in the UTF-8 encoding
 [Strings]
 TitleText=Some Title
 ''', (
             ('Comment', mpl2),
+            ('Whitespace', '\n\n'),
             ('Comment', 'UTF-8'),
+            ('Whitespace', '\n'),
             ('IniSection', 'Strings'),
-            ('TitleText', 'Some Title'),))
+            ('Whitespace', '\n'),
+            ('TitleText', 'Some Title'),
+            ('Whitespace', '\n')))
 
     def testMPL2_Space(self):
         self._test(mpl2 + '''
+
 [Strings]
 TitleText=Some Title
 ''', (
             ('Comment', mpl2),
+            ('Whitespace', '\n\n'),
             ('IniSection', 'Strings'),
-            ('TitleText', 'Some Title'),))
+            ('Whitespace', '\n'),
+            ('TitleText', 'Some Title'),
+            ('Whitespace', '\n')))
 
     def testMPL2_MultiSpace(self):
-        self._test(mpl2 + '''\
+        self._test(mpl2 + '''
 
 ; more comments
 
@@ -57,34 +68,47 @@ TitleText=Some Title
 TitleText=Some Title
 ''', (
             ('Comment', mpl2),
+            ('Whitespace', '\n\n'),
             ('Comment', 'more comments'),
+            ('Whitespace', '\n\n'),
             ('IniSection', 'Strings'),
-            ('TitleText', 'Some Title'),))
+            ('Whitespace', '\n'),
+            ('TitleText', 'Some Title'),
+            ('Whitespace', '\n')))
 
     def testMPL2_JunkBeforeCategory(self):
-        self._test(mpl2 + '''\
+        self._test(mpl2 + '''
 Junk
 [Strings]
 TitleText=Some Title
 ''', (
             ('Comment', mpl2),
-            ('Junk', 'Junk'),
+            ('Whitespace', '\n'),
+            ('Junk', 'Junk\n'),
             ('IniSection', 'Strings'),
-            ('TitleText', 'Some Title')))
+            ('Whitespace', '\n'),
+            ('TitleText', 'Some Title'),
+            ('Whitespace', '\n')))
 
     def test_TrailingComment(self):
         self._test(mpl2 + '''
+
 [Strings]
 TitleText=Some Title
 ;Stray trailing comment
 ''', (
             ('Comment', mpl2),
+            ('Whitespace', '\n\n'),
             ('IniSection', 'Strings'),
+            ('Whitespace', '\n'),
             ('TitleText', 'Some Title'),
-            ('Comment', 'Stray trailing')))
+            ('Whitespace', '\n'),
+            ('Comment', 'Stray trailing'),
+            ('Whitespace', '\n')))
 
     def test_SpacedTrailingComments(self):
         self._test(mpl2 + '''
+
 [Strings]
 TitleText=Some Title
 
@@ -93,12 +117,17 @@ TitleText=Some Title
 
 ''', (
             ('Comment', mpl2),
+            ('Whitespace', '\n\n'),
             ('IniSection', 'Strings'),
+            ('Whitespace', '\n'),
             ('TitleText', 'Some Title'),
-            ('Comment', 'Second stray comment')))
+            ('Whitespace', '\n\n'),
+            ('Comment', 'Second stray comment'),
+            ('Whitespace', '\n\n')))
 
     def test_TrailingCommentsAndJunk(self):
         self._test(mpl2 + '''
+
 [Strings]
 TitleText=Some Title
 
@@ -108,14 +137,20 @@ Junk
 
 ''', (
             ('Comment', mpl2),
+            ('Whitespace', '\n\n'),
             ('IniSection', 'Strings'),
+            ('Whitespace', '\n'),
             ('TitleText', 'Some Title'),
+            ('Whitespace', '\n\n'),
             ('Comment', 'Stray trailing'),
-            ('Junk', 'Junk'),
-            ('Comment', 'Second stray comment')))
+            ('Whitespace', '\n'),
+            ('Junk', 'Junk\n'),
+            ('Comment', 'Second stray comment'),
+            ('Whitespace', '\n\n')))
 
     def test_JunkInbetweenEntries(self):
         self._test(mpl2 + '''
+
 [Strings]
 TitleText=Some Title
 
@@ -124,10 +159,14 @@ Junk
 Good=other string
 ''', (
             ('Comment', mpl2),
+            ('Whitespace', '\n\n'),
             ('IniSection', 'Strings'),
+            ('Whitespace', '\n'),
             ('TitleText', 'Some Title'),
-            ('Junk', 'Junk'),
-            ('Good', 'other string')))
+            ('Whitespace', '\n\n'),
+            ('Junk', 'Junk\n\n'),
+            ('Good', 'other string'),
+            ('Whitespace', '\n')))
 
     def test_empty_file(self):
         self._test('', tuple())
