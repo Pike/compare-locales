@@ -167,6 +167,14 @@ escaped value
         self.assertEqual(two.value_position(-1), (3, 14))
         self.assertEqual(two.value_position(10), (3, 3))
 
+    # Bug 1399059 comment 18
+    def test_z(self):
+        self.parser.readContents('''\
+one = XYZ ABC
+''')
+        one, = list(self.parser)
+        self.assertEqual(one.val, 'XYZ ABC')
+
 
 if __name__ == '__main__':
     unittest.main()

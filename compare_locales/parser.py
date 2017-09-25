@@ -393,7 +393,7 @@ class PropertiesParser(Parser):
             '(?P<key>[^#!\s\n][^=:\n]*?)\s*[:=][ \t]*', re.M)
         self.reComment = re.compile('(?:[#!][^\n]*\n)*(?:[#!][^\n]*)', re.M)
         self._escapedEnd = re.compile(r'\\+$')
-        self._trailingWS = re.compile(r'\s*[\n\Z]', re.M)
+        self._trailingWS = re.compile(r'\s*(?:\n|\Z)', re.M)
         Parser.__init__(self)
 
     def getNext(self, ctx, offset):
