@@ -626,6 +626,16 @@ class FluentEntity(Entity):
             yield FluentAttribute(self, attr_node)
 
 
+class FluentSection(EntityBase):
+    def __init__(self, ctx, entry):
+        self.entry = entry
+        self.ctx = ctx
+
+        self.span = (entry.span.start, entry.span.end)
+        self.key_span = self.val_span = (
+            entry.name.span.start, entry.name.span.end)
+
+
 class FluentParser(Parser):
     capabilities = CAN_SKIP
 
@@ -637,8 +647,22 @@ class FluentParser(Parser):
         if not self.ctx:
             # loading file failed, or we just didn't load anything
             return
+
         resource = self.ftl_parser.parse(self.ctx.contents)
-        last_span_end = resource.comment.span.end if resource.comment else 0
+
+        if resource.comment:
+            last_span_end = resource.comment.span.end
+
+            if not only_localizable:
+                if 0 < resource.comment.span.start:
+                    yield Whitespace(
+                        self.ctx, (0, resource.comment.span.start))
+                yield Comment(
+                    self.ctx,
+                    (resource.comment.span.start, resource.comment.span.end))
+        else:
+            last_span_end = 0
+
         for entry in resource.body:
             if not only_localizable:
                 if entry.span.start > last_span_end:
@@ -656,9 +680,15 @@ class FluentParser(Parser):
                 ws, we = re.search('\s*$', entry.content).span()
                 end -= we - ws
                 yield Junk(self.ctx, (start, end))
+            elif isinstance(entry, ftl.Comment) and not only_localizable:
+                span = (entry.span.start, entry.span.end)
+                yield Comment(self.ctx, span)
+            elif isinstance(entry, ftl.Section) and not only_localizable:
+                yield FluentSection(self.ctx, entry)
 
             last_span_end = entry.span.end
 
+        # Yield Whitespace at the EOF.
         if not only_localizable:
             eof_offset = len(self.ctx.contents)
             if eof_offset > last_span_end:
