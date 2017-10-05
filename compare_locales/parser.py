@@ -588,6 +588,12 @@ class FluentEntity(Entity):
 
         self.entry = entry
 
+        # EntityBase instances are expected to have pre_comment. It's used by
+        # other formats to associate a Comment with an Entity. FluentEntities
+        # don't need it because message comments are part of the entry AST and
+        # are not separate Comment instances.
+        self.pre_comment = None
+
     _word_count = None
 
     def count_words(self):

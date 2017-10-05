@@ -23,10 +23,6 @@ def merge_channels(name, *resources):
         raise MergeNotSupportedError(
             'Unsupported file format ({}).'.format(name))
 
-    if isinstance(parser, cl.FluentParser):
-        raise MergeNotSupportedError(
-            'Fluent files (.ftl) are not supported (bug 1399055).')
-
     # A map of comments to the keys of entities they belong to.
     comments = {}
 
@@ -90,6 +86,7 @@ def merge_two(comments, newer, older):
 
         return entity
 
+    # Create a flat sequence of all entities in order reported by AddRemove.
     contents = [(key, get_entity(key)) for _, key in diff]
 
     def prune(acc, cur):
