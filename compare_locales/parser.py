@@ -587,6 +587,7 @@ class FluentEntity(Entity):
             self.val_span = (0, 0)
 
         self.entry = entry
+        self.pre_comment = None
 
     _word_count = None
 
