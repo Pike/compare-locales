@@ -133,14 +133,14 @@ abc
         self.assertEqual(attr.key, 'attr')
         self.assertEqual(attr.val, 'Attr')
 
-    def test_non_localizable(self):
+    def test_whitespace(self):
         self.parser.readContents('''\
 // Resource Comment
 
 foo = Foo
 
 // Section Comment
-[[ Section Header ]]
+[[ Section ]]
 
 bar = Bar
 
@@ -149,57 +149,36 @@ bar = Bar
 // Baz Comment
 baz = Baz
 ''')
-        entities = self.parser.walk()
+        entities = list(self.parser.walk())
 
-        entity = next(entities)
-        self.assertTrue(isinstance(entity, parser.Comment))
-        self.assertEqual(entity.all, '// Resource Comment')
+        self.assertTrue(isinstance(entities[0], parser.Whitespace))
+        self.assertEqual(entities[0].all, '\n')
 
-        entity = next(entities)
-        self.assertTrue(isinstance(entity, parser.Whitespace))
-        self.assertEqual(entity.all, '\n\n')
+        self.assertTrue(isinstance(entities[1], parser.FluentEntity))
+        self.assertEqual(entities[1].val, 'Foo')
 
-        entity = next(entities)
-        self.assertTrue(isinstance(entity, parser.FluentEntity))
-        self.assertEqual(entity.val, 'Foo')
+        self.assertTrue(isinstance(entities[2], parser.Whitespace))
+        self.assertEqual(entities[2].all, '\n\n')
 
-        entity = next(entities)
-        self.assertTrue(isinstance(entity, parser.Whitespace))
-        self.assertEqual(entity.all, '\n\n')
+        # XXX We don't yield Sections yet (bug 1399057).
 
-        entity = next(entities)
-        self.assertTrue(isinstance(entity, parser.FluentSection))
-        self.assertEqual(
-            entity.all, '// Section Comment\n[[ Section Header ]]')
-        self.assertEqual(entity.val, 'Section Header ')
-        self.assertEqual(
-            entity.entry.comment.content, 'Section Comment')
+        self.assertTrue(isinstance(entities[3], parser.Whitespace))
+        self.assertEqual(entities[3].all, '\n')
 
-        entity = next(entities)
-        self.assertTrue(isinstance(entity, parser.Whitespace))
-        self.assertEqual(entity.all, '\n\n')
+        self.assertTrue(isinstance(entities[4], parser.FluentEntity))
+        self.assertEqual(entities[4].val, 'Bar')
 
-        entity = next(entities)
-        self.assertTrue(isinstance(entity, parser.FluentEntity))
-        self.assertEqual(entity.val, 'Bar')
+        self.assertTrue(isinstance(entities[5], parser.Whitespace))
+        self.assertEqual(entities[5].all, '\n\n')
 
-        entity = next(entities)
-        self.assertTrue(isinstance(entity, parser.Whitespace))
-        self.assertEqual(entity.all, '\n\n')
+        # XXX We don't yield Comments yet (bug 1399057).
 
-        entity = next(entities)
-        self.assertTrue(isinstance(entity, parser.Comment))
-        self.assertEqual(entity.all, '// Standalone Comment')
+        self.assertTrue(isinstance(entities[6], parser.Whitespace))
+        self.assertEqual(entities[6].all, '\n')
 
-        entity = next(entities)
-        self.assertTrue(isinstance(entity, parser.Whitespace))
-        self.assertEqual(entity.all, '\n\n')
+        self.assertTrue(isinstance(entities[7], parser.FluentEntity))
+        self.assertEqual(entities[7].val, 'Baz')
+        self.assertEqual(entities[7].entry.comment.content, 'Baz Comment')
 
-        entity = next(entities)
-        self.assertTrue(isinstance(entity, parser.FluentEntity))
-        self.assertEqual(entity.val, 'Baz')
-        self.assertEqual(entity.entry.comment.content, 'Baz Comment')
-
-        entity = next(entities)
-        self.assertTrue(isinstance(entity, parser.Whitespace))
-        self.assertEqual(entity.all, '\n')
+        self.assertTrue(isinstance(entities[8], parser.Whitespace))
+        self.assertEqual(entities[8].all, '\n')
