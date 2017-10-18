@@ -66,6 +66,24 @@ class TestMatcher(unittest.TestCase):
             Matcher('foo/**/bar').prefix, 'foo'
         )
 
+    def test_variables(self):
+        self.assertDictEqual(
+            Matcher('foo/bar.file').match('foo/bar.file').groupdict(),
+            {}
+        )
+        self.assertDictEqual(
+            Matcher('{path}/bar.file').match('foo/bar.file').groupdict(),
+            {
+                'path': 'foo'
+            }
+        )
+        self.assertDictEqual(
+            Matcher('{ path }/bar.file').match('foo/bar.file').groupdict(),
+            {
+                'path': 'foo'
+            }
+        )
+
 
 class SetupMixin(object):
     def setUp(self):

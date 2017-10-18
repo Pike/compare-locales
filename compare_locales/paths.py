@@ -51,6 +51,11 @@ class Matcher(object):
                 r += m.group(1) + r'\%s' % next(backref) + m.group(2)
             last_end = m.end()
         p += re.escape(pattern[last_end:]) + '$'
+        # Now replace variable references with named group matches.
+        # The regex here matches the variable regex plus escaping.
+        p = re.sub(
+            r'\\{(?:\\ )*([\w]+)(?:\\ )*\\}',
+            lambda m: '(?P<{}>.+?)'.format(m.group(1).replace('\\', '')), p)
         r += pattern[last_end:]
         if last_end == 0:
             prefix = pattern
@@ -62,7 +67,7 @@ class Matcher(object):
         '''
         True if the given path matches the file pattern.
         '''
-        return self.regex.match(path) is not None
+        return self.regex.match(path)
 
     def sub(self, other, path):
         '''
