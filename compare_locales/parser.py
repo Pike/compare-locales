@@ -57,7 +57,7 @@ class EntityBase(object):
             pos = self.span[1]
         else:
             pos = self.span[0] + offset
-        return self.ctx.lines(pos)[0]
+        return self.ctx.linecol(pos)
 
     def value_position(self, offset=0):
         """Get the 1-based line and column of the character
@@ -69,7 +69,7 @@ class EntityBase(object):
             pos = self.val_span[1]
         else:
             pos = self.val_span[0] + offset
-        return self.ctx.lines(pos)[0]
+        return self.ctx.linecol(pos)
 
     # getter helpers
 
@@ -152,7 +152,7 @@ class Junk(object):
             pos = self.span[1]
         else:
             pos = self.span[0] + offset
-        return self.ctx.lines(pos)[0]
+        return self.ctx.linecol(pos)
 
     # getter helpers
     def get_all(self):
@@ -190,18 +190,18 @@ class Parser(object):
             self.state = 0
             self._lines = None
 
-        def lines(self, *positions):
-            # return line and column tuples, 1-based
+        def linecol(self, position):
+            "Returns 1-based line and column numbers."
             if self._lines is None:
                 nl = re.compile('\n', re.M)
                 self._lines = [m.end()
                                for m in nl.finditer(self.contents)]
-            line_nrs = [bisect.bisect(self._lines, p) for p in positions]
-            # compute columns
-            pos_ = [
-                (1 + line, 1 + p - (self._lines[line-1] if line else 0))
-                for line, p in zip(line_nrs, positions)]
-            return pos_
+
+            line_offset = bisect.bisect(self._lines, position)
+            line_start = self._lines[line_offset - 1] if line_offset else 0
+            col_offset = position - line_start
+
+            return line_offset + 1, col_offset + 1
 
     def __init__(self):
         if not hasattr(self, 'encoding'):
@@ -619,7 +619,7 @@ class FluentEntity(Entity):
     def position(self, pos=None):
         if pos is None:
             pos = self.entry.span.start
-        return self.ctx.lines(pos)[0]
+        return self.ctx.linecol(pos)
 
     # FluentEntities don't differentiate between entity and value positions
     # because all positions are absolute from the beginning of the file.
