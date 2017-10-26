@@ -613,18 +613,10 @@ class FluentEntity(Entity):
         return self.entry.equals(
             other.entry, ignored_fields=self.ignored_fields)
 
-    # Positions yielded by FluentChecker.check are absolute offsets from the
-    # beginning of the file.  This is different from the base Checker behavior
-    # which yields offsets from the beginning of the current entity's value.
-    def position(self, pos=None):
-        if pos is None:
-            pos = self.entry.span.start
-        return self.ctx.linecol(pos)
-
-    # FluentEntities don't differentiate between entity and value positions
-    # because all positions are absolute from the beginning of the file.
-    def value_position(self, pos=None):
-        return self.position(pos)
+    # In Fluent we treat entries as a whole.  FluentChecker reports errors at
+    # offsets calculated from the beginning of the entry.
+    def value_position(self, offset=0):
+        return self.position(offset)
 
     @property
     def attributes(self):
