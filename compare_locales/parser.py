@@ -226,12 +226,9 @@ class Parser(object):
         self.ctx = Parser.Context(contents)
 
     def parse(self):
-        l = []
-        m = {}
-        for e in self:
-            m[e.key] = len(l)
-            l.append(e)
-        return (l, m)
+        list_ = list(self)
+        map_ = dict((e.key, i) for i, e in enumerate(list_))
+        return (list_, map_)
 
     def __iter__(self):
         return self.walk(only_localizable=True)
