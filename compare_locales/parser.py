@@ -8,6 +8,13 @@ import codecs
 from collections import Counter
 import logging
 
+try:
+    from html import unescape as html_unescape
+except ImportError:
+    from HTMLParser import HTMLParser
+    html_parser = HTMLParser()
+    html_unescape = html_parser.unescape
+
 from fluent.syntax import FluentParser as FTLParser
 from fluent.syntax import ast as ftl
 
@@ -160,6 +167,7 @@ class Junk(object):
 
     # getters
     all = property(get_all)
+    raw_val = property(get_all)
     val = property(get_all)
 
     def __repr__(self):
@@ -293,6 +301,21 @@ def getParser(path):
 
 
 class DTDEntity(Entity):
+    @property
+    def val(self):
+        '''Unescape HTML entities into corresponding Unicode characters.
+
+        Named (&amp;), decimal (&#38;), and hex (&#x26; and &#x0026;) formats
+        are supported. Unknown entities are left intact.
+
+        As of Python 2.7 and Python 3.6 the following 252 named entities are
+        recognized and unescaped:
+
+            https://github.com/python/cpython/blob/2.7/Lib/htmlentitydefs.py
+            https://github.com/python/cpython/blob/3.6/Lib/html/entities.py
+        '''
+        return html_unescape(self.raw_val)
+
     def value_position(self, offset=0):
         # DTDChecker already returns tuples of (line, col) positions
         if isinstance(offset, tuple):

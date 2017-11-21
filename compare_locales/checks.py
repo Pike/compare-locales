@@ -213,7 +213,8 @@ class DTDChecker(Checker):
         if self.__known_entities is None and self.reference is not None:
             self.__known_entities = set()
             for ent in self.reference:
-                self.__known_entities.update(self.entities_for_value(ent.val))
+                self.__known_entities.update(
+                    self.entities_for_value(ent.raw_val))
         return self.__known_entities if self.__known_entities is not None \
             else self.entities_for_value(refValue)
 
@@ -248,7 +249,7 @@ class DTDChecker(Checker):
 
         Return a checker that offers just those entities.
         """
-        refValue, l10nValue = refEnt.val, l10nEnt.val
+        refValue, l10nValue = refEnt.raw_val, l10nEnt.raw_val
         # find entities the refValue references,
         # reusing markup from DTDParser.
         reflist = self.known_entities(refValue)

@@ -147,6 +147,36 @@ escaped value">
         self.assertEqual(c.count_words(), 1)
         self.assertEqual(d.count_words(), 3)
 
+    def test_html_entities(self):
+        self.parser.readContents('''\
+<!ENTITY named "&amp;">
+<!ENTITY numcode "&#38;">
+<!ENTITY shorthexcode "&#x26;">
+<!ENTITY longhexcode "&#x0026;">
+<!ENTITY unknown "&unknownEntity;">
+''')
+        entities = iter(self.parser)
+
+        entity = next(entities)
+        self.assertEqual(entity.raw_val, '&amp;')
+        self.assertEqual(entity.val, '&')
+
+        entity = next(entities)
+        self.assertEqual(entity.raw_val, '&#38;')
+        self.assertEqual(entity.val, '&')
+
+        entity = next(entities)
+        self.assertEqual(entity.raw_val, '&#x26;')
+        self.assertEqual(entity.val, '&')
+
+        entity = next(entities)
+        self.assertEqual(entity.raw_val, '&#x0026;')
+        self.assertEqual(entity.val, '&')
+
+        entity = next(entities)
+        self.assertEqual(entity.raw_val, '&unknownEntity;')
+        self.assertEqual(entity.val, '&unknownEntity;')
+
 
 if __name__ == '__main__':
     unittest.main()
