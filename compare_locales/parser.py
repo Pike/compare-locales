@@ -486,8 +486,10 @@ class DefinesParser(Parser):
 
     def __init__(self):
         self.reComment = re.compile('(?:^# .*?\n)*(?:^# [^\n]*)', re.M)
+        # corresponds to
+        # https://hg.mozilla.org/mozilla-central/file/72ee4800d4156931c89b58bd807af4a3083702bb/python/mozbuild/mozbuild/preprocessor.py#l561  # noqa
         self.reKey = re.compile(
-            '#define[ \t]+(?P<key>\w+)(?:[ \t]+(?P<val>[^\n]*))?', re.M)
+            '#define[ \t]+(?P<key>\w+)(?:[ \t](?P<val>[^\n]*))?', re.M)
         self.rePI = re.compile('#(?P<val>\w+[ \t]+[^\n]+)', re.M)
         Parser.__init__(self)
 

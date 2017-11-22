@@ -169,6 +169,23 @@ class TestDefinesParser(ParserTestMixin, unittest.TestCase):
         self._test('\n\n', (('Junk', '\n\n'),))
         self._test(' \n\n', (('Junk', ' \n\n'),))
 
+    def test_whitespace_value(self):
+        '''Test that there's only one whitespace between key and value
+        '''
+        # funny formatting of trailing whitespace to make it explicit
+        # and flake-8 happy
+        self._test('''\
+#define one \n\
+#define two  \n\
+#define tre   \n\
+''', (
+            ('one', ''),
+            ('Whitespace', '\n'),
+            ('two', ' '),
+            ('Whitespace', '\n'),
+            ('tre', '  '),
+            ('Whitespace', '\n'),))
+
 
 if __name__ == '__main__':
     unittest.main()
