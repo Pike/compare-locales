@@ -5,47 +5,47 @@
 'Mapping of locales to CLDR plural categories as implemented by PluralForm.jsm'
 
 CATEGORIES_BY_INDEX = (
-    #0 (Chinese)
+    # 0 (Chinese)
     ('other',),
-    #1 (English)
+    # 1 (English)
     ('one', 'other'),
-    #2 (French)
+    # 2 (French)
     ('one', 'other'),
-    #3 (Latvian)
+    # 3 (Latvian)
     ('zero', 'one', 'other'),
     # 4 (Scottish Gaelic)
     ('one', 'two', 'few', 'other'),
-    #5 (Romanian)
+    # 5 (Romanian)
     ('one', 'few', 'other'),
-    #6 (Lithuanian)
+    # 6 (Lithuanian)
     # CLDR: one, few, many (fractions), other
     ('one', 'other', 'few'),
-    #7 (Russian)
+    # 7 (Russian)
     # CLDR: one, few, many, other (fractions)
     ('one', 'few', 'many'),
-    #8 (Slovak)
+    # 8 (Slovak)
     # CLDR: one, few, many (fractions), other
     ('one', 'few', 'other'),
-    #9 (Polish)
+    # 9 (Polish)
     # CLDR: one, few, many, other (fractions)
     ('one', 'few', 'many'),
-    #10 (Slovenian)
+    # 10 (Slovenian)
     ('one', 'two', 'few', 'other'),
     # 11 (Irish Gaelic)
     ('one', 'two', 'few', 'many', 'other'),
-    #12 (Arabic)
+    # 12 (Arabic)
     # CLDR: zero, one, two, few, many, other
     ('one', 'two', 'few', 'many', 'other', 'zero'),
-    #13 (Maltese)
+    # 13 (Maltese)
     ('one', 'few', 'many', 'other'),
-    #14 (Macedonian)
+    # 14 (Macedonian)
     # CLDR: one, other
     ('one', 'two', 'other'),
-    #15 (Icelandic)
+    # 15 (Icelandic)
     ('one', 'other'),
-    #16 (Breton)
+    # 16 (Breton)
     ('one', 'two', 'few', 'many', 'other'),
-    #17 (Shuar)
+    # 17 (Shuar)
     # CLDR: (missing)
     ('zero', 'other')
 )
