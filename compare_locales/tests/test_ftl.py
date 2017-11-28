@@ -125,7 +125,7 @@ abc
 
         [abc] = list(self.parser)
         self.assertEqual(abc.key, 'abc')
-        self.assertEqual(abc.val, '')
+        self.assertEqual(abc.val, None)
         self.assertEqual(abc.all, 'abc\n    .attr = Attr')
         attributes = list(abc.attributes)
         self.assertEqual(len(attributes), 1)

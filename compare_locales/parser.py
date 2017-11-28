@@ -72,6 +72,7 @@ class EntityBase(object):
 
         If offset is negative, return the end of the value.
         """
+        assert self.val_span is not None
         if offset < 0:
             pos = self.val_span[1]
         else:
@@ -87,6 +88,8 @@ class EntityBase(object):
         return self.ctx.contents[self.key_span[0]:self.key_span[1]]
 
     def get_raw_val(self):
+        if self.val_span is None:
+            return None
         return self.ctx.contents[self.val_span[0]:self.val_span[1]]
 
     # getters
@@ -122,13 +125,10 @@ class Comment(EntityBase):
     def __init__(self, ctx, span):
         self.ctx = ctx
         self.span = span
+        self.val_span = None
 
     @property
     def key(self):
-        return None
-
-    @property
-    def val(self):
         return None
 
     def __repr__(self):
@@ -606,7 +606,7 @@ class FluentEntity(Entity):
         if entry.value is not None:
             self.val_span = (entry.value.span.start, entry.value.span.end)
         else:
-            self.val_span = (0, 0)
+            self.val_span = None
 
         self.entry = entry
 
