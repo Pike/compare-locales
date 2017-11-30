@@ -45,7 +45,7 @@ setup(name="compare-locales",
           'compare_locales.tests': ['data/*.properties', 'data/*.dtd']
       },
       install_requires=[
-          'fluent==0.4.3',
+          'fluent==0.4.4',
           'pytoml',
       ],
       test_suite='compare_locales.tests')
