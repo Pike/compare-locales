@@ -38,10 +38,10 @@ CATEGORIES_BY_INDEX = (
     ('one', 'two', 'few', 'many', 'other', 'zero'),
     # 13 (Maltese)
     ('one', 'few', 'many', 'other'),
-    # 14 (Macedonian)
+    # 14 (Unused)
     # CLDR: one, other
     ('one', 'two', 'other'),
-    # 15 (Icelandic)
+    # 15 (Icelandic, Macedonian)
     ('one', 'other'),
     # 16 (Breton)
     ('one', 'two', 'few', 'many', 'other'),
