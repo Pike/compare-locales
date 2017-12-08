@@ -25,8 +25,9 @@ class Checker(object):
     def use(cls, file):
         return cls.pattern.match(file.file)
 
-    def __init__(self, extra_tests):
+    def __init__(self, extra_tests, locale=None):
         self.extra_tests = extra_tests
+        self.locale = locale
         self.reference = None
 
     def check(self, refEnt, l10nEnt):
@@ -202,8 +203,8 @@ class DTDChecker(Checker):
 '''
     xmllist = set(('amp', 'lt', 'gt', 'apos', 'quot'))
 
-    def __init__(self, extra_tests):
-        super(DTDChecker, self).__init__(extra_tests)
+    def __init__(self, extra_tests, locale=None):
+        super(DTDChecker, self).__init__(extra_tests, locale=locale)
         self.processContent = False
         if self.extra_tests is not None and 'android-dtd' in self.extra_tests:
             self.processContent = True
@@ -487,9 +488,9 @@ class FluentChecker(Checker):
 
 def getChecker(file, extra_tests=None):
     if PropertiesChecker.use(file):
-        return PropertiesChecker(extra_tests)
+        return PropertiesChecker(extra_tests, locale=file.locale)
     if DTDChecker.use(file):
-        return DTDChecker(extra_tests)
+        return DTDChecker(extra_tests, locale=file.locale)
     if FluentChecker.use(file):
-        return FluentChecker(extra_tests)
+        return FluentChecker(extra_tests, locale=file.locale)
     return None
