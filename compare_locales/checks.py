@@ -74,21 +74,8 @@ class PropertiesChecker(Checker):
         # comment
         if (refEnt.pre_comment
                 and 'Localization_and_Plurals' in refEnt.pre_comment.all):
-            # For plurals, common variable pattern is #1. Try that.
-            pats = set(int(m.group(1)) for m in re.finditer('#([0-9]+)',
-                                                            refValue))
-            if len(pats) == 0:
-                return
-            lpats = set(int(m.group(1)) for m in re.finditer('#([0-9]+)',
-                                                             l10nValue))
-            if pats - lpats:
-                yield ('warning', 0, 'not all variables used in l10n',
-                       'plural')
-                return
-            if lpats - pats:
-                yield ('error', 0, 'unreplaced variables in l10n',
-                       'plural')
-                return
+            for msg_tuple in self.check_plural(refValue, l10nValue):
+                yield msg_tuple
             return
         # check for lost escapes
         raw_val = l10nEnt.raw_val
@@ -106,6 +93,24 @@ class PropertiesChecker(Checker):
             for t in self.checkPrintf(refSpecs, l10nValue):
                 yield t
             return
+
+    def check_plural(self, refValue, l10nValue):
+        '''Check for the stringbundle plurals logic.
+        The common variable pattern is #1.
+        '''
+        pats = set(int(m.group(1)) for m in re.finditer('#([0-9]+)',
+                                                        refValue))
+        if len(pats) == 0:
+            return
+        lpats = set(int(m.group(1)) for m in re.finditer('#([0-9]+)',
+                                                         l10nValue))
+        if pats - lpats:
+            yield ('warning', 0, 'not all variables used in l10n',
+                   'plural')
+            return
+        if lpats - pats:
+            yield ('error', 0, 'unreplaced variables in l10n',
+                   'plural')
 
     def checkPrintf(self, refSpecs, l10nValue):
         try:
