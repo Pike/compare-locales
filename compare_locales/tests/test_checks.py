@@ -90,6 +90,35 @@ downloadsTitleFiles=#1 file - Downloads;#1 files - #2;#1 #3
                    (('error', 0, 'unreplaced variables in l10n', 'plural'),))
 
 
+class TestPluralForms(BaseHelper):
+    file = File('foo.properties', 'foo.properties', locale='en-GB')
+    refContent = '''\
+# LOCALIZATION NOTE (downloadsTitleFiles): Semi-colon list of plural forms.
+# See: http://developer.mozilla.org/en/docs/Localization_and_Plurals
+# #1 number of files
+# example: 111 files - Downloads
+downloadsTitleFiles=#1 file;#1 files
+'''
+
+    def test_matching_forms(self):
+        self._test('''\
+downloadsTitleFiles=#1 fiiilee;#1 fiiilees
+''',
+                   tuple())
+
+    def test_lacking_forms(self):
+        self._test('''\
+downloadsTitleFiles=#1 fiiilee
+''',
+                   (('warning', 0, 'expecting 2 plurals, found 1', 'plural'),))
+
+    def test_excess_forms(self):
+        self._test('''\
+downloadsTitleFiles=#1 fiiilee;#1 fiiilees;#1 fiiilees
+''',
+                   (('warning', 0, 'expecting 2 plurals, found 3', 'plural'),))
+
+
 class TestDTDs(BaseHelper):
     file = File('foo.dtd', 'foo.dtd')
     refContent = '''<!ENTITY foo "This is &apos;good&apos;">

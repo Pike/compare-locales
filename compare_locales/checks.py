@@ -12,6 +12,7 @@ except ImportError:
     from StringIO import StringIO
 
 from compare_locales.parser import DTDParser, PropertiesEntity
+from compare_locales import plurals
 
 
 class Checker(object):
@@ -72,8 +73,12 @@ class PropertiesChecker(Checker):
         refSpecs = None
         # check for PluralForm.jsm stuff, should have the docs in the
         # comment
+        # That also includes intl.properties' pluralRule, so exclude
+        # entities with that key and values with just numbers
         if (refEnt.pre_comment
-                and 'Localization_and_Plurals' in refEnt.pre_comment.all):
+                and 'Localization_and_Plurals' in refEnt.pre_comment.all
+                and refEnt.key != 'pluralRule'
+                and not re.match(r'\d+$', refValue)):
             for msg_tuple in self.check_plural(refValue, l10nValue):
                 yield msg_tuple
             return
@@ -98,6 +103,17 @@ class PropertiesChecker(Checker):
         '''Check for the stringbundle plurals logic.
         The common variable pattern is #1.
         '''
+        if self.locale in plurals.CATEGORIES_BY_LOCALE:
+            expected_forms = len(plurals.CATEGORIES_BY_LOCALE[self.locale])
+            found_forms = l10nValue.count(';') + 1
+            msg = 'expecting {} plurals, found {}'.format(
+                expected_forms,
+                found_forms
+            )
+            if expected_forms > found_forms:
+                yield ('warning', 0, msg, 'plural')
+            if expected_forms < found_forms:
+                yield ('warning', 0, msg, 'plural')
         pats = set(int(m.group(1)) for m in re.finditer('#([0-9]+)',
                                                         refValue))
         if len(pats) == 0:
