@@ -47,7 +47,9 @@ CATEGORIES_BY_INDEX = (
     ('one', 'two', 'few', 'many', 'other'),
     # 17 (Shuar)
     # CLDR: (missing)
-    ('zero', 'other')
+    ('zero', 'other'),
+    # 18 (Welsh),
+    ('zero', 'one', 'two', 'few', 'many', 'other'),
 )
 
 CATEGORIES_BY_LOCALE = {
@@ -67,7 +69,7 @@ CATEGORIES_BY_LOCALE = {
     'ca': CATEGORIES_BY_INDEX[1],
     'cak': CATEGORIES_BY_INDEX[1],
     'cs': CATEGORIES_BY_INDEX[8],
-    'cy': CATEGORIES_BY_INDEX[1],
+    'cy': CATEGORIES_BY_INDEX[18],
     'da': CATEGORIES_BY_INDEX[1],
     'de': CATEGORIES_BY_INDEX[1],
     'dsb': CATEGORIES_BY_INDEX[10],
