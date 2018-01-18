@@ -517,6 +517,92 @@ eff = lEff {
         l10n_foo = l10n_entities[l10n_map['foo']]
         self.assertTrue(merged_foo.equals(l10n_foo))
 
+    def testMatchingReferences(self):
+        self.reference("""\
+foo = Reference { bar }
+""")
+        self.localized("""\
+foo = Localized { bar }
+""")
+        cc = ContentComparer([Observer()])
+        cc.compare(File(self.ref, "en-reference.ftl", ""),
+                   File(self.l10n, "l10n.ftl", ""),
+                   mozpath.join(self.tmp, "merge", "l10n.ftl"))
+
+        self.assertDictEqual(
+            cc.observers[0].toJSON(),
+            {
+                'details': {},
+                'summary': {
+                    None: {
+                        'changed': 1,
+                        'changed_w': 1
+                    }
+                }
+            }
+        )
+
+        # validate merge results
+        mergepath = mozpath.join(self.tmp, "merge", "l10n.ftl")
+        self.assert_(not os.path.exists(mergepath))
+
+    def testMismatchingReferences(self):
+        self.reference("""\
+foo = Reference { bar }
+bar = Reference { baz }
+baz = Reference
+""")
+        self.localized("""\
+foo = Localized { qux }
+bar = Localized
+baz = Localized { qux }
+""")
+        cc = ContentComparer([Observer()])
+        cc.compare(File(self.ref, "en-reference.ftl", ""),
+                   File(self.l10n, "l10n.ftl", ""),
+                   mozpath.join(self.tmp, "merge", "l10n.ftl"))
+
+        self.assertDictEqual(
+            cc.observers[0].toJSON(),
+            {
+                'details': {
+                    'l10n.ftl': [
+                            {
+                                'warning':
+                                    u'Missing message reference: bar '
+                                    u'at line 1, column 1 for foo'
+                            },
+                            {
+                                'warning':
+                                    u'Obsolete message reference: qux '
+                                    u'at line 1, column 19 for foo'
+                            },
+                            {
+                                'warning':
+                                    u'Missing message reference: baz '
+                                    u'at line 2, column 1 for bar'
+                            },
+                            {
+                                'warning':
+                                    u'Obsolete message reference: qux '
+                                    u'at line 3, column 19 for baz'
+                            },
+                    ],
+                },
+                'summary': {
+                    None: {
+                        'changed': 3,
+                        'changed_w': 3,
+                        'warnings': 4
+                    }
+                }
+            }
+        )
+
+        # validate merge results
+        mergepath = mozpath.join(self.tmp, "merge", "l10n.ftl")
+        self.assert_(not os.path.exists(mergepath))
+
     def testMismatchingAttributes(self):
         self.reference("""
 foo = Foo

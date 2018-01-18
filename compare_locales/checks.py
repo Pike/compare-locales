@@ -11,6 +11,8 @@ try:
 except ImportError:
     from StringIO import StringIO
 
+from fluent.syntax import ast as ftl
+
 from compare_locales.parser import DTDParser, PropertiesEntity
 from compare_locales import plurals
 
@@ -457,6 +459,22 @@ class FluentChecker(Checker):
     '''
     pattern = re.compile('.*\.ftl')
 
+    def find_message_references(self, entry):
+        refs = {}
+
+        def collect_message_references(node):
+            if isinstance(node, ftl.MessageReference):
+                # The key is the name of the referenced message and it will
+                # be used in set algebra to find missing and obsolete
+                # references. The value is the node itself and its span
+                # will be used to pinpoint the error.
+                refs[node.id.name] = node
+            # BaseNode.traverse expects this function to return the node.
+            return node
+
+        entry.traverse(collect_message_references)
+        return refs
+
     def check(self, refEnt, l10nEnt):
         ref_entry = refEnt.entry
         l10n_entry = l10nEnt.entry
@@ -466,6 +484,25 @@ class FluentChecker(Checker):
         if ref_entry.value is None and l10n_entry.value is not None:
             offset = l10n_entry.value.span.start - l10n_entry.span.start
             yield ('error', offset, 'Obsolete value', 'fluent')
+
+        # verify that message references are the same
+        ref_msg_refs = self.find_message_references(ref_entry)
+        l10n_msg_refs = self.find_message_references(l10n_entry)
+
+        # create unique sets of message names referenced in both entries
+        ref_msg_refs_names = set(ref_msg_refs.keys())
+        l10n_msg_refs_names = set(l10n_msg_refs.keys())
+
+        missing_msg_ref_names = ref_msg_refs_names - l10n_msg_refs_names
+        for msg_name in missing_msg_ref_names:
+            yield ('warning', 0, 'Missing message reference: ' + msg_name,
+                   'fluent')
+
+        obsolete_msg_ref_names = l10n_msg_refs_names - ref_msg_refs_names
+        for msg_name in obsolete_msg_ref_names:
+            pos = l10n_msg_refs[msg_name].span.start - l10n_entry.span.start
+            yield ('warning', pos, 'Obsolete message reference: ' + msg_name,
+                   'fluent')
 
         # verify that we're having the same set of attributes
         ref_attr_names = set((attr.id.name for attr in ref_entry.attributes))
