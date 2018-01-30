@@ -46,9 +46,9 @@ d =
        *[x] Two three
         [y] Four
     } five.
-e
+e =
     .attr = One
-f
+f =
     .attr1 = One
     .attr2 = Two
 g = One two
@@ -103,7 +103,7 @@ abc =
 
         [abc] = list(self.parser)
         self.assertEqual(abc.key, 'abc')
-        self.assertEqual(abc.val, '    A\n    B\n    C')
+        self.assertEqual(abc.val, 'A\n    B\n    C')
         self.assertEqual(abc.all, 'abc =\n    A\n    B\n    C')
 
     def test_message_with_attribute(self):
@@ -135,6 +135,82 @@ abc
 
     def test_non_localizable(self):
         self.parser.readContents('''\
+### Resource Comment
+
+foo = Foo
+
+## Group Comment
+
+-bar = Bar
+
+##
+
+# Standalone Comment
+
+# Baz Comment
+baz = Baz
+''')
+        entities = self.parser.walk()
+
+        entity = next(entities)
+        self.assertTrue(isinstance(entity, parser.Comment))
+        self.assertEqual(entity.all, '### Resource Comment')
+
+        entity = next(entities)
+        self.assertTrue(isinstance(entity, parser.Whitespace))
+        self.assertEqual(entity.all, '\n\n')
+
+        entity = next(entities)
+        self.assertTrue(isinstance(entity, parser.FluentMessage))
+        self.assertEqual(entity.val, 'Foo')
+
+        entity = next(entities)
+        self.assertTrue(isinstance(entity, parser.Whitespace))
+        self.assertEqual(entity.all, '\n\n')
+
+        entity = next(entities)
+        self.assertTrue(isinstance(entity, parser.Comment))
+        self.assertEqual(entity.all, '## Group Comment')
+
+        entity = next(entities)
+        self.assertTrue(isinstance(entity, parser.Whitespace))
+        self.assertEqual(entity.all, '\n\n')
+
+        entity = next(entities)
+        self.assertTrue(isinstance(entity, parser.FluentTerm))
+        self.assertEqual(entity.val, 'Bar')
+
+        entity = next(entities)
+        self.assertTrue(isinstance(entity, parser.Whitespace))
+        self.assertEqual(entity.all, '\n\n')
+
+        entity = next(entities)
+        self.assertTrue(isinstance(entity, parser.Comment))
+        self.assertEqual(entity.all, '##')
+
+        entity = next(entities)
+        self.assertTrue(isinstance(entity, parser.Whitespace))
+        self.assertEqual(entity.all, '\n\n')
+
+        entity = next(entities)
+        self.assertTrue(isinstance(entity, parser.Comment))
+        self.assertEqual(entity.all, '# Standalone Comment')
+
+        entity = next(entities)
+        self.assertTrue(isinstance(entity, parser.Whitespace))
+        self.assertEqual(entity.all, '\n\n')
+
+        entity = next(entities)
+        self.assertTrue(isinstance(entity, parser.FluentMessage))
+        self.assertEqual(entity.val, 'Baz')
+        self.assertEqual(entity.entry.comment.content, 'Baz Comment')
+
+        entity = next(entities)
+        self.assertTrue(isinstance(entity, parser.Whitespace))
+        self.assertEqual(entity.all, '\n')
+
+    def test_non_localizable_syntax_zero_four(self):
+        self.parser.readContents('''\
 // Resource Comment
 
 foo = Foo
@@ -143,6 +219,8 @@ foo = Foo
 [[ Section Header ]]
 
 bar = Bar
+
+[[ Another Section ]]
 
 // Standalone Comment
 
@@ -168,12 +246,8 @@ baz = Baz
         self.assertEqual(entity.all, '\n\n')
 
         entity = next(entities)
-        self.assertTrue(isinstance(entity, parser.FluentSection))
-        self.assertEqual(
-            entity.all, '// Section Comment\n[[ Section Header ]]')
-        self.assertEqual(entity.val, 'Section Header ')
-        self.assertEqual(
-            entity.entry.comment.content, 'Section Comment')
+        self.assertTrue(isinstance(entity, parser.Comment))
+        self.assertEqual(entity.all, '// Section Comment\n[[ Section Header ]]')
 
         entity = next(entities)
         self.assertTrue(isinstance(entity, parser.Whitespace))
@@ -182,6 +256,14 @@ baz = Baz
         entity = next(entities)
         self.assertTrue(isinstance(entity, parser.FluentEntity))
         self.assertEqual(entity.val, 'Bar')
+
+        entity = next(entities)
+        self.assertTrue(isinstance(entity, parser.Whitespace))
+        self.assertEqual(entity.all, '\n\n')
+
+        entity = next(entities)
+        self.assertTrue(isinstance(entity, parser.Comment))
+        self.assertEqual(entity.all, '[[ Another Section ]]')
 
         entity = next(entities)
         self.assertTrue(isinstance(entity, parser.Whitespace))

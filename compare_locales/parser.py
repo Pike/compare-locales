@@ -592,7 +592,7 @@ class FluentAttribute(EntityBase):
 
 class FluentEntity(Entity):
     # Fields ignored when comparing two entities.
-    ignored_fields = ['comment', 'span', 'tags']
+    ignored_fields = ['comment', 'span']
 
     def __init__(self, ctx, entry):
         start = entry.span.start
@@ -616,6 +616,14 @@ class FluentEntity(Entity):
         # are not separate Comment instances.
         self.pre_comment = None
 
+    @property
+    def root_node(self):
+        '''AST node at which to start traversal for count_words.
+
+        By default we count words in the value and in all attributes.
+        '''
+        return self.entry
+
     _word_count = None
 
     def count_words(self):
@@ -627,7 +635,7 @@ class FluentEntity(Entity):
                     self._word_count += len(node.value.split())
                 return node
 
-            self.entry.traverse(count_words)
+            self.root_node.traverse(count_words)
 
         return self._word_count
 
@@ -646,14 +654,22 @@ class FluentEntity(Entity):
             yield FluentAttribute(self, attr_node)
 
 
-class FluentSection(EntityBase):
-    def __init__(self, ctx, entry):
-        self.entry = entry
-        self.ctx = ctx
+class FluentMessage(FluentEntity):
+    pass
 
-        self.span = (entry.span.start, entry.span.end)
-        self.key_span = self.val_span = (
-            entry.name.span.start, entry.name.span.end)
+
+class FluentTerm(FluentEntity):
+    # Fields ignored when comparing two terms.
+    ignored_fields = ['attributes', 'comment', 'span']
+
+    @property
+    def root_node(self):
+        '''AST node at which to start traversal for count_words.
+
+        In Fluent Terms we only count words in the value. Attributes are
+        private and do not count towards the word total.
+        '''
+        return self.entry.value
 
 
 class FluentParser(Parser):
@@ -670,18 +686,7 @@ class FluentParser(Parser):
 
         resource = self.ftl_parser.parse(self.ctx.contents)
 
-        if resource.comment:
-            last_span_end = resource.comment.span.end
-
-            if not only_localizable:
-                if 0 < resource.comment.span.start:
-                    yield Whitespace(
-                        self.ctx, (0, resource.comment.span.start))
-                yield Comment(
-                    self.ctx,
-                    (resource.comment.span.start, resource.comment.span.end))
-        else:
-            last_span_end = 0
+        last_span_end = 0
 
         for entry in resource.body:
             if not only_localizable:
@@ -690,7 +695,9 @@ class FluentParser(Parser):
                         self.ctx, (last_span_end, entry.span.start))
 
             if isinstance(entry, ftl.Message):
-                yield FluentEntity(self.ctx, entry)
+                yield FluentMessage(self.ctx, entry)
+            elif isinstance(entry, ftl.Term):
+                yield FluentTerm(self.ctx, entry)
             elif isinstance(entry, ftl.Junk):
                 start = entry.span.start
                 end = entry.span.end
@@ -700,11 +707,9 @@ class FluentParser(Parser):
                 ws, we = re.search('\s*$', entry.content).span()
                 end -= we - ws
                 yield Junk(self.ctx, (start, end))
-            elif isinstance(entry, ftl.Comment) and not only_localizable:
+            elif isinstance(entry, ftl.BaseComment) and not only_localizable:
                 span = (entry.span.start, entry.span.end)
                 yield Comment(self.ctx, span)
-            elif isinstance(entry, ftl.Section) and not only_localizable:
-                yield FluentSection(self.ctx, entry)
 
             last_span_end = entry.span.end
 
