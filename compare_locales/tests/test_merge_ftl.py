@@ -270,3 +270,24 @@ foo
 foo =
     .attr = Attribute 1
 """)
+
+    def test_cross_grammar_standalone_comment(self):
+        '''This is in particular going to be triggered for license headers.'''
+        channels = (b"""
+# Same comment
+
+foo =
+    .attr = Attribute 1
+""", b"""
+// Same comment
+
+foo
+    .attr = Attribute 2
+""")
+        self.assertEqual(
+            merge_channels(self.name, *channels), b"""
+# Same comment
+
+foo =
+    .attr = Attribute 1
+""")
