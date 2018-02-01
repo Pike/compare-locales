@@ -84,7 +84,7 @@ class TestDTD(ParserTestMixin, unittest.TestCase):
         p = parser.getParser('foo.dtd')
         p.readContents(self.resource('triple-license.dtd'))
         entities = list(p.walk())
-        self.assert_(isinstance(entities[0], parser.Comment))
+        self.assertIsInstance(entities[0], parser.Comment)
         self.assertIn('MPL', entities[0].all)
         e = entities[2]
         self.assert_(isinstance(e, parser.Entity))
@@ -181,6 +181,33 @@ escaped value">
         entity = next(entities)
         self.assertEqual(entity.raw_val, '&unknownEntity;')
         self.assertEqual(entity.val, '&unknownEntity;')
+
+    def test_comment_val(self):
+        self.parser.readContents('''\
+<!-- comment
+spanning lines -->  <!--
+-->
+<!-- last line -->
+''')
+        entities = self.parser.walk()
+
+        entity = next(entities)
+        self.assertIsInstance(entity, parser.Comment)
+        self.assertEqual(entity.val, ' comment\nspanning lines ')
+        entity = next(entities)
+        self.assertIsInstance(entity, parser.Whitespace)
+
+        entity = next(entities)
+        self.assertIsInstance(entity, parser.Comment)
+        self.assertEqual(entity.val, '\n')
+        entity = next(entities)
+        self.assertIsInstance(entity, parser.Whitespace)
+
+        entity = next(entities)
+        self.assertIsInstance(entity, parser.Comment)
+        self.assertEqual(entity.val, ' last line ')
+        entity = next(entities)
+        self.assertIsInstance(entity, parser.Whitespace)
 
 
 if __name__ == '__main__':

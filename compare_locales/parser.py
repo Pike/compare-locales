@@ -385,6 +385,14 @@ class DTDParser(Parser):
                       u'%' + Name + ';'
                       u'(?:[ \t]*(?:' + XmlComment + u'\s*)*\n?)?')
 
+    class Comment(Comment):
+        @property
+        def val(self):
+            if self._val_cache is None:
+                # Strip "<!--" and "-->" to comment contents
+                self._val_cache = self.all[4:-3]
+            return self._val_cache
+
     def getNext(self, ctx, offset):
         '''
         Overload Parser.getNext to special-case ParsedEntities.
