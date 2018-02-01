@@ -126,10 +126,17 @@ class Comment(EntityBase):
         self.ctx = ctx
         self.span = span
         self.val_span = None
+        self._val_cache = None
 
     @property
     def key(self):
         return None
+
+    @property
+    def val(self):
+        if self._val_cache is None:
+            self._val_cache = self.all
+        return self._val_cache
 
     def __repr__(self):
         return self.all
@@ -189,6 +196,7 @@ class Whitespace(EntityBase):
 class Parser(object):
     capabilities = CAN_SKIP | CAN_MERGE
     reWhitespace = re.compile('\s+', re.M)
+    Comment = Comment
 
     class Context(object):
         "Fixture for content and line numbers"
@@ -268,7 +276,7 @@ class Parser(object):
             return self.createEntity(ctx, m)
         m = self.reComment.match(ctx.contents, offset)
         if m:
-            self.last_comment = Comment(ctx, m.span())
+            self.last_comment = self.Comment(ctx, m.span())
             return self.last_comment
         return self.getJunk(ctx, offset, self.reKey, self.reComment)
 
@@ -426,7 +434,7 @@ class PropertiesParser(Parser):
 
         m = self.reComment.match(contents, offset)
         if m:
-            self.last_comment = Comment(ctx, m.span())
+            self.last_comment = self.Comment(ctx, m.span())
             return self.last_comment
 
         m = self.reKey.match(contents, offset)
@@ -510,7 +518,7 @@ class DefinesParser(Parser):
 
         m = self.reComment.match(contents, offset)
         if m:
-            self.last_comment = Comment(ctx, m.span())
+            self.last_comment = self.Comment(ctx, m.span())
             return self.last_comment
         m = self.reKey.match(contents, offset)
         if m:
@@ -562,7 +570,7 @@ class IniParser(Parser):
             return Whitespace(ctx, m.span())
         m = self.reComment.match(contents, offset)
         if m:
-            self.last_comment = Comment(ctx, m.span())
+            self.last_comment = self.Comment(ctx, m.span())
             return self.last_comment
         m = self.reSection.match(contents, offset)
         if m:
@@ -709,7 +717,7 @@ class FluentParser(Parser):
                 yield Junk(self.ctx, (start, end))
             elif isinstance(entry, ftl.BaseComment) and not only_localizable:
                 span = (entry.span.start, entry.span.end)
-                yield Comment(self.ctx, span)
+                yield self.Comment(self.ctx, span)
 
             last_span_end = entry.span.end
 
