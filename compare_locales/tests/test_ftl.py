@@ -247,7 +247,10 @@ baz = Baz
 
         entity = next(entities)
         self.assertTrue(isinstance(entity, parser.Comment))
-        self.assertEqual(entity.all, '// Section Comment\n[[ Section Header ]]')
+        self.assertEqual(
+            entity.all,
+            '// Section Comment\n[[ Section Header ]]'
+        )
 
         entity = next(entities)
         self.assertTrue(isinstance(entity, parser.Whitespace))

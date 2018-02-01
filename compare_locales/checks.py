@@ -561,7 +561,6 @@ class FluentChecker(Checker):
                 yield check
 
 
-
 def getChecker(file, extra_tests=None):
     if PropertiesChecker.use(file):
         return PropertiesChecker(extra_tests, locale=file.locale)

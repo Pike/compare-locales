@@ -924,5 +924,6 @@ bar = duplicated bar
         mergefile = mozpath.join(self.tmp, "merge", "l10n.ftl")
         self.assertFalse(os.path.isfile(mergefile))
 
+
 if __name__ == '__main__':
     unittest.main()
