@@ -705,6 +705,12 @@ class FluentTerm(FluentEntity):
         return self.entry.value
 
 
+class FluentComment(Comment):
+    def __init__(self, ctx, span, entry):
+        super(FluentComment, self).__init__(ctx, span)
+        self._val_cache = entry.content
+
+
 class FluentParser(Parser):
     capabilities = CAN_SKIP
 
@@ -742,7 +748,7 @@ class FluentParser(Parser):
                 yield Junk(self.ctx, (start, end))
             elif isinstance(entry, ftl.BaseComment) and not only_localizable:
                 span = (entry.span.start, entry.span.end)
-                yield self.Comment(self.ctx, span)
+                yield FluentComment(self.ctx, span, entry)
 
             last_span_end = entry.span.end
 
