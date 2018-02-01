@@ -142,6 +142,22 @@ class Comment(EntityBase):
         return self.all
 
 
+class OffsetComment(Comment):
+    '''Helper for file formats that have a constant number of leading
+    chars to strip from comments.
+    Offset defaults to 1
+    '''
+    comment_offset = 1
+
+    @property
+    def val(self):
+        if self._val_cache is None:
+            self._val_cache = ''.join((
+                l[self.comment_offset:] for l in self.all.splitlines(True)
+            ))
+        return self._val_cache
+
+
 class Junk(object):
     '''
     An almost-Entity, representing junk data that we didn't parse.
@@ -416,6 +432,9 @@ class PropertiesEntity(Entity):
 
 
 class PropertiesParser(Parser):
+
+    Comment = OffsetComment
+
     def __init__(self):
         self.reKey = re.compile(
             '(?P<key>[^#!\s\n][^=:\n]*?)\s*[:=][ \t]*', re.M)
@@ -492,6 +511,9 @@ class DefinesParser(Parser):
     EMPTY_LINES = 1 << 0
     PAST_FIRST_LINE = 1 << 1
 
+    class Comment(OffsetComment):
+        comment_offset = 2
+
     def __init__(self):
         self.reComment = re.compile('(?:^# .*?\n)*(?:^# [^\n]*)', re.M)
         # corresponds to
@@ -557,6 +579,9 @@ class IniParser(Parser):
     string=value
     ...
     '''
+
+    Comment = OffsetComment
+
     def __init__(self):
         self.reComment = re.compile('(?:^[;#][^\n]*\n)*(?:^[;#][^\n]*)', re.M)
         self.reSection = re.compile('\[(?P<val>.*?)\]', re.M)
