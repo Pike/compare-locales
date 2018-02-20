@@ -22,20 +22,20 @@ class TestPlural(unittest.TestCase):
 
     Having more plural forms than in l10n-central is OK, missing or
     mismatching ones isn't.
-    Depends on transvision.
+    Depends on Transvision.
     '''
     maxDiff = None
 
     def test_valid_forms(self):
         reference_form_map = self._load_transvision()
         compare_locales_map = self._parse_plurals_py()
-        # Notify locales in compare-locales but not in transvision
+        # Notify locales in compare-locales but not in Transvision
         # Might be incubator locales
         extra_locales = set()
         extra_locales.update(compare_locales_map)
         extra_locales.difference_update(reference_form_map)
         for locale in sorted(extra_locales):
-            print("{} not in transvision, OK".format(locale))
+            print("{} not in Transvision, OK".format(locale))
             compare_locales_map.pop(locale)
         # Strip matches from dicts, to make diff for test small
         locales = set()
@@ -55,7 +55,7 @@ class TestPlural(unittest.TestCase):
         try:
             data = urllib2.urlopen(TRANSVISION_URL).read()
         except urllib2.URLError:
-            raise unittest.SkipTest("Couldn't load transvision API.")
+            raise unittest.SkipTest("Couldn't load Transvision API.")
         return json.loads(data)
 
     def _parse_plurals_py(self):
