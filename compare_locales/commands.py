@@ -93,7 +93,7 @@ data in a json useful for Exhibit
         kwargs = vars(args)
         # strip handled arguments
         kwargs.pop('verbose')
-        return_zero  = kwargs.pop('return_zero')
+        return_zero = kwargs.pop('return_zero')
         rv = self.handle(**kwargs)
         if return_zero:
             rv = 0
