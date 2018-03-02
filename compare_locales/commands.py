@@ -91,7 +91,7 @@ data in a json useful for Exhibit
         logging.basicConfig()
         logging.getLogger().setLevel(logging_level)
         kwargs = vars(args)
-        # strip handeld arguments
+        # strip handled arguments
         kwargs.pop('verbose')
         return_zero  = kwargs.pop('return_zero')
         rv = self.handle(**kwargs)
