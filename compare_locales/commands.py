@@ -54,6 +54,8 @@ use {ab_CD} to specify a different directory for each locale''')
                             help="Show output for all projects unified")
         parser.add_argument('--full', action="store_true",
                             help="Compare projects that are disabled")
+        parser.add_argument('--return-zero', action="store_true",
+                            help="Return 0 regardless of l10n status")
         parser.add_argument('--clobber-merge', action="store_true",
                             default=False, dest='clobber',
                             help="""WARNING: DATALOSS.
@@ -91,7 +93,11 @@ data in a json useful for Exhibit
         kwargs = vars(args)
         # strip handeld arguments
         kwargs.pop('verbose')
-        return self.handle(**kwargs)
+        return_zero  = kwargs.pop('return_zero')
+        rv = self.handle(**kwargs)
+        if return_zero:
+            rv = 0
+        return rv
 
     def handle(self, config_paths, l10n_base_dir, locales,
                merge=None, defines=None, unified=False, full=False, quiet=0,
