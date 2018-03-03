@@ -7,7 +7,9 @@ import ast
 import json
 import os
 import unittest
-import urllib2
+import six
+from six.moves.urllib.error import URLError
+from six.moves.urllib.request import urlopen
 
 
 TRANSVISION_URL = (
@@ -53,8 +55,8 @@ class TestPlural(unittest.TestCase):
         Skip test on load failure.
         '''
         try:
-            data = urllib2.urlopen(TRANSVISION_URL).read()
-        except urllib2.URLError:
+            data = urlopen(TRANSVISION_URL).read()
+        except URLError:
             raise unittest.SkipTest("Couldn't load Transvision API.")
         return json.loads(data)
 
@@ -74,7 +76,7 @@ class TestPlural(unittest.TestCase):
             and any(t.id == 'CATEGORIES_BY_LOCALE' for t in s.targets)
         ][0]
         return dict(
-            (unicode(k.s), unicode(v.slice.value.n))
+            (six.text_type(k.s), six.text_type(v.slice.value.n))
             for k, v in zip(
                 assign_cats_statement.value.keys,
                 assign_cats_statement.value.values
