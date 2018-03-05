@@ -703,13 +703,13 @@ class File(object):
     def __str__(self):
         return self.fullpath
 
-    def __cmp__(self, other):
+    def __eq__(self, other):
         if not isinstance(other, File):
-            raise NotImplementedError
-        rv = cmp(self.module, other.module)
-        if rv != 0:
-            return rv
-        return cmp(self.file, other.file)
+            return False
+        return vars(self) == vars(other)
+
+    def __ne__(self, other):
+        return not (self == other)
 
 
 class EnumerateApp(object):
