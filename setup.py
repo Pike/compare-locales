@@ -1,10 +1,9 @@
-"""Python library and scripts to assist in localizing Mozilla applications
+"""Python library and scripts to assist in localizing Mozilla projects
 
-Localization of XUL applications in general and Mozilla applications in
-particular are done by a number of different file formats. Independent
-of the format, the Mozilla architecture does not provide fallback strings
-at runtime. This library and the calling scripts provide a way to check
-a given localization for completeness. For more information see
+This library and the command-line script provide a way to check
+a given localization for completeness, errors and warnings. It also supports
+"l10n merge", which produces sanitized versions of localized files to be
+included in builds and deployments. For more information see
 https://developer.mozilla.org/en/docs/Compare-locales
 """
 
@@ -39,6 +38,7 @@ setup(name="compare-locales",
       license="MPL 2.0",
       classifiers=CLASSIFIERS.split("\n"),
       platforms=["any"],
+      python_requires='>=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*, <4',
       entry_points={'console_scripts': [
           'compare-locales = compare_locales.commands:CompareLocales.call']},
       packages=['compare_locales', 'compare_locales.tests'],
