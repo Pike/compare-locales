@@ -80,7 +80,7 @@ class ProjectConfig(object):
         self.children = []
         self._cache = None
 
-    variable = re.compile('{\s*([\w]+)\s*}')
+    variable = re.compile('{ *([\w]+) *}')
 
     def expand(self, path, env=None):
         if env is None:
