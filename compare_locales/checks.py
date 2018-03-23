@@ -263,10 +263,11 @@ class DTDChecker(Checker):
     num = re.compile('^%s$' % numPattern)
     lengthPattern = '%s(em|px|ch|cm|in)' % numPattern
     length = re.compile('^%s$' % lengthPattern)
-    spec = re.compile(r'((?:min\-)?(?:width|height))\s*:\s*%s' %
+    spec = re.compile(r'((?:min\-)?(?:width|height))[ \t\r\n]*:[ \t\r\n]*%s' %
                       lengthPattern)
-    style = re.compile(r'^%(spec)s\s*(;\s*%(spec)s\s*)*;?$' %
-                       {'spec': spec.pattern})
+    style = re.compile(
+        r'^%(spec)s[ \t\r\n]*(;[ \t\r\n]*%(spec)s[ \t\r\n]*)*;?$' %
+        {'spec': spec.pattern})
 
     def check(self, refEnt, l10nEnt):
         """Try to parse the refvalue inside a dummy element, and keep

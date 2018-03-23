@@ -106,7 +106,7 @@ class EntityBase(object):
     def __repr__(self):
         return self.key
 
-    re_br = re.compile('<br\s*/?>', re.U)
+    re_br = re.compile('<br[ \t\r\n]*/?>', re.U)
     re_sgml = re.compile('</?\w+.*?>', re.U | re.M)
 
     def count_words(self):
@@ -387,17 +387,18 @@ class DTDParser(Parser):
     #     [#x0300-#x036F] | [#x203F-#x2040]
     NameChar = NameStartChar + r'\-\.0-9' + '\xB7\u0300-\u036F\u203F-\u2040'
     Name = '[' + NameStartChar + '][' + NameChar + ']*'
-    reKey = re.compile('<!ENTITY\s+(?P<key>' + Name + ')\s+'
-                       '(?P<val>\"[^\"]*\"|\'[^\']*\'?)\s*>',
+    reKey = re.compile('<!ENTITY[ \t\r\n]+(?P<key>' + Name + ')[ \t\r\n]+'
+                       '(?P<val>\"[^\"]*\"|\'[^\']*\'?)[ \t\r\n]*>',
                        re.DOTALL | re.M)
     # add BOM to DTDs, details in bug 435002
     reHeader = re.compile('^\ufeff')
     reComment = re.compile('<!--(?P<val>-?[%s])*?-->' % CharMinusDash,
                            re.S)
-    rePE = re.compile(u'<!ENTITY\s+%\s+(?P<key>' + Name + ')\s+'
-                      u'SYSTEM\s+(?P<val>\"[^\"]*\"|\'[^\']*\')\s*>\s*'
-                      u'%' + Name + ';'
-                      u'(?:[ \t]*(?:' + XmlComment + u'\s*)*\n?)?')
+    rePE = re.compile('<!ENTITY[ \t\r\n]+%[ \t\r\n]+(?P<key>' + Name + ')'
+                      '[ \t\r\n]+SYSTEM[ \t\r\n]+'
+                      '(?P<val>\"[^\"]*\"|\'[^\']*\')[ \t\r\n]*>[ \t\r\n]*'
+                      '%' + Name + ';'
+                      '(?:[ \t]*(?:' + XmlComment + u'[ \t\r\n]*)*\n?)?')
 
     class Comment(Comment):
         @property

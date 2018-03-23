@@ -66,6 +66,10 @@ class TestDTD(ParserTestMixin, unittest.TestCase):
   %fooDTD;
 ''',
                    (('fooDTD', '"chrome://brand.dtd"'),))
+        self._test('''<!ENTITY  %  fooDTD  SYSTEM  "chrome://brand.dtd">
+  %fooDTD;
+''',
+                   (('fooDTD', '"chrome://brand.dtd"'),))
 
     def test_trailing_comment(self):
         self._test('''<!ENTITY first "string">
