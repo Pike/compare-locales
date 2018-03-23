@@ -437,7 +437,7 @@ class DTDParser(Parser):
 
 class PropertiesEntity(Entity):
     escape = re.compile(r'\\((?P<uni>u[0-9a-fA-F]{1,4})|'
-                        '(?P<nl>\n\s*)|(?P<single>.))', re.M)
+                        '(?P<nl>\n[ \t]*)|(?P<single>.))', re.M)
     known_escapes = {'n': '\n', 'r': '\r', 't': '\t', '\\': '\\'}
 
     @property
@@ -459,10 +459,10 @@ class PropertiesParser(Parser):
 
     def __init__(self):
         self.reKey = re.compile(
-            '(?P<key>[^#!\s\n][^=:\n]*?)\s*[:=][ \t]*', re.M)
+            '(?P<key>[^#! \t\r\n][^=:\n]*?)[ \t]*[:=][ \t]*', re.M)
         self.reComment = re.compile('(?:[#!][^\n]*\n)*(?:[#!][^\n]*)', re.M)
         self._escapedEnd = re.compile(r'\\+$')
-        self._trailingWS = re.compile(r'\s*(?:\n|\Z)', re.M)
+        self._trailingWS = re.compile(r'[ \t\r\n]*(?:\n|\Z)', re.M)
         Parser.__init__(self)
 
     def getNext(self, ctx, offset):

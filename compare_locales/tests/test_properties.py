@@ -4,6 +4,7 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 from __future__ import absolute_import
+from __future__ import unicode_literals
 import unittest
 
 from six.moves import zip
@@ -181,6 +182,30 @@ one = XYZ ABC
 ''')
         one, = list(self.parser)
         self.assertEqual(one.val, 'XYZ ABC')
+
+    def test_white_space_stripping(self):
+        self._test('''\
+one = one
+two = two \n\
+three = three\xa0''', (
+            ('one', 'one'),
+            (Whitespace, '\n'),
+            ('two', 'two'),
+            (Whitespace, '\n'),
+            ('three', 'three\xa0'),
+        ))
+
+    def test_white_space_keys(self):
+        self._test('''\
+o\ e = one
+t\fo = two \n\
+t\xa0e = three\xa0''', (
+            ('o\\ e', 'one'),
+            (Whitespace, '\n'),
+            ('t\fo', 'two'),
+            (Whitespace, '\n'),
+            ('t\xa0e', 'three\xa0'),
+        ))
 
 
 if __name__ == '__main__':
