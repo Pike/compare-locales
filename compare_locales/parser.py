@@ -215,7 +215,7 @@ class Whitespace(EntityBase):
 
 class Parser(object):
     capabilities = CAN_SKIP | CAN_MERGE
-    reWhitespace = re.compile('\s+', re.M)
+    reWhitespace = re.compile('[ \t\r\n]+', re.M)
     Comment = Comment
 
     class Context(object):
