@@ -40,7 +40,7 @@ class ParserTestMixin():
         Compares the result of parsing content with the given list
         of reference keys and values.
         '''
-        self.parser.readContents(unicode_content.encode(self.parser.encoding))
+        self.parser.readUnicode(unicode_content)
         entities = list(self.parser.walk())
         for entity, ref in zip_longest(entities, refs):
             self.assertTrue(entity,

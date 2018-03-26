@@ -9,7 +9,6 @@ import bisect
 import codecs
 from collections import Counter
 import logging
-import warnings
 
 try:
     from html import unescape as html_unescape
@@ -20,6 +19,7 @@ except ImportError:
 
 from fluent.syntax import FluentParser as FTLParser
 from fluent.syntax import ast as ftl
+import six
 from six import unichr
 
 __constructors = []
@@ -246,15 +246,19 @@ class Parser(object):
         self.last_comment = None
 
     def readFile(self, file):
-        # ignore universal newlines deprecation
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
+        '''Read contents from disk, with universal_newlines'''
+        # python 2 has binary input with universal newlines,
+        # python 3 doesn't. Let's split code paths
+        if six.PY2:
             with open(file, 'rbU') as f:
                 try:
                     self.readContents(f.read())
                 except UnicodeDecodeError as e:
                     (logging.getLogger('locales')
                             .error("Can't read file: " + file + '; ' + str(e)))
+        else:
+            with open(file, 'r', encoding=self.encoding, newline=None) as f:
+                self.readUnicode(f.read())
 
     def readContents(self, contents):
         '''Read contents and create parsing context.
@@ -262,6 +266,9 @@ class Parser(object):
         contents are in native encoding, but with normalized line endings.
         '''
         (contents, length) = codecs.getdecoder(self.encoding)(contents)
+        self.readUnicode(contents)
+
+    def readUnicode(self, contents):
         self.ctx = Parser.Context(contents)
 
     def parse(self):
