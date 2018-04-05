@@ -46,7 +46,7 @@ setup(name="compare-locales",
           'compare_locales.tests': ['data/*.properties', 'data/*.dtd']
       },
       install_requires=[
-          'fluent >=0.6.4, <0.7',
+          'fluent >=0.7.0, <0.8',
           'pytoml',
           'six',
       ],
