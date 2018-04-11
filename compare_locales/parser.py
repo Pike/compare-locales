@@ -258,7 +258,11 @@ class Parser(object):
                             .error("Can't read file: " + file + '; ' + str(e)))
         else:
             with open(file, 'r', encoding=self.encoding, newline=None) as f:
-                self.readUnicode(f.read())
+                try:
+                    self.readUnicode(f.read())
+                except UnicodeDecodeError as e:
+                    (logging.getLogger('locales')
+                            .error("Can't read file: " + file + '; ' + str(e)))
 
     def readContents(self, contents):
         '''Read contents and create parsing context.
