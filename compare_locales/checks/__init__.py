@@ -16,41 +16,7 @@ from fluent.syntax import ast as ftl
 
 from compare_locales.parser import DTDParser, PropertiesEntity, FluentMessage
 from compare_locales import plurals
-
-
-class Checker(object):
-    '''Abstract class to implement checks per file type.
-    '''
-    pattern = None
-    # if a check uses all reference entities, set this to True
-    needs_reference = False
-
-    @classmethod
-    def use(cls, file):
-        return cls.pattern.match(file.file)
-
-    def __init__(self, extra_tests, locale=None):
-        self.extra_tests = extra_tests
-        self.locale = locale
-        self.reference = None
-
-    def check(self, refEnt, l10nEnt):
-        '''Given the reference and localized Entities, performs checks.
-
-        This is a generator yielding tuples of
-        - "warning" or "error", depending on what should be reported,
-        - tuple of line, column info for the error within the string
-        - description string to be shown in the report
-        '''
-        if True:
-            raise NotImplementedError("Need to subclass")
-        yield ("error", (0, 0), "This is an example error", "example")
-
-    def set_reference(self, reference):
-        '''Set the reference entities.
-        Only do this if self.needs_reference is True.
-        '''
-        self.reference = reference
+from .base import Checker
 
 
 class PrintfException(Exception):
