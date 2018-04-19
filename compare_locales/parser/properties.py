@@ -13,7 +13,7 @@ from .base import (
 from six import unichr
 
 
-class PropertiesEntity(Entity):
+class PropertiesEntityMixin(object):
     escape = re.compile(r'\\((?P<uni>u[0-9a-fA-F]{1,4})|'
                         '(?P<nl>\n[ \t]*)|(?P<single>.))', re.M)
     known_escapes = {'n': '\n', 'r': '\r', 't': '\t', '\\': '\\'}
@@ -29,6 +29,10 @@ class PropertiesEntity(Entity):
             return self.known_escapes.get(found['single'], found['single'])
 
         return self.escape.sub(unescape, self.raw_val)
+
+
+class PropertiesEntity(PropertiesEntityMixin, Entity):
+    pass
 
 
 class PropertiesParser(Parser):

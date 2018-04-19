@@ -19,7 +19,7 @@ from .base import (
 )
 
 
-class DTDEntity(Entity):
+class DTDEntityMixin(object):
     @property
     def val(self):
         '''Unescape HTML entities into corresponding Unicode characters.
@@ -39,7 +39,7 @@ class DTDEntity(Entity):
         # DTDChecker already returns tuples of (line, col) positions
         if isinstance(offset, tuple):
             line_pos, col_pos = offset
-            line, col = super(DTDEntity, self).value_position()
+            line, col = super(DTDEntityMixin, self).value_position()
             if line_pos == 1:
                 col = col + col_pos
             else:
@@ -47,7 +47,11 @@ class DTDEntity(Entity):
                 line += line_pos - 1
             return line, col
         else:
-            return super(DTDEntity, self).value_position(offset)
+            return super(DTDEntityMixin, self).value_position(offset)
+
+
+class DTDEntity(DTDEntityMixin, Entity):
+    pass
 
 
 class DTDParser(Parser):
