@@ -20,16 +20,21 @@ from .dtd import (
 from .fluent import (
     FluentParser, FluentComment, FluentEntity, FluentMessage, FluentTerm,
 )
+from .ini import (
+    IniParser, IniSection,
+)
 from .properties import (
     PropertiesParser, PropertiesEntity
 )
 
 __all__ = [
     "CAN_NONE", "CAN_COPY", "CAN_SKIP", "CAN_MERGE",
-    "Junk", "Entity", "Comment",
+    "Junk", "EntityBase", "Entity", "Whitespace", "Comment", "OffsetComment",
+    "Parser",
     "DefinesParser", "DefinesInstruction",
     "DTDEntity",
     "FluentComment", "FluentEntity", "FluentMessage", "FluentTerm",
+    "IniParser", "IniSection",
     "PropertiesEntity",
 ]
 
@@ -41,56 +46,6 @@ def getParser(path):
         if re.search(item[0], path):
             return item[1]
     raise UserWarning("Cannot find Parser")
-
-
-class IniSection(EntityBase):
-    '''Entity-like object representing sections in ini files
-    '''
-    def __init__(self, ctx, span, val_span):
-        self.ctx = ctx
-        self.span = span
-        self.key_span = self.val_span = val_span
-
-    def __repr__(self):
-        return self.raw_val
-
-
-class IniParser(Parser):
-    '''
-    Parse files of the form:
-    # initial comment
-    [cat]
-    whitespace*
-    #comment
-    string=value
-    ...
-    '''
-
-    Comment = OffsetComment
-
-    def __init__(self):
-        self.reComment = re.compile('(?:^[;#][^\n]*\n)*(?:^[;#][^\n]*)', re.M)
-        self.reSection = re.compile('\[(?P<val>.*?)\]', re.M)
-        self.reKey = re.compile('(?P<key>.+?)=(?P<val>.*)', re.M)
-        Parser.__init__(self)
-
-    def getNext(self, ctx, offset):
-        contents = ctx.contents
-        m = self.reWhitespace.match(contents, offset)
-        if m:
-            return Whitespace(ctx, m.span())
-        m = self.reComment.match(contents, offset)
-        if m:
-            self.last_comment = self.Comment(ctx, m.span())
-            return self.last_comment
-        m = self.reSection.match(contents, offset)
-        if m:
-            return IniSection(ctx, m.span(), m.span('val'))
-        m = self.reKey.match(contents, offset)
-        if m:
-            return self.createEntity(ctx, m)
-        return self.getJunk(
-            ctx, offset, self.reComment, self.reSection, self.reKey)
 
 
 __constructors = [('\\.dtd$', DTDParser()),
