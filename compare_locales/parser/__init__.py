@@ -11,6 +11,9 @@ from .base import (
     EntityBase, Entity, Comment, OffsetComment, Junk, Whitespace,
     Parser
 )
+from .android import (
+    AndroidParser
+)
 from .defines import (
     DefinesParser, DefinesInstruction
 )
@@ -31,6 +34,7 @@ __all__ = [
     "CAN_NONE", "CAN_COPY", "CAN_SKIP", "CAN_MERGE",
     "Junk", "EntityBase", "Entity", "Whitespace", "Comment", "OffsetComment",
     "Parser",
+    "AndroidParser",
     "DefinesParser", "DefinesInstruction",
     "DTDParser", "DTDEntity",
     "FluentParser", "FluentComment", "FluentEntity",
@@ -49,8 +53,11 @@ def getParser(path):
     raise UserWarning("Cannot find Parser")
 
 
-__constructors = [('\\.dtd$', DTDParser()),
-                  ('\\.properties$', PropertiesParser()),
-                  ('\\.ini$', IniParser()),
-                  ('\\.inc$', DefinesParser()),
-                  ('\\.ftl$', FluentParser())]
+__constructors = [
+    ('strings.*\\.xml$', AndroidParser()),
+    ('\\.dtd$', DTDParser()),
+    ('\\.properties$', PropertiesParser()),
+    ('\\.ini$', IniParser()),
+    ('\\.inc$', DefinesParser()),
+    ('\\.ftl$', FluentParser()),
+]
