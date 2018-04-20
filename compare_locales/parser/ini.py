@@ -39,7 +39,7 @@ class IniParser(Parser):
 
     def __init__(self):
         self.reComment = re.compile('(?:^[;#][^\n]*\n)*(?:^[;#][^\n]*)', re.M)
-        self.reSection = re.compile('\[(?P<val>.*?)\]', re.M)
+        self.reSection = re.compile(r'\[(?P<val>.*?)\]', re.M)
         self.reKey = re.compile('(?P<key>.+?)=(?P<val>.*)', re.M)
         Parser.__init__(self)
 

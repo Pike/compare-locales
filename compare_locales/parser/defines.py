@@ -41,8 +41,8 @@ class DefinesParser(Parser):
         # corresponds to
         # https://hg.mozilla.org/mozilla-central/file/72ee4800d4156931c89b58bd807af4a3083702bb/python/mozbuild/mozbuild/preprocessor.py#l561  # noqa
         self.reKey = re.compile(
-            '#define[ \t]+(?P<key>\w+)(?:[ \t](?P<val>[^\n]*))?', re.M)
-        self.rePI = re.compile('#(?P<val>\w+[ \t]+[^\n]+)', re.M)
+            r'#define[ \t]+(?P<key>\w+)(?:[ \t](?P<val>[^\n]*))?', re.M)
+        self.rePI = re.compile(r'#(?P<val>\w+[ \t]+[^\n]+)', re.M)
         Parser.__init__(self)
 
     def getNext(self, ctx, offset):

@@ -23,7 +23,7 @@ class PrintfException(Exception):
 class PropertiesChecker(Checker):
     '''Tests to run on .properties files.
     '''
-    pattern = re.compile('.*\.properties$')
+    pattern = re.compile(r'.*\.properties$')
     printf = re.compile(r'%(?P<good>%|'
                         r'(?:(?P<number>[1-9][0-9]*)\$)?'
                         r'(?P<width>\*|[0-9]+)?'

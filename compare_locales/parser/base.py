@@ -97,7 +97,7 @@ class EntityBase(object):
         return self.key
 
     re_br = re.compile('<br[ \t\r\n]*/?>', re.U)
-    re_sgml = re.compile('</?\w+.*?>', re.U | re.M)
+    re_sgml = re.compile(r'</?\w+.*?>', re.U | re.M)
 
     def count_words(self):
         """Count the words in an English string.
@@ -207,6 +207,8 @@ class Parser(object):
     capabilities = CAN_SKIP | CAN_MERGE
     reWhitespace = re.compile('[ \t\r\n]+', re.M)
     Comment = Comment
+    # NotImplementedError would be great, but also tedious
+    reKey = reComment = None
 
     class Context(object):
         "Fixture for content and line numbers"
@@ -259,7 +261,7 @@ class Parser(object):
 
         contents are in native encoding, but with normalized line endings.
         '''
-        (contents, length) = codecs.getdecoder(self.encoding)(contents)
+        (contents, _) = codecs.getdecoder(self.encoding)(contents)
         self.readUnicode(contents)
 
     def readUnicode(self, contents):

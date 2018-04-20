@@ -23,7 +23,7 @@ class DTDChecker(Checker):
 
     Also checks for some CSS and number heuristics in the values.
     """
-    pattern = re.compile('.*\.dtd$')
+    pattern = re.compile(r'.*\.dtd$')
     needs_reference = True  # to cast a wider net for known entity references
 
     eref = re.compile('&(%s);' % DTDParser.Name)

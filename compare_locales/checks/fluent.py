@@ -16,7 +16,7 @@ from .base import Checker
 class FluentChecker(Checker):
     '''Tests to run on Fluent (FTL) files.
     '''
-    pattern = re.compile('.*\.ftl')
+    pattern = re.compile(r'.*\.ftl')
 
     def find_message_references(self, entry):
         refs = {}
