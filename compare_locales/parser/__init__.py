@@ -32,10 +32,11 @@ __all__ = [
     "Junk", "EntityBase", "Entity", "Whitespace", "Comment", "OffsetComment",
     "Parser",
     "DefinesParser", "DefinesInstruction",
-    "DTDEntity",
-    "FluentComment", "FluentEntity", "FluentMessage", "FluentTerm",
+    "DTDParser", "DTDEntity",
+    "FluentParser", "FluentComment", "FluentEntity",
+    "FluentMessage", "FluentTerm",
     "IniParser", "IniSection",
-    "PropertiesEntity",
+    "PropertiesParser", "PropertiesEntity",
 ]
 
 __constructors = []
