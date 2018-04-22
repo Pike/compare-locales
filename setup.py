@@ -10,7 +10,7 @@ https://developer.mozilla.org/en/docs/Compare-locales
 from __future__ import absolute_import
 DOCSTRINGS = __doc__.split("\n")
 
-from setuptools import setup
+from setuptools import setup, find_packages
 
 import sys
 import os.path
@@ -41,11 +41,7 @@ setup(name="compare-locales",
       python_requires='>=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*, <4',
       entry_points={'console_scripts': [
           'compare-locales = compare_locales.commands:CompareLocales.call']},
-      packages=[
-          'compare_locales',
-          'compare_locales.parser',
-          'compare_locales.tests',
-      ],
+      packages=find_packages(),
       package_data={
           'compare_locales.tests': ['data/*.properties', 'data/*.dtd']
       },
