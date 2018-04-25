@@ -24,14 +24,21 @@ def merge_channels(name, *resources):
         raise MergeNotSupportedError(
             'Unsupported file format ({}).'.format(name))
 
+    entities = merge_resources(parser, *resources)
+    return encode(serialize_legacy_resource(entities), parser.encoding)
+
+
+def merge_resources(parser, *resources):
     # A map of comments to the keys of entities they belong to.
     comments = {}
 
     def parse_resource(resource):
         # The counter dict keeps track of number of identical comments.
         counter = defaultdict(int)
-        parser.readContents(resource)
-        pairs = [get_key_value(entity, counter) for entity in parser.walk()]
+        if isinstance(resource, bytes):
+            parser.readContents(resource)
+            resource = parser.walk()
+        pairs = [get_key_value(entity, counter) for entity in resource]
         return OrderedDict(pairs)
 
     def get_key_value(entity, counter):
@@ -59,8 +66,7 @@ def merge_channels(name, *resources):
     entities = six.moves.reduce(
         lambda x, y: merge_two(comments, x, y),
         map(parse_resource, resources))
-
-    return encode(serialize_legacy_resource(entities), parser.encoding)
+    return entities
 
 
 def merge_two(comments, newer, older):
