@@ -78,6 +78,18 @@ class Matcher(object):
             return None
         return self.regex.sub(other.placable, path)
 
+    variable = re.compile('{ *([\w]+) *}')
+
+    @staticmethod
+    def expand(pattern, *envs):
+        def _expand(m):
+            _var = m.group(1)
+            for env in envs:
+                if _var in env:
+                    return Matcher.expand(env[_var], *envs)
+            return '{{{}}}'.format(_var)
+        return Matcher.variable.sub(_expand, pattern)
+
 
 class ProjectConfig(object):
     '''Abstraction of l10n project configuration data.
@@ -98,19 +110,11 @@ class ProjectConfig(object):
         self.children = []
         self._cache = None
 
-    variable = re.compile('{ *([\w]+) *}')
-
     def expand(self, path, env=None):
-        if env is None:
-            env = {}
-
-        def _expand(m):
-            _var = m.group(1)
-            for _env in (env, self.environ):
-                if _var in _env:
-                    return self.expand(_env[_var], env)
-            return '{{{}}}'.format(_var)
-        return self.variable.sub(_expand, path)
+        envs = [self.environ]
+        if env:
+            envs.insert(0, env)
+        return Matcher.expand(path, *envs)
 
     def lazy_expand(self, pattern):
         def lazy_l10n_expanded_pattern(env):
