@@ -73,25 +73,23 @@ class EntityBase(object):
             pos = self.val_span[0] + offset
         return self.ctx.linecol(pos)
 
-    # getter helpers
-
-    def get_all(self):
+    @property
+    def all(self):
         return self.ctx.contents[self.span[0]:self.span[1]]
 
-    def get_key(self):
+    @property
+    def key(self):
         return self.ctx.contents[self.key_span[0]:self.key_span[1]]
 
-    def get_raw_val(self):
+    @property
+    def raw_val(self):
         if self.val_span is None:
             return None
         return self.ctx.contents[self.val_span[0]:self.val_span[1]]
 
-    # getters
-
-    all = property(get_all)
-    key = property(get_key)
-    val = property(get_raw_val)
-    raw_val = property(get_raw_val)
+    @property
+    def val(self):
+        return self.raw_val
 
     def __repr__(self):
         return self.key
@@ -178,14 +176,17 @@ class Junk(object):
             pos = self.span[0] + offset
         return self.ctx.linecol(pos)
 
-    # getter helpers
-    def get_all(self):
+    @property
+    def all(self):
         return self.ctx.contents[self.span[0]:self.span[1]]
 
-    # getters
-    all = property(get_all)
-    raw_val = property(get_all)
-    val = property(get_all)
+    @property
+    def raw_val(self):
+        return self.all
+
+    @property
+    def val(self):
+        return self.all
 
     def __repr__(self):
         return self.key
