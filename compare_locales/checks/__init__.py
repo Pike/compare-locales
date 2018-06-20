@@ -5,6 +5,7 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
+from .android import AndroidChecker
 from .dtd import DTDChecker
 from .fluent import FluentChecker
 from .properties import PropertiesChecker
@@ -17,4 +18,6 @@ def getChecker(file, extra_tests=None):
         return DTDChecker(extra_tests, locale=file.locale)
     if FluentChecker.use(file):
         return FluentChecker(extra_tests, locale=file.locale)
+    if AndroidChecker.use(file):
+        return AndroidChecker(extra_tests, locale=file.locale)
     return None

@@ -50,6 +50,9 @@ class AndroidEntity(Entity):
     def raw_val(self):
         return self._raw_val_literal
 
+    def value_position(self, offset=0):
+        return (0, offset)
+
 
 class NodeMixin(object):
     def __init__(self, all, value):
