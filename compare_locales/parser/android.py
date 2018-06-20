@@ -96,7 +96,10 @@ class XMLJunk(Junk):
 
 
 def textContent(node):
-    if node.nodeType == minidom.Node.TEXT_NODE:
+    if (
+            node.nodeType == minidom.Node.TEXT_NODE or
+            node.nodeType == minidom.Node.CDATA_SECTION_NODE
+    ):
         return node.nodeValue
     return ''.join(textContent(child) for child in node.childNodes)
 
@@ -121,9 +124,10 @@ class AndroidParser(Parser):
             yield XMLJunk(doc.toxml())
             return
         root_children = doc.documentElement.childNodes
-        yield DocumentWrapper(
-            '<?xml version="1.0" encoding="utf-8"?>\n<resources>'
-        )
+        if not only_localizable:
+            yield DocumentWrapper(
+                '<?xml version="1.0" encoding="utf-8"?>\n<resources>'
+            )
         for node in root_children:
             if node.nodeType == Node.ELEMENT_NODE:
                 yield self.handleElement(node)
@@ -135,7 +139,8 @@ class AndroidParser(Parser):
                 self.last_comment = XMLComment(node.toxml(), node.nodeValue)
                 if not only_localizable:
                     yield self.last_comment
-        yield DocumentWrapper('</resources>\n')
+        if not only_localizable:
+            yield DocumentWrapper('</resources>\n')
 
     def handleElement(self, element):
         if element.nodeName == 'string' and element.hasAttribute('name'):
