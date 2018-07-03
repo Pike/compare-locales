@@ -387,9 +387,10 @@ class ContentComparer:
         if capabilities == parser.CAN_NONE:
             return
 
+        self.create_merge_dir(merge_file)
+
         if capabilities & parser.CAN_COPY:
             # copy the l10n file if it's good, or the reference file if not
-            self.create_merge_dir(merge_file)
             if skips or missing:
                 src = ref_file.fullpath
             else:
@@ -409,7 +410,6 @@ class ContentComparer:
             skips.sort(key=lambda s: s.span[0])
 
             # we need to skip a few erroneous blocks in the input, copy by hand
-            self.create_merge_dir(merge_file)
             f = codecs.open(merge_file, 'wb', encoding)
             offset = 0
             for skip in skips:
@@ -425,7 +425,6 @@ class ContentComparer:
 
         if skips or missing:
             if f is None:
-                self.create_merge_dir(merge_file)
                 shutil.copyfile(l10n_file.fullpath, merge_file)
                 f = codecs.open(merge_file, 'ab', encoding)
 
