@@ -17,6 +17,7 @@ from xml.dom import minidom
 from xml.dom.minidom import Node
 
 from .base import (
+    CAN_SKIP,
     EntityBase, Entity, Comment, Junk, Whitespace,
     Parser
 )
@@ -108,6 +109,9 @@ def textContent(node):
 
 
 class AndroidParser(Parser):
+    # Android does l10n fallback at runtime, don't merge en-US strings
+    capabilities = CAN_SKIP
+
     def __init__(self):
         super(AndroidParser, self).__init__()
         self.last_comment = None
