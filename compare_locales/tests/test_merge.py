@@ -28,6 +28,98 @@ class ContentMixin(object):
             f.write(content)
 
 
+class TestDefines(unittest.TestCase, ContentMixin):
+    '''Test case for parsers with just CAN_COPY'''
+    extension = '.inc'
+
+    def setUp(self):
+        self.maxDiff = None
+        self.tmp = mkdtemp()
+        os.mkdir(mozpath.join(self.tmp, "merge"))
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp)
+        del self.tmp
+
+    def testGood(self):
+        self.assertTrue(os.path.isdir(self.tmp))
+        self.reference("""#filter emptyLines
+
+#define MOZ_LANGPACK_CREATOR mozilla.org
+
+#define MOZ_LANGPACK_CONTRIBUTORS <em:contributor>Suzy Solon</em:contributor>
+
+#unfilter emptyLines
+""")
+        self.localized("""#filter emptyLines
+
+#define MOZ_LANGPACK_CREATOR mozilla.org
+
+#define MOZ_LANGPACK_CONTRIBUTORS <em:contributor>Jane Doe</em:contributor>
+
+#unfilter emptyLines
+""")
+        cc = ContentComparer([Observer()])
+        cc.compare(File(self.ref, "en-reference.inc", ""),
+                   File(self.l10n, "l10n.inc", ""),
+                   mozpath.join(self.tmp, "merge", "l10n.inc"))
+        self.assertDictEqual(
+            cc.observers[0].toJSON(),
+            {'summary':
+                {None: {
+                    'changed': 1,
+                    'changed_w': 2,
+                    'unchanged': 1,
+                    'unchanged_w': 1
+                }},
+             'details': {}
+             }
+        )
+        self.assertFalse(os.path.exists(mozpath.join(self.tmp, "merge",
+                                                     'l10n.inc')))
+
+    def testMissing(self):
+        self.assertTrue(os.path.isdir(self.tmp))
+        self.reference("""#filter emptyLines
+
+#define MOZ_LANGPACK_CREATOR mozilla.org
+
+#define MOZ_LANGPACK_CONTRIBUTORS <em:contributor>Suzy Solon</em:contributor>
+
+#unfilter emptyLines
+""")
+        self.localized("""#filter emptyLines
+
+#define MOZ_LANGPACK_CREATOR mozilla.org
+
+#unfilter emptyLines
+""")
+        cc = ContentComparer([Observer()])
+        cc.compare(File(self.ref, "en-reference.inc", ""),
+                   File(self.l10n, "l10n.inc", ""),
+                   mozpath.join(self.tmp, "merge", "l10n.inc"))
+        self.assertDictEqual(
+            cc.observers[0].toJSON(),
+            {
+                'summary':
+                    {None: {
+                        'missing': 1,
+                        'missing_w': 2,
+                        'unchanged': 1,
+                        'unchanged_w': 1
+                    }},
+                'details':
+                    {
+                        'l10n.inc': [
+                            {'missingEntity': 'MOZ_LANGPACK_CONTRIBUTORS'}
+                        ]
+                    }
+            }
+        )
+        self.assertTrue(os.path.exists(mozpath.join(self.tmp, "merge",
+                                                    'l10n.inc')))
+
+
 class TestProperties(unittest.TestCase, ContentMixin):
     extension = '.properties'
 
