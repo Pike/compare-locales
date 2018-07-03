@@ -418,19 +418,18 @@ class ContentComparer:
                 offset = chunk[1]
             f.write(ctx.contents[offset:])
 
+        if f is None:
+            # l10n file is a good starting point
+            shutil.copyfile(l10n_file.fullpath, merge_file)
+
         if not (capabilities & parser.CAN_MERGE):
             if f:
                 f.close()
-            else:
-                # l10n file is good to use, copy over
-                shutil.copyfile(l10n_file.fullpath, merge_file)
             return
 
         if skips or missing:
             if f is None:
-                shutil.copyfile(l10n_file.fullpath, merge_file)
                 f = codecs.open(merge_file, 'ab', encoding)
-
             trailing = (['\n'] +
                         [ref_entities[ref_map[key]].all for key in missing] +
                         [ref_entities[ref_map[skip.key]].all for skip in skips

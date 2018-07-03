@@ -160,8 +160,10 @@ eff = lEff word
              'details': {}
              }
         )
-        self.assertFalse(os.path.exists(mozpath.join(self.tmp, "merge",
-                                                     'l10n.properties')))
+        self.assertTrue(filecmp.cmp(
+            self.l10n,
+            mozpath.join(self.tmp, "merge", 'l10n.properties'))
+        )
 
     def testMissing(self):
         self.assertTrue(os.path.isdir(self.tmp))
@@ -261,6 +263,8 @@ eff = leffVal
                      {'obsoleteEntity': u'other'}]
                 }
              })
+        mergefile = mozpath.join(self.tmp, "merge", "l10n.properties")
+        self.assertTrue(filecmp.cmp(self.l10n, mergefile))
 
     def test_duplicate(self):
         self.assertTrue(os.path.isdir(self.tmp))
@@ -293,7 +297,7 @@ bar = duplicated bar
                 }
              })
         mergefile = mozpath.join(self.tmp, "merge", "l10n.properties")
-        self.assertFalse(os.path.isfile(mergefile))
+        self.assertTrue(filecmp.cmp(self.l10n, mergefile))
 
 
 class TestDTD(unittest.TestCase, ContentMixin):
@@ -331,8 +335,10 @@ class TestDTD(unittest.TestCase, ContentMixin):
              'details': {}
              }
         )
-        self.assertFalse(
-            os.path.exists(mozpath.join(self.tmp, "merge", 'l10n.dtd')))
+        self.assertTrue(filecmp.cmp(
+            self.l10n,
+            mozpath.join(self.tmp, "merge", 'l10n.dtd'))
+        )
 
     def testMissing(self):
         self.assertTrue(os.path.isdir(self.tmp))
@@ -431,6 +437,8 @@ class TestDTD(unittest.TestCase, ContentMixin):
                      {'warning': 'Parser error in en-US'}]
                 }
              })
+        mergefile = mozpath.join(self.tmp, "merge", "l10n.dtd")
+        self.assertTrue(filecmp.cmp(self.l10n, mergefile))
 
     def test_reference_xml_error(self):
         self.assertTrue(os.path.isdir(self.tmp))
@@ -461,6 +469,8 @@ class TestDTD(unittest.TestCase, ContentMixin):
                                  u"column 0 for bar"}]
                 }
              })
+        mergefile = mozpath.join(self.tmp, "merge", "l10n.dtd")
+        self.assertTrue(filecmp.cmp(self.l10n, mergefile))
 
 
 class TestFluent(unittest.TestCase):
