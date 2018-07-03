@@ -23,8 +23,10 @@ CAN_NONE = 0
 # Copy the entire reference file
 CAN_COPY = 1
 # Remove broken entities from localization
+# Without CAN_MERGE, en-US is not good to use for localization.
 CAN_SKIP = 2
 # Add missing and broken entities from the reference to localization
+# This effectively means that en-US is good to use for localized files.
 CAN_MERGE = 4
 
 

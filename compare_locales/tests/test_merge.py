@@ -18,15 +18,70 @@ from compare_locales import mozpath
 class ContentMixin(object):
     extension = None  # OVERLOAD
 
+    @property
+    def l10n(self):
+        return mozpath.join(self.tmp, "l10n" + self.extension)
+
     def reference(self, content):
         self.ref = mozpath.join(self.tmp, "en-reference" + self.extension)
         with open(self.ref, "w") as f:
             f.write(content)
 
     def localized(self, content):
-        self.l10n = mozpath.join(self.tmp, "l10n" + self.extension)
         with open(self.l10n, "w") as f:
             f.write(content)
+
+
+class TestNonSupported(unittest.TestCase, ContentMixin):
+    extension = '.js'
+
+    def setUp(self):
+        self.maxDiff = None
+        self.tmp = mkdtemp()
+        os.mkdir(mozpath.join(self.tmp, "merge"))
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp)
+        del self.tmp
+
+    def test_missing(self):
+        self.assertTrue(os.path.isdir(self.tmp))
+        self.reference("""foo = 'fooVal';""")
+        cc = ContentComparer([Observer()])
+        cc.add(File(self.ref, "en-reference.js", ""),
+               File(self.l10n, "l10n.js", ""),
+               mozpath.join(self.tmp, "merge", "l10n.js"))
+        self.assertDictEqual(
+            cc.observers[0].toJSON(),
+            {'summary': {},
+             'details': {'l10n.js': [{'missingFile': 'error'}]}
+             }
+        )
+        self.assertTrue(filecmp.cmp(
+            self.ref,
+            mozpath.join(self.tmp, "merge", 'l10n.js'))
+        )
+
+    def test_missing_ignored(self):
+
+        def ignore(*args):
+            return 'ignore'
+        self.assertTrue(os.path.isdir(self.tmp))
+        self.reference("""foo = 'fooVal';""")
+        cc = ContentComparer([Observer(filter=ignore)])
+        cc.add(File(self.ref, "en-reference.js", ""),
+               File(self.l10n, "l10n.js", ""),
+               mozpath.join(self.tmp, "merge", "l10n.js"))
+        self.assertDictEqual(
+            cc.observers[0].toJSON(),
+            {'summary': {},
+             'details': {}
+             }
+        )
+        self.assertTrue(filecmp.cmp(
+            self.ref,
+            mozpath.join(self.tmp, "merge", 'l10n.js'))
+        )
 
 
 class TestDefines(unittest.TestCase, ContentMixin):
@@ -197,6 +252,30 @@ eff = effVal""")
         p.readFile(mergefile)
         [m, n] = p.parse()
         self.assertEqual([e.key for e in m], ["bar", "foo", "eff"])
+
+    def test_missing_file(self):
+        self.assertTrue(os.path.isdir(self.tmp))
+        self.reference("""foo = fooVal
+bar = barVal
+eff = effVal""")
+        cc = ContentComparer([Observer()])
+        cc.add(File(self.ref, "en-reference.properties", ""),
+               File(self.l10n, "l10n.properties", ""),
+               mozpath.join(self.tmp, "merge", "l10n.properties"))
+        self.assertDictEqual(
+            cc.observers[0].toJSON(),
+            {'summary':
+                {None: {
+                    'missingInFiles': 3,
+                    'missing_w': 3
+                }},
+             'details': {
+                 'l10n.properties': [
+                     {'missingFile': 'error'}]
+                }
+             })
+        mergefile = mozpath.join(self.tmp, "merge", "l10n.properties")
+        self.assertTrue(filecmp.cmp(self.ref, mergefile))
 
     def testError(self):
         self.assertTrue(os.path.isdir(self.tmp))

@@ -592,15 +592,32 @@ class ContentComparer:
         self.updateStats(l10n, stats)
         pass
 
-    def add(self, orig, missing):
-        if self.notify('missingFile', missing, None) == "ignore":
-            # filter said that we don't need this file, don't count it
-            return
+    def add(self, orig, missing, merge_file):
+        ''' Add missing localized file.'''
         f = orig
         try:
             p = parser.getParser(f.file)
         except UserWarning:
+            p = None
+
+        # if we don't support this file, assume CAN_COPY to mimick
+        # l10n dir as closely as possible
+        caps = p.capabilities if p else parser.CAN_COPY
+        if (caps & (parser.CAN_COPY | parser.CAN_MERGE)):
+            # even if we can merge, pretend we can only copy
+            self.merge(
+                [], {}, orig, missing, merge_file,
+                ['trigger copy'], [], None, parser.CAN_COPY, None
+            )
+
+        if self.notify('missingFile', missing, None) == "ignore":
+            # filter said that we don't need this file, don't count it
             return
+
+        if p is None:
+            # We don't have a parser, cannot count missing strings
+            return
+
         try:
             p.readContents(f.getContents())
             entities, map = p.parse()
@@ -677,7 +694,7 @@ def compareProjects(
             l10n = paths.File(l10npath, fpath or l10npath,
                               module=module, locale=locale)
             if not os.path.exists(l10npath):
-                comparer.add(reffile, l10n)
+                comparer.add(reffile, l10n, mergepath)
                 continue
             if not os.path.exists(refpath):
                 comparer.remove(l10n)
