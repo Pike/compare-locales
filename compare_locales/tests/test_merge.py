@@ -516,7 +516,7 @@ bar = lBar
 
         # validate merge results
         mergepath = mozpath.join(self.tmp, "merge", "l10n.ftl")
-        self.assertFalse(os.path.exists(mergepath))
+        self.assertTrue(filecmp.cmp(self.l10n, mergepath))
 
     def testMissing(self):
         self.reference("""\
@@ -556,7 +556,7 @@ eff = lEff
 
         # validate merge results
         mergepath = mozpath.join(self.tmp, "merge", "l10n.ftl")
-        self.assertFalse(os.path.exists(mergepath))
+        self.assertTrue(filecmp.cmp(self.l10n, mergepath))
 
     def testBroken(self):
         self.reference("""\
@@ -648,7 +648,7 @@ foo = Localized { bar }
 
         # validate merge results
         mergepath = mozpath.join(self.tmp, "merge", "l10n.ftl")
-        self.assertFalse(os.path.exists(mergepath))
+        self.assertTrue(filecmp.cmp(self.l10n, mergepath))
 
     def testMismatchingReferences(self):
         self.reference("""\
@@ -705,7 +705,7 @@ baz = Localized { qux }
 
         # validate merge results
         mergepath = mozpath.join(self.tmp, "merge", "l10n.ftl")
-        self.assertFalse(os.path.exists(mergepath))
+        self.assertTrue(filecmp.cmp(self.l10n, mergepath))
 
     def testMismatchingAttributes(self):
         self.reference("""
@@ -809,7 +809,7 @@ eff = lEff
 
         # validate merge results
         mergepath = mozpath.join(self.tmp, "merge", "l10n.ftl")
-        self.assertFalse(os.path.exists(mergepath))
+        self.assertTrue(filecmp.cmp(self.l10n, mergepath))
 
     def testMismatchingValues(self):
         self.reference("""
@@ -890,7 +890,7 @@ bar = lBar
 
         # validate merge results
         mergepath = mozpath.join(self.tmp, "merge", "l10n.ftl")
-        self.assertFalse(os.path.exists(mergepath))
+        self.assertTrue(filecmp.cmp(self.l10n, mergepath))
 
     def testMissingAttachedComment(self):
         self.reference("""\
@@ -925,7 +925,7 @@ bar = barVal
 
         # validate merge results
         mergepath = mozpath.join(self.tmp, "merge", "l10n.ftl")
-        self.assertFalse(os.path.exists(mergepath))
+        self.assertTrue(filecmp.cmp(self.l10n, mergepath))
 
     def testObsoleteStandaloneComment(self):
         self.reference("""\
@@ -959,7 +959,7 @@ bar = lBar
 
         # validate merge results
         mergepath = mozpath.join(self.tmp, "merge", "l10n.ftl")
-        self.assertFalse(os.path.exists(mergepath))
+        self.assertTrue(filecmp.cmp(self.l10n, mergepath))
 
     def test_duplicate(self):
         self.assertTrue(os.path.isdir(self.tmp))
@@ -992,7 +992,7 @@ bar = duplicated bar
                 }
              })
         mergefile = mozpath.join(self.tmp, "merge", "l10n.ftl")
-        self.assertFalse(os.path.isfile(mergefile))
+        self.assertTrue(filecmp.cmp(self.l10n, mergefile))
 
     def test_duplicate_attributes(self):
         self.assertTrue(os.path.isdir(self.tmp))
@@ -1024,7 +1024,7 @@ bar = duplicated bar
                 }
              })
         mergefile = mozpath.join(self.tmp, "merge", "l10n.ftl")
-        self.assertFalse(os.path.isfile(mergefile))
+        self.assertTrue(filecmp.cmp(self.l10n, mergefile))
 
 
 if __name__ == '__main__':

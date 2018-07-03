@@ -421,6 +421,9 @@ class ContentComparer:
         if not (capabilities & parser.CAN_MERGE):
             if f:
                 f.close()
+            else:
+                # l10n file is good to use, copy over
+                shutil.copyfile(l10n_file.fullpath, merge_file)
             return
 
         if skips or missing:
