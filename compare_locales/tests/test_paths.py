@@ -6,8 +6,11 @@
 from __future__ import absolute_import
 import unittest
 
-from compare_locales.paths import ProjectConfig, File, ProjectFiles, Matcher
+from compare_locales.paths import (
+    ProjectConfig, File, ProjectFiles, Matcher, TOMLParser
+)
 from compare_locales import mozpath
+import pytoml as toml
 
 
 class TestMatcher(unittest.TestCase):
@@ -305,11 +308,11 @@ class MockProjectFiles(ProjectFiles):
 class TestProjectPaths(unittest.TestCase):
     def test_l10n_path(self):
         cfg = ProjectConfig()
+        cfg.add_environment(l10n_base='/tmp')
         cfg.locales.append('de')
         cfg.add_paths({
             'l10n': '{l10n_base}/{locale}/*'
         })
-        cfg.add_environment(l10n_base='/tmp')
         mocks = {
             '/tmp/de/': [
                 'good.ftl',
@@ -340,12 +343,12 @@ class TestProjectPaths(unittest.TestCase):
 
     def test_reference_path(self):
         cfg = ProjectConfig()
+        cfg.add_environment(l10n_base='/tmp/l10n')
         cfg.locales.append('de')
         cfg.add_paths({
             'l10n': '{l10n_base}/{locale}/*',
             'reference': '/tmp/reference/*'
         })
-        cfg.add_environment(l10n_base='/tmp/l10n')
         mocks = {
             '/tmp/l10n/de/': [
                 'good.ftl',
@@ -448,6 +451,66 @@ class TestProjectPaths(unittest.TestCase):
                 ('/tmp/fr/major/good.ftl', None, None, set()),
             ])
         self.assertIsNone(files.match('/tmp/fr/minor/some.ftl'))
+
+
+class MockTOMLParser(TOMLParser):
+    def __init__(self, path_data, env=None, ignore_missing_includes=False):
+        # mock, use the path as data. Yeah, not nice
+        super(MockTOMLParser, self).__init__(
+            '/tmp/base.toml',
+            env=env, ignore_missing_includes=ignore_missing_includes
+        )
+        self.data = toml.loads(path_data)
+
+    def load(self):
+        # we mocked this
+        pass
+
+
+class TestL10nMerge(unittest.TestCase):
+    # need to go through TOMLParser, as that's handling most of the
+    # environment
+    def test_merge_paths(self):
+        cfg = MockTOMLParser.parse(
+            '''\
+basepath = "."
+locales = [
+    "de",
+]
+[env]
+    l = "{l10n_base}/{locale}/"
+[[paths]]
+    reference = "reference/*"
+    l10n = "{l}*"
+''',
+            env={'l10n_base': '/tmp/l10n'}
+        )
+        mocks = {
+            '/tmp/l10n/de/': [
+                'good.ftl',
+                'not/subdir/bad.ftl'
+            ],
+            '/tmp/l10n/fr/': [
+                'good.ftl',
+                'not/subdir/bad.ftl'
+            ],
+            '/tmp/reference/': [
+                'ref.ftl',
+                'not/subdir/bad.ftl'
+            ],
+        }
+        cfg.add_global_environment(l10n_base='/tmp/l10n')
+        files = MockProjectFiles(mocks, 'de', [cfg], '/tmp/mergers')
+        self.assertListEqual(
+            list(files),
+            [
+                ('/tmp/l10n/de/good.ftl', '/tmp/reference/good.ftl',
+                 '/tmp/mergers/de/good.ftl',
+                 set()),
+                ('/tmp/l10n/de/ref.ftl', '/tmp/reference/ref.ftl',
+                 '/tmp/mergers/de/ref.ftl',
+                 set()),
+            ])
 
 
 class TestProjectConfig(unittest.TestCase):
