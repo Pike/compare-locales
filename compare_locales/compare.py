@@ -481,6 +481,11 @@ class ContentComparer:
             p = parser.getParser(ref_file.file)
         except UserWarning:
             # no comparison, XXX report?
+            # At least, merge
+            self.merge(
+                [], {},
+                ref_file, l10n, merge_file, [], [], None,
+                parser.CAN_COPY, None)
             return
         try:
             p.readContents(ref_file.getContents())

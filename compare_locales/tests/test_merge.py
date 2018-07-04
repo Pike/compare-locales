@@ -44,6 +44,25 @@ class TestNonSupported(unittest.TestCase, ContentMixin):
         shutil.rmtree(self.tmp)
         del self.tmp
 
+    def test_good(self):
+        self.assertTrue(os.path.isdir(self.tmp))
+        self.reference("""foo = 'fooVal';""")
+        self.localized("""foo = 'lfoo';""")
+        cc = ContentComparer([Observer()])
+        cc.compare(File(self.ref, "en-reference.js", ""),
+                   File(self.l10n, "l10n.js", ""),
+                   mozpath.join(self.tmp, "merge", "l10n.js"))
+        self.assertDictEqual(
+            cc.observers[0].toJSON(),
+            {'summary': {},
+             'details': {}
+             }
+        )
+        self.assertTrue(filecmp.cmp(
+            self.l10n,
+            mozpath.join(self.tmp, "merge", 'l10n.js'))
+        )
+
     def test_missing(self):
         self.assertTrue(os.path.isdir(self.tmp))
         self.reference("""foo = 'fooVal';""")
