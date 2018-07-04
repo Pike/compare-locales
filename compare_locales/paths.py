@@ -452,8 +452,12 @@ class TOMLParser(object):
     def processPaths(self):
         assert self.data is not None
         for data in self.data.get('paths', []):
+            l10n = data['l10n']
+            if not l10n.startswith('{'):
+                # l10n isn't relative to a variable, expand
+                l10n = self.resolvepath(l10n)
             paths = {
-                "l10n": self.resolvepath(data['l10n']),
+                "l10n": l10n,
             }
             if 'locales' in data:
                 paths['locales'] = data['locales']
@@ -469,7 +473,8 @@ class TOMLParser(object):
                 paths = [paths]
             # expand if path isn't relative to a variable
             paths = [
-                self.resolvepath(path)
+                self.resolvepath(path) if not path.startswith('{')
+                else path
                 for path in paths
             ]
             rule = {
