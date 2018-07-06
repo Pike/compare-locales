@@ -3,8 +3,8 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 '''
-Like :py:mod:`os.path`, with a reduced set of functions, and with normalized path
-separators (always use forward slashes).
+Like :py:mod:`os.path`, with a reduced set of functions, and with normalized
+path separators (always use forward slashes).
 Also contains a few additional utilities not found in :py:mod:`os.path`.
 '''
 
@@ -78,8 +78,8 @@ def basedir(path, bases):
     Given a list of directories (`bases`), return which one contains the given
     path. If several matches are found, the deepest base directory is returned.
 
-        ``basedir('foo/bar/baz', ['foo', 'baz', 'foo/bar'])`` returns ``'foo/bar'``
-        (`'foo'` and `'foo/bar'` both match, but `'foo/bar'` is the deepest match)
+    ``basedir('foo/bar/baz', ['foo', 'baz', 'foo/bar'])`` returns ``'foo/bar'``
+    (`'foo'` and `'foo/bar'` both match, but `'foo/bar'` is the deepest match)
     '''
     path = normsep(path)
     bases = [normsep(b) for b in bases]
@@ -118,10 +118,19 @@ def match(path, pattern):
     if not pattern:
         return True
     if pattern not in re_cache:
-        p = re.escape(pattern)
-        p = re.sub(r'(^|\\\/)\\\*\\\*\\\/', r'\1(?:.+/)?', p)
-        p = re.sub(r'(^|\\\/)\\\*\\\*$', r'(?:\1.+)?', p)
-        p = p.replace(r'\*', '[^/]*') + '(?:/.*)?$'
+        last_end = 0
+        p = ''
+        for m in re.finditer(r'(?:(^|/)\*\*(/|$))|(?P<star>\*)', pattern):
+            if m.start() > last_end:
+                p += re.escape(pattern[last_end:m.start()])
+            if m.group('star'):
+                p += '[^/]*'
+            elif m.group(2):
+                p += re.escape(m.group(1)) + r'(?:.+%s)?' % m.group(2)
+            else:
+                p += r'(?:%s.+)?' % re.escape(m.group(1))
+            last_end = m.end()
+        p += re.escape(pattern[last_end:]) + '(?:/.*)?$'
         re_cache[pattern] = re.compile(p)
     return re_cache[pattern].match(path) is not None
 

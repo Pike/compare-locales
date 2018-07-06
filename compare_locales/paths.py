@@ -29,18 +29,26 @@ class Matcher(object):
     def __init__(self, pattern):
         '''Create regular expression similar to mozpath.match().
         '''
-        prefix = pattern.split("*", 1)[0]
-        p = re.escape(pattern)
-        p = re.sub(r'(^|\\\/)\\\*\\\*\\\/', r'\1(.+/)?', p)
-        p = re.sub(r'(^|\\\/)\\\*\\\*$', r'(\1.+)?', p)
-        p = p.replace(r'\*', '([^/]*)') + '$'
-        r = re.escape(pattern)
-        r = re.sub(r'(^|\\\/)\\\*\\\*\\\/', r'\\\\0', r)
-        r = re.sub(r'(^|\\\/)\\\*\\\*$', r'\\\\0', r)
-        r = r.replace(r'\*', r'\\0')
+        prefix = ''
+        last_end = 0
+        p = ''
+        r = ''
         backref = itertools.count(1)
-        r = re.sub(r'\\0', lambda m: '\\%s' % next(backref), r)
-        r = re.sub(r'\\(.)', r'\1', r)
+        for m in re.finditer(r'(?:(^|/)\*\*(/|$))|(?P<star>\*)', pattern):
+            if m.start() > last_end:
+                p += re.escape(pattern[last_end:m.start()])
+                r += pattern[last_end:m.start()]
+                if last_end == 0:
+                    prefix = pattern[last_end:m.start()]
+            if m.group('star'):
+                p += '([^/]*)'
+                r += r'\%s' % next(backref)
+            else:
+                p += re.escape(m.group(1)) + r'(.+%s)?' % m.group(2)
+                r += m.group(1) + r'\%s' % next(backref) + m.group(2)
+            last_end = m.end()
+        p += re.escape(pattern[last_end:]) + '$'
+        r += pattern[last_end:]
         self.prefix = prefix
         self.regex = re.compile(p)
         self.placable = r

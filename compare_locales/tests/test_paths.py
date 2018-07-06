@@ -43,6 +43,11 @@ class TestMatcher(unittest.TestCase):
         self.assertEqual(one.sub(other, 'foo/baz/one/qux/zzz'),
                          'bar/baz/other/qux/zzz')
         self.assertIsNone(one.sub(other, 'foo/baz/bez/one/qux'))
+        one = Matcher('foo/**/bar/**')
+        self.assertTrue(one.match('foo/bar/baz.qux'))
+        self.assertTrue(one.match('foo/tender/bar/baz.qux'))
+        self.assertFalse(one.match('foo/nobar/baz.qux'))
+        self.assertFalse(one.match('foo/tender/bar'))
 
 
 class SetupMixin(object):
