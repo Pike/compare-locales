@@ -365,6 +365,24 @@ class ContentComparer:
 
     def merge(self, ref_entities, ref_map, ref_file, l10n_file, merge_file,
               missing, skips, ctx, capabilities, encoding):
+        '''Create localized file in merge dir
+
+        `ref_entities` and `ref_map` are the parser result of the
+        reference file
+        `ref_file` and `l10n_file` are the File objects for the reference and
+        the l10n file, resp.
+        `merge_file` is the output path for the generated content. This is None
+        if we're just comparing or validating.
+        `missing` are the missing messages in l10n - potentially copied from
+        reference
+        `skips` are entries to be dropped from the localized file
+        `ctx` is the parsing context
+        `capabilities` are the capabilities for the merge algorithm
+        `encoding` is the encoding to be used when serializing, usually utf-8
+        '''
+
+        if not merge_file:
+            return
 
         if capabilities == parser.CAN_NONE:
             return
