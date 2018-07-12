@@ -49,6 +49,8 @@ class Matcher(object):
             last_end = m.end()
         p += re.escape(pattern[last_end:]) + '$'
         r += pattern[last_end:]
+        if last_end == 0:
+            prefix = pattern
         self.prefix = prefix
         self.regex = re.compile(p)
         self.placable = r

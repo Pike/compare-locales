@@ -49,6 +49,23 @@ class TestMatcher(unittest.TestCase):
         self.assertFalse(one.match('foo/nobar/baz.qux'))
         self.assertFalse(one.match('foo/tender/bar'))
 
+    def test_prefix(self):
+        self.assertEqual(
+            Matcher('foo/bar.file').prefix, 'foo/bar.file'
+        )
+        self.assertEqual(
+            Matcher('foo/*').prefix, 'foo/'
+        )
+        self.assertEqual(
+            Matcher('foo/**').prefix, 'foo'
+        )
+        self.assertEqual(
+            Matcher('foo/*/bar').prefix, 'foo/'
+        )
+        self.assertEqual(
+            Matcher('foo/**/bar').prefix, 'foo'
+        )
+
 
 class SetupMixin(object):
     def setUp(self):
