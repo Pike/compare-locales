@@ -472,9 +472,16 @@ class ContentComparer:
         for observer in self.observers + self.stat_observers:
             observer.updateStats(file, stats)
 
-    def remove(self, obsolete):
-        self.notify('obsoleteFile', obsolete, None)
-        pass
+    def remove(self, ref_file, l10n, merge_file):
+        '''Obsolete l10n file.
+
+        Copy to merge stage if we can.
+        '''
+        self.notify('obsoleteFile', l10n, None)
+        self.merge(
+            [], {}, ref_file, l10n, merge_file,
+            [], [], None, parser.CAN_COPY, None
+        )
 
     def compare(self, ref_file, l10n, merge_file, extra_tests=None):
         try:
@@ -702,7 +709,7 @@ def compareProjects(
                 comparer.add(reffile, l10n, mergepath)
                 continue
             if not os.path.exists(refpath):
-                comparer.remove(l10n)
+                comparer.remove(reffile, l10n, mergepath)
                 continue
             comparer.compare(reffile, l10n, mergepath, extra_tests)
     return observers

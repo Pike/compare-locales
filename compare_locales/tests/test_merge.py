@@ -19,11 +19,14 @@ class ContentMixin(object):
     extension = None  # OVERLOAD
 
     @property
+    def ref(self):
+        return mozpath.join(self.tmp, "en-reference" + self.extension)
+
+    @property
     def l10n(self):
         return mozpath.join(self.tmp, "l10n" + self.extension)
 
     def reference(self, content):
-        self.ref = mozpath.join(self.tmp, "en-reference" + self.extension)
         with open(self.ref, "w") as f:
             f.write(content)
 
@@ -363,6 +366,27 @@ eff = leffVal
              })
         mergefile = mozpath.join(self.tmp, "merge", "l10n.properties")
         self.assertTrue(filecmp.cmp(self.l10n, mergefile))
+
+    def test_obsolete_file(self):
+        self.assertTrue(os.path.isdir(self.tmp))
+        self.localized("""foo = fooVal
+eff = leffVal
+""")
+        cc = ContentComparer([Observer()])
+        cc.remove(File(self.ref, "en-reference.properties", ""),
+                  File(self.l10n, "l10n.properties", ""),
+                  mozpath.join(self.tmp, "merge", "l10n.properties"))
+        self.assertDictEqual(
+            cc.observers[0].toJSON(),
+            {'summary':
+                {},
+             'details': {
+                 'l10n.properties': [
+                     {'obsoleteFile': u'error'}]
+                }
+             })
+        mergefile = mozpath.join(self.tmp, "merge", "l10n.properties")
+        self.assertTrue(os.path.isfile(mergefile))
 
     def test_duplicate(self):
         self.assertTrue(os.path.isdir(self.tmp))
