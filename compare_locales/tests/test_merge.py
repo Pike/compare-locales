@@ -4,6 +4,7 @@
 
 from __future__ import absolute_import
 import unittest
+import filecmp
 import os
 from tempfile import mkdtemp
 import shutil
@@ -75,8 +76,10 @@ class TestDefines(unittest.TestCase, ContentMixin):
              'details': {}
              }
         )
-        self.assertFalse(os.path.exists(mozpath.join(self.tmp, "merge",
-                                                     'l10n.inc')))
+        self.assertTrue(filecmp.cmp(
+            self.l10n,
+            mozpath.join(self.tmp, "merge", 'l10n.inc'))
+        )
 
     def testMissing(self):
         self.assertTrue(os.path.isdir(self.tmp))
@@ -116,8 +119,10 @@ class TestDefines(unittest.TestCase, ContentMixin):
                     }
             }
         )
-        self.assertTrue(os.path.exists(mozpath.join(self.tmp, "merge",
-                                                    'l10n.inc')))
+        self.assertTrue(filecmp.cmp(
+            self.ref,
+            mozpath.join(self.tmp, "merge", 'l10n.inc'))
+        )
 
 
 class TestProperties(unittest.TestCase, ContentMixin):

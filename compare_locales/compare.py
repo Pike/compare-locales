@@ -387,9 +387,14 @@ class ContentComparer:
         if capabilities == parser.CAN_NONE:
             return
 
-        if capabilities & parser.CAN_COPY and (skips or missing):
+        if capabilities & parser.CAN_COPY:
+            # copy the l10n file if it's good, or the reference file if not
             self.create_merge_dir(merge_file)
-            shutil.copyfile(ref_file.fullpath, merge_file)
+            if skips or missing:
+                src = ref_file.fullpath
+            else:
+                src = l10n_file.fullpath
+            shutil.copyfile(src, merge_file)
             print("copied reference to " + merge_file)
             return
 
