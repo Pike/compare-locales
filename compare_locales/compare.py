@@ -664,10 +664,15 @@ def compareProjects(
     locales = set()
     observers = []
     for project in project_configs:
+        # disable filter if we're in validation mode
+        if None in project.locales:
+            filter = None
+        else:
+            filter = project.filter
         observers.append(
             Observer(
                 quiet=quiet,
-                filter=project.filter,
+                filter=filter,
                 file_stats=file_stats,
             ))
         locales.update(project.locales)
@@ -703,6 +708,10 @@ def compareProjects(
                         fpath = mozpath.relpath(l10npath, _m['l10n'].prefix)
                     break
             reffile = paths.File(refpath, fpath or refpath, module=module)
+            if locale is None:
+                # When validating the reference files, set locale
+                # to a private subtag. This only shows in the output.
+                locale = paths.REFERENCE_LOCALE
             l10n = paths.File(l10npath, fpath or l10npath,
                               module=module, locale=locale)
             if not os.path.exists(l10npath):

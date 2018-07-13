@@ -39,6 +39,8 @@ or the all-locales file referenced by the application\'s l10n.ini."""
 Specified once, doesn't record entities. Specified twice, also drops
 missing and obsolete files. Specify thrice to hide errors and warnings and
 just show stats''')
+        parser.add_argument('--validate', action='store_true',
+                            help='Run compare-locales against reference')
         parser.add_argument('-m', '--merge',
                             help='''Use this directory to stage merged files,
 use {ab_CD} to specify a different directory for each locale''')
@@ -103,6 +105,7 @@ data in a json useful for Exhibit
 
     def handle(self, config_paths, l10n_base_dir, locales,
                merge=None, defines=None, unified=False, full=False, quiet=0,
+               validate=False,
                clobber=False, data='text'):
         # using nargs multiple times in argparser totally screws things
         # up, repair that.
@@ -123,7 +126,11 @@ data in a json useful for Exhibit
         if not all_args:
             self.parser.error('l10n-base-dir not found')
         l10n_base_dir = all_args.pop(0)
-        locales.extend(all_args)
+        if validate:
+            # signal validation mode by setting locale list to [None]
+            locales = [None]
+        else:
+            locales.extend(all_args)
         # when we compare disabled projects, we set our locales
         # on all subconfigs, so deep is True.
         locales_deep = full

@@ -474,6 +474,37 @@ class TestProjectPaths(unittest.TestCase):
             ])
         self.assertIsNone(files.match('/tmp/fr/minor/some.ftl'))
 
+    def test_validation_mode(self):
+        cfg = ProjectConfig()
+        cfg.add_environment(l10n_base='/tmp/l10n')
+        cfg.locales.append('de')
+        cfg.add_paths({
+            'l10n': '{l10n_base}/{locale}/*',
+            'reference': '/tmp/reference/*'
+        })
+        mocks = {
+            '/tmp/l10n/de/': [
+                'good.ftl',
+                'not/subdir/bad.ftl'
+            ],
+            '/tmp/l10n/fr/': [
+                'good.ftl',
+                'not/subdir/bad.ftl'
+            ],
+            '/tmp/reference/': [
+                'ref.ftl',
+                'not/subdir/bad.ftl'
+            ],
+        }
+        # `None` switches on validation mode
+        files = MockProjectFiles(mocks, None, [cfg])
+        self.assertListEqual(
+            list(files),
+            [
+                ('/tmp/reference/ref.ftl', '/tmp/reference/ref.ftl', None,
+                 set()),
+            ])
+
 
 class MockTOMLParser(TOMLParser):
     def __init__(self, path_data, env=None, ignore_missing_includes=False):

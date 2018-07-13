@@ -89,6 +89,7 @@ CATEGORIES_BY_LOCALE = {
     'en-GB': CATEGORIES_BY_INDEX[1],
     'en-US': CATEGORIES_BY_INDEX[1],
     'en-ZA': CATEGORIES_BY_INDEX[1],
+    'en-x-moz-reference': CATEGORIES_BY_INDEX[1],  # for reference validation
     'eo': CATEGORIES_BY_INDEX[1],
     'es-AR': CATEGORIES_BY_INDEX[1],
     'es-CL': CATEGORIES_BY_INDEX[1],

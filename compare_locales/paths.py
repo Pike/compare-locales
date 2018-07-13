@@ -16,6 +16,9 @@ import pytoml as toml
 import six
 
 
+REFERENCE_LOCALE = 'en-x-moz-reference'
+
+
 class Matcher(object):
     '''Path pattern matcher
     Supports path matching similar to mozpath.match(), but does
@@ -283,6 +286,9 @@ class ProjectConfig(object):
 class ProjectFiles(object):
     '''Iterable object to get all files and tests for a locale and a
     list of ProjectConfigs.
+
+    If the given locale is None, iterate over reference files as
+    both reference and locale for a reference self-test.
     '''
     def __init__(self, locale, projects, mergebase=None):
         self.locale = locale
@@ -292,14 +298,18 @@ class ProjectFiles(object):
         for project in projects:
             configs.extend(project.configs)
         for pc in configs:
-            if locale not in pc.locales:
+            if locale and locale not in pc.locales:
                 continue
             for paths in pc.paths:
-                if 'locales' in paths and locale not in paths['locales']:
+                if (
+                    locale and
+                    'locales' in paths and
+                    locale not in paths['locales']
+                ):
                     continue
                 m = {
                     'l10n': paths['l10n']({
-                        "locale": locale
+                        "locale": locale or REFERENCE_LOCALE
                     }),
                     'module': paths.get('module'),
                 }
@@ -343,6 +353,15 @@ class ProjectFiles(object):
             del self.matchers[i]
 
     def __iter__(self):
+        # The iteration is pretty different when we iterate over
+        # a localization vs over the reference. We do that latter
+        # when running in validation mode.
+        inner = self.iter_locale() if self.locale else self.iter_reference()
+        for t in inner:
+            yield t
+
+    def iter_locale(self):
+        '''Iterate over locale files.'''
         known = {}
         for matchers in self.matchers:
             matcher = matchers['l10n']
@@ -370,6 +389,23 @@ class ProjectFiles(object):
                             matcher.sub(matchers['merge'], path)
         for path, d in sorted(known.items()):
             yield (path, d.get('reference'), d.get('merge'), d['test'])
+
+    def iter_reference(self):
+        '''Iterate over reference files.'''
+        known = {}
+        for matchers in self.matchers:
+            if 'reference' not in matchers:
+                continue
+            matcher = matchers['reference']
+            for path in self._files(matcher):
+                refpath = matcher.sub(matchers['reference'], path)
+                if refpath not in known:
+                    known[refpath] = {
+                        'reference': path,
+                        'test': matchers.get('test')
+                    }
+        for path, d in sorted(known.items()):
+            yield (path, d.get('reference'), None, d['test'])
 
     def _files(self, matcher):
         '''Base implementation of getting all files in a hierarchy
