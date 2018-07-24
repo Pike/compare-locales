@@ -28,6 +28,9 @@ class FluentChecker(Checker):
                 # references. The value is the node itself and its span
                 # will be used to pinpoint the error.
                 refs[node.id.name] = node
+            if isinstance(node, ftl.TermReference):
+                # Same for terms
+                refs[node.id.name] = node
             # BaseNode.traverse expects this function to return the node.
             return node
 

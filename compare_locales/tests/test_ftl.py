@@ -210,6 +210,9 @@ baz = Baz
         self.assertTrue(isinstance(entity, parser.Whitespace))
         self.assertEqual(entity.all, '\n')
 
+        with self.assertRaises(StopIteration):
+            next(entities)
+
     def test_non_localizable_syntax_zero_four(self):
         self.parser.readContents(b'''\
 // Resource Comment
@@ -290,6 +293,9 @@ baz = Baz
         self.assertTrue(isinstance(entity, parser.Whitespace))
         self.assertEqual(entity.all, '\n')
 
+        with self.assertRaises(StopIteration):
+            next(entities)
+
     def test_comments_val(self):
         self.parser.readContents(b'''\
 // Legacy Comment
@@ -333,3 +339,7 @@ baz = Baz
 
         entity = next(entities)
         self.assertTrue(isinstance(entity, parser.Whitespace))
+        self.assertEqual(entity.all, '\n')
+
+        with self.assertRaises(StopIteration):
+            next(entities)
