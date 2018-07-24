@@ -80,3 +80,23 @@ class QuotesTest(BaseHelper):
                 ),
             )
         )
+
+
+class TranslatableTest(BaseHelper):
+    file = File('values/strings.xml', 'values/strings.xml')
+    refContent = (ANDROID_WRAPPER % b'plain').replace(
+        b'name="foo"',
+        b'translatable="false" name="foo"')
+
+    def test_translatable(self):
+        self._test(
+            ANDROID_WRAPPER % b'"some"',
+            (
+                (
+                    "error",
+                    0,
+                    "strings must be translatable",
+                    "android"
+                ),
+            )
+        )

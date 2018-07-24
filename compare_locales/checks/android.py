@@ -41,9 +41,24 @@ class AndroidChecker(Checker):
 
         There should be multiple nodes given for <plurals> or <string-array>.
         '''
+        if self.not_translatable(l10n, *refs):
+            yield (
+                "error",
+                0,
+                "strings must be translatable",
+                "android"
+            )
+            return
         l10nstring = textContent(l10n)
         for report_tuple in check_apostrophes(l10nstring):
             yield report_tuple
+
+    def not_translatable(self, *nodes):
+        return any(
+            node.hasAttribute("translatable")
+            and node.getAttribute("translatable") == "false"
+            for node in nodes
+        )
 
 
 silencer = re.compile(r'\\.|""')
