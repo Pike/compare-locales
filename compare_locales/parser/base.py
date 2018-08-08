@@ -112,7 +112,14 @@ class EntityBase(object):
 
 
 class Entity(EntityBase):
-    pass
+    @property
+    def localized(self):
+        '''Is this entity localized.
+
+        Always true for monolingual files.
+        In bilingual files, this is a dynamic property.
+        '''
+        return True
 
 
 class Comment(EntityBase):
@@ -204,6 +211,12 @@ class Whitespace(EntityBase):
 
     def __repr__(self):
         return self.raw_val
+
+
+class BadEntity(ValueError):
+    '''Raised when the parser can't create an Entity for a found match.
+    '''
+    pass
 
 
 class Parser(object):
@@ -302,7 +315,11 @@ class Parser(object):
             return Whitespace(ctx, m.span())
         m = self.reKey.match(ctx.contents, offset)
         if m:
-            return self.createEntity(ctx, m)
+            try:
+                return self.createEntity(ctx, m)
+            except BadEntity:
+                # fall through to Junk, probably
+                pass
         m = self.reComment.match(ctx.contents, offset)
         if m:
             self.last_comment = self.Comment(ctx, m.span())

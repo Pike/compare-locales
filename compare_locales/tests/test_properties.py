@@ -48,6 +48,7 @@ and still has another line coming
                'and here is the 2nd part']
         i = iter(self.parser)
         for r, e in zip(ref, i):
+            self.assertTrue(e.localized)
             self.assertEqual(e.val, r)
 
     def test_bug121341(self):

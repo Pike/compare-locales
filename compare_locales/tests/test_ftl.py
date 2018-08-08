@@ -24,6 +24,7 @@ class TestFluentParser(ParserTestMixin, unittest.TestCase):
         [ent2] = list(self.parser)
 
         self.assertTrue(ent1.equals(ent2))
+        self.assertTrue(ent1.localized)
 
     def test_equality_different_whitespace(self):
         source1 = b'foo = { $arg }'

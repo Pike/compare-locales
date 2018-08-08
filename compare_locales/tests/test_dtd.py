@@ -26,6 +26,10 @@ class TestDTD(ParserTestMixin, unittest.TestCase):
     def test_one_entity(self):
         self._test('''<!ENTITY foo.label "stuff">''',
                    (('foo.label', 'stuff'),))
+        self.assertListEqual(
+            [e.localized for e in self.parser],
+            [True]
+        )
 
     quoteContent = '''<!ENTITY good.one "one">
 <!ENTITY bad.one "bad " quote">
