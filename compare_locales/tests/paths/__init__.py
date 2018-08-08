@@ -14,7 +14,7 @@ import pytoml as toml
 
 class SetupMixin(object):
     def setUp(self):
-        self.cfg = ProjectConfig()
+        self.cfg = ProjectConfig(None)
         self.file = File(
             '/tmp/somedir/de/browser/one/two/file.ftl',
             'file.ftl',

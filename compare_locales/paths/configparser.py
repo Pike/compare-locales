@@ -7,6 +7,7 @@ import errno
 import logging
 from compare_locales import mozpath
 from .project import ProjectConfig
+from .matcher import expand
 import pytoml as toml
 import six
 
@@ -25,6 +26,7 @@ class TOMLParser(object):
         parser = cls(path, env=env,
                      ignore_missing_includes=ignore_missing_includes)
         parser.load()
+        parser.processBasePath()
         parser.processEnv()
         parser.processPaths()
         parser.processFilters()
@@ -37,8 +39,7 @@ class TOMLParser(object):
         self.env = env if env is not None else {}
         self.ignore_missing_includes = ignore_missing_includes
         self.data = None
-        self.pc = ProjectConfig()
-        self.pc.PATH = path
+        self.pc = ProjectConfig(path)
 
     def load(self):
         try:
@@ -47,9 +48,15 @@ class TOMLParser(object):
         except (toml.TomlError, IOError):
             raise ConfigNotFound(self.path)
 
+    def processBasePath(self):
+        assert self.data is not None
+        self.pc.set_root(self.data.get('basepath', '.'))
+
     def processEnv(self):
         assert self.data is not None
         self.pc.add_environment(**self.data.get('env', {}))
+        # add parser environment, possibly overwriting file variables
+        self.pc.add_environment(**self.env)
 
     def processLocales(self):
         assert self.data is not None
@@ -59,17 +66,13 @@ class TOMLParser(object):
     def processPaths(self):
         assert self.data is not None
         for data in self.data.get('paths', []):
-            l10n = data['l10n']
-            if not l10n.startswith('{'):
-                # l10n isn't relative to a variable, expand
-                l10n = self.resolvepath(l10n)
             paths = {
-                "l10n": l10n,
+                "l10n": data['l10n']
             }
             if 'locales' in data:
                 paths['locales'] = data['locales']
             if 'reference' in data:
-                paths['reference'] = self.resolvepath(data['reference'])
+                paths['reference'] = data['reference']
             self.pc.add_paths(paths)
 
     def processFilters(self):
@@ -78,12 +81,6 @@ class TOMLParser(object):
             paths = data['path']
             if isinstance(paths, six.string_types):
                 paths = [paths]
-            # expand if path isn't relative to a variable
-            paths = [
-                self.resolvepath(path) if not path.startswith('{')
-                else path
-                for path in paths
-            ]
             rule = {
                 "path": paths,
                 "action": data['action']
@@ -97,8 +94,14 @@ class TOMLParser(object):
         if 'includes' not in self.data:
             return
         for include in self.data['includes']:
-            p = include['path']
-            p = self.resolvepath(p)
+            # resolve include['path'] against our root and env
+            p = mozpath.normpath(
+                expand(
+                    self.pc.root,
+                    include['path'],
+                    self.env
+                )
+            )
             try:
                 child = self.parse(
                     p, env=self.env,
@@ -112,14 +115,6 @@ class TOMLParser(object):
                     .error('%s: %s', e.strerror, e.filename))
                 continue
             self.pc.add_child(child)
-
-    def resolvepath(self, path):
-        path = self.pc.expand(path, env=self.env)
-        path = mozpath.join(
-            mozpath.dirname(self.path),
-            self.data.get('basepath', '.'),
-            path)
-        return mozpath.normpath(path)
 
     def asConfig(self):
         return self.pc

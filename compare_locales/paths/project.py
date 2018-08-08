@@ -4,6 +4,7 @@
 
 from __future__ import absolute_import
 import re
+from compare_locales import mozpath
 from .matcher import Matcher
 import six
 
@@ -12,7 +13,7 @@ class ProjectConfig(object):
     '''Abstraction of l10n project configuration data.
     '''
 
-    def __init__(self):
+    def __init__(self, path):
         self.filter_py = None  # legacy filter code
         # {
         #  'l10n': pattern,
@@ -20,6 +21,8 @@ class ProjectConfig(object):
         #  'locales': [],  # optional
         #  'test': [],  # optional
         # }
+        self.path = path
+        self.root = None
         self.paths = []
         self.rules = []
         self.locales = []
@@ -27,21 +30,13 @@ class ProjectConfig(object):
         self.children = []
         self._cache = None
 
-    def expand(self, path, env=None):
-        envs = [self.environ]
-        if env:
-            envs.insert(0, env)
-        return Matcher.expand(path, *envs)
-
-    def lazy_expand(self, pattern):
-        def lazy_l10n_expanded_pattern(env):
-            return Matcher(self.expand(pattern, env))
-        return lazy_l10n_expanded_pattern
-
-    def add_global_environment(self, **kwargs):
-        self.add_environment(**kwargs)
-        for child in self.children:
-            child.add_global_environment(**kwargs)
+    def set_root(self, basepath):
+        if self.path is None:
+            self.root = None
+            return
+        self.root = mozpath.abspath(
+            mozpath.join(mozpath.dirname(self.path), basepath)
+        )
 
     def add_environment(self, **kwargs):
         self.environ.update(kwargs)
@@ -56,11 +51,13 @@ class ProjectConfig(object):
 
         for d in paths:
             rv = {
-                'l10n': self.lazy_expand(d['l10n']),
+                'l10n': Matcher(d['l10n'], env=self.environ, root=self.root),
                 'module': d.get('module')
             }
             if 'reference' in d:
-                rv['reference'] = Matcher(d['reference'])
+                rv['reference'] = Matcher(
+                    d['reference'], env=self.environ, root=self.root
+                )
             if 'test' in d:
                 rv['test'] = d['test']
             if 'locales' in d:
@@ -138,12 +135,12 @@ class ProjectConfig(object):
             return self._cache
         self._cache = self.FilterCache(locale)
         for paths in self.paths:
-            self._cache.l10n_paths.append(paths['l10n']({
+            self._cache.l10n_paths.append(paths['l10n'].with_env({
                 "locale": locale
             }))
         for rule in self.rules:
             cached_rule = rule.copy()
-            cached_rule['path'] = rule['path']({
+            cached_rule['path'] = rule['path'].with_env({
                 "locale": locale
             })
             self._cache.rules.append(cached_rule)
@@ -183,12 +180,14 @@ class ProjectConfig(object):
         if isinstance(rule['path'], list):
             for path in rule['path']:
                 _rule = rule.copy()
-                _rule['path'] = self.lazy_expand(path)
+                _rule['path'] = Matcher(path, env=self.environ, root=self.root)
                 for __rule in self._compile_rule(_rule):
                     yield __rule
             return
         if isinstance(rule['path'], six.string_types):
-            rule['path'] = self.lazy_expand(rule['path'])
+            rule['path'] = Matcher(
+                rule['path'], env=self.environ, root=self.root
+            )
         if 'key' not in rule:
             yield rule
             return

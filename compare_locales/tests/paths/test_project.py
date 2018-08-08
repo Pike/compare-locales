@@ -165,24 +165,8 @@ class TestConfigRules(SetupMixin, unittest.TestCase):
 
 
 class TestProjectConfig(unittest.TestCase):
-    def test_expand_paths(self):
-        pc = ProjectConfig()
-        pc.add_environment(one="first_path")
-        self.assertEqual(pc.expand('foo'), 'foo')
-        self.assertEqual(pc.expand('foo{one}bar'), 'foofirst_pathbar')
-        pc.add_environment(l10n_base='../tmp/localizations')
-        self.assertEqual(
-            pc.expand('{l}dir', {'l': '{l10n_base}/{locale}/'}),
-            '../tmp/localizations/{locale}/dir')
-        self.assertEqual(
-            pc.expand('{l}dir', {
-                'l': '{l10n_base}/{locale}/',
-                'l10n_base': '../merge-base'
-            }),
-            '../merge-base/{locale}/dir')
-
     def test_children(self):
-        pc = ProjectConfig()
-        child = ProjectConfig()
+        pc = ProjectConfig(None)
+        child = ProjectConfig(None)
         pc.add_child(child)
         self.assertListEqual([pc, child], list(pc.configs))

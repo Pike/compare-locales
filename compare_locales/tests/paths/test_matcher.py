@@ -53,13 +53,24 @@ class TestMatcher(unittest.TestCase):
             Matcher('foo/*').prefix, 'foo/'
         )
         self.assertEqual(
-            Matcher('foo/**').prefix, 'foo'
+            Matcher('foo/**').prefix, 'foo/'
         )
         self.assertEqual(
             Matcher('foo/*/bar').prefix, 'foo/'
         )
         self.assertEqual(
-            Matcher('foo/**/bar').prefix, 'foo'
+            Matcher('foo/**/bar').prefix, 'foo/'
+        )
+        self.assertEqual(
+            Matcher('foo/**/bar/*').prefix, 'foo/'
+        )
+        self.assertEqual(
+            Matcher('foo/{v}/bar', {'v': 'expanded'}).prefix,
+            'foo/expanded/bar'
+        )
+        self.assertEqual(
+            Matcher('foo/{v}/*/bar', {'v': 'expanded'}).prefix,
+            'foo/expanded/'
         )
 
     def test_variables(self):
@@ -79,3 +90,99 @@ class TestMatcher(unittest.TestCase):
                 'path': 'foo'
             }
         )
+        self.assertIsNone(
+            Matcher('{ var }/foopy/{ var }/bears')
+            .match('one/foopy/other/bears')
+        )
+        self.assertDictEqual(
+            Matcher('{ var }/foopy/{ var }/bears')
+            .match('same_value/foopy/same_value/bears').groupdict(),
+            {
+                'var': 'same_value'
+            }
+        )
+        self.assertIsNone(
+            Matcher('{ var }/foopy/bears', {'var': 'other'})
+            .match('one/foopy/bears')
+        )
+        self.assertDictEqual(
+            Matcher('{ var }/foopy/bears', {'var': 'one'})
+            .match('one/foopy/bears').groupdict(),
+            {
+                'var': 'one'
+            }
+        )
+        self.assertDictEqual(
+            Matcher('{one}/{two}/something', {
+                'one': 'some/segment',
+                'two': 'with/a/lot/of'
+            }).match('some/segment/with/a/lot/of/something').groupdict(),
+            {
+                'one': 'some/segment',
+                'two': 'with/a/lot/of'
+            }
+        )
+
+    def test_variables_sub(self):
+        one = Matcher('{base}/{loc}/*', {'base': 'ONE_BASE'})
+        other = Matcher('{base}/somewhere/*', {'base': 'OTHER_BASE'})
+        self.assertEqual(
+            one.sub(other, 'ONE_BASE/ab-CD/special'),
+            'OTHER_BASE/somewhere/special'
+        )
+
+    def test_copy(self):
+        one = Matcher('{base}/{loc}/*', {
+            'base': 'ONE_BASE',
+            'generic': 'keep'
+        })
+        other = Matcher(one, {'base': 'OTHER_BASE'})
+        self.assertEqual(
+            one.sub(other, 'ONE_BASE/ab-CD/special'),
+            'OTHER_BASE/ab-CD/special'
+        )
+        self.assertDictEqual(
+            one.env,
+            {
+                'base': ['ONE_BASE'],
+                'generic': ['keep']
+            }
+        )
+        self.assertDictEqual(
+            other.env,
+            {
+                'base': ['OTHER_BASE'],
+                'generic': ['keep']
+            }
+        )
+
+
+class TestRootedMatcher(unittest.TestCase):
+    def test_root_path(self):
+        one = Matcher('some/path', root='/rooted/dir')
+        self.assertIsNone(one.match('some/path'))
+        self.assertIsNotNone(one.match('/rooted/dir/some/path'))
+
+    def test_copy(self):
+        one = Matcher('some/path', root='/rooted/dir')
+        other = Matcher(one, root='/different-rooted/dir')
+        self.assertIsNone(other.match('some/path'))
+        self.assertIsNone(other.match('/rooted/dir/some/path'))
+        self.assertIsNotNone(other.match('/different-rooted/dir/some/path'))
+
+    def test_rooted(self):
+        one = Matcher('/rooted/full/path', root='/different-root')
+        self.assertIsNone(one.match('/different-root/rooted/full/path'))
+        self.assertIsNotNone(one.match('/rooted/full/path'))
+
+    def test_variable(self):
+        one = Matcher(
+            '{var}/path',
+            env={'var': 'relative-dir'},
+            root='/rooted/dir'
+        )
+        self.assertIsNone(one.match('relative-dir/path'))
+        self.assertIsNotNone(one.match('/rooted/dir/relative-dir/path'))
+        other = Matcher(one, env={'var': '/different/rooted-dir'})
+        self.assertIsNone(other.match('/rooted/dir/relative-dir/path'))
+        self.assertIsNotNone(other.match('/different/rooted-dir/path'))

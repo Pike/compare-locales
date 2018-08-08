@@ -17,7 +17,7 @@ from . import (
 
 class TestProjectPaths(unittest.TestCase):
     def test_l10n_path(self):
-        cfg = ProjectConfig()
+        cfg = ProjectConfig(None)
         cfg.add_environment(l10n_base='/tmp')
         cfg.locales.append('de')
         cfg.add_paths({
@@ -52,7 +52,7 @@ class TestProjectPaths(unittest.TestCase):
         self.assertListEqual(list(files), [])
 
     def test_reference_path(self):
-        cfg = ProjectConfig()
+        cfg = ProjectConfig(None)
         cfg.add_environment(l10n_base='/tmp/l10n')
         cfg.locales.append('de')
         cfg.add_paths({
@@ -118,7 +118,7 @@ class TestProjectPaths(unittest.TestCase):
         self.assertListEqual(list(files), [])
 
     def test_partial_l10n(self):
-        cfg = ProjectConfig()
+        cfg = ProjectConfig(None)
         cfg.locales.extend(['de', 'fr'])
         cfg.add_paths({
             'l10n': '/tmp/{locale}/major/*'
@@ -163,7 +163,7 @@ class TestProjectPaths(unittest.TestCase):
         self.assertIsNone(files.match('/tmp/fr/minor/some.ftl'))
 
     def test_validation_mode(self):
-        cfg = ProjectConfig()
+        cfg = ProjectConfig(None)
         cfg.add_environment(l10n_base='/tmp/l10n')
         cfg.locales.append('de')
         cfg.add_paths({
@@ -226,7 +226,6 @@ locales = [
                 'not/subdir/bad.ftl'
             ],
         }
-        cfg.add_global_environment(l10n_base='/tmp/l10n')
         files = MockProjectFiles(mocks, 'de', [cfg], '/tmp/mergers')
         self.assertListEqual(
             list(files),

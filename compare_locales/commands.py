@@ -135,7 +135,9 @@ data in a json useful for Exhibit
         # on all subconfigs, so deep is True.
         locales_deep = full
         configs = []
-        config_env = {}
+        config_env = {
+            'l10n_base': l10n_base_dir
+        }
         for define in defines:
             var, _, value = define.partition('=')
             config_env[var] = value
@@ -145,7 +147,6 @@ data in a json useful for Exhibit
                     config = TOMLParser.parse(config_path, env=config_env)
                 except ConfigNotFound as e:
                     self.parser.exit('config file %s not found' % e.filename)
-                config.add_global_environment(l10n_base=l10n_base_dir)
                 if locales:
                     config.set_locales(locales, deep=locales_deep)
                 configs.append(config)

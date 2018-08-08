@@ -35,7 +35,7 @@ class ProjectFiles(object):
                 ):
                     continue
                 m = {
-                    'l10n': paths['l10n']({
+                    'l10n': paths['l10n'].with_env({
                         "locale": locale or REFERENCE_LOCALE
                     }),
                     'module': paths.get('module'),
@@ -43,7 +43,7 @@ class ProjectFiles(object):
                 if 'reference' in paths:
                     m['reference'] = paths['reference']
                 if self.mergebase is not None:
-                    m['merge'] = paths['l10n']({
+                    m['merge'] = paths['l10n'].with_env({
                         "locale": locale,
                         "l10n_base": self.mergebase
                     })

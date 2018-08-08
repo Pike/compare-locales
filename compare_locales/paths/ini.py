@@ -184,7 +184,11 @@ class EnumerateApp(object):
         self.filters += args
 
     def asConfig(self):
-        config = ProjectConfig()
+        # We've already normalized paths in the ini parsing.
+        # Set the path and root to None to just keep our paths as is.
+        config = ProjectConfig(None)
+        config.set_root('.')  # sets to None because path is None
+        config.add_environment(l10n_base=self.l10nbase)
         self._config_for_ini(config, self.config)
         filters = self.config.getFilters()
         if filters:
@@ -204,7 +208,6 @@ class EnumerateApp(object):
             if module == 'mobile/android/base':
                 paths['test'] = ['android-dtd']
             projectconfig.add_paths(paths)
-            projectconfig.add_global_environment(l10n_base=self.l10nbase)
         for child in aConfig.children:
             self._config_for_ini(projectconfig, child)
 
