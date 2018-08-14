@@ -10,6 +10,7 @@ import logging
 from argparse import ArgumentParser
 import os
 
+from compare_locales import mozpath
 from compare_locales import version
 from compare_locales.paths import EnumerateApp, TOMLParser, ConfigNotFound
 from compare_locales.compare import compareProjects, Observer
@@ -125,7 +126,7 @@ data in a json useful for Exhibit
                 self.parser.error('config file %s not found' % cf)
         if not all_args:
             self.parser.error('l10n-base-dir not found')
-        l10n_base_dir = all_args.pop(0)
+        l10n_base_dir = mozpath.abspath(all_args.pop(0))
         if validate:
             # signal validation mode by setting locale list to [None]
             locales = [None]
