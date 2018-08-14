@@ -99,7 +99,7 @@ class TOMLParser(object):
                 expand(
                     self.pc.root,
                     include['path'],
-                    self.env
+                    self.pc.environ
                 )
             )
             try:

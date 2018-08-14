@@ -89,8 +89,8 @@ def expand(root, path, env):
 
     This will break if the path contains wildcards.
     '''
-    pattern = Matcher(path, env=env, root=root).pattern
-    return pattern.expand(env)
+    matcher = Matcher(path, env=env, root=root)
+    return matcher.pattern.expand(matcher.env)
 
 
 class Node(object):
