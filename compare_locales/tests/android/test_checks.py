@@ -102,6 +102,24 @@ class TranslatableTest(BaseHelper):
         )
 
 
+class AtStringTest(BaseHelper):
+    file = File('values/strings.xml', 'values/strings.xml')
+    refContent = (ANDROID_WRAPPER % b'@string/foo')
+
+    def test_translatable(self):
+        self._test(
+            ANDROID_WRAPPER % b'"some"',
+            (
+                (
+                    "warning",
+                    0,
+                    "strings must be translatable",
+                    "android"
+                ),
+            )
+        )
+
+
 class PrintfSTest(BaseHelper):
     file = File('values/strings.xml', 'values/strings.xml')
     refContent = ANDROID_WRAPPER % b'%s'

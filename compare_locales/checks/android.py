@@ -50,6 +50,13 @@ class AndroidChecker(Checker):
                 "android"
             )
             return
+        if self.no_at_string(*refs):
+            yield (
+                "warning",
+                0,
+                "strings must be translatable",
+                "android"
+            )
         l10nstring = textContent(l10n)
         for report_tuple in check_apostrophes(l10nstring):
             yield report_tuple
@@ -71,6 +78,17 @@ class AndroidChecker(Checker):
             node.hasAttribute("translatable")
             and node.getAttribute("translatable") == "false"
             for node in nodes
+        )
+
+    def no_at_string(self, *ref_nodes):
+        '''Android allows to reference other strings by using
+        @string/identifier
+        instead of the actual value. Those references don't belong into
+        a localizable file, warn on that.
+        '''
+        return any(
+            textContent(node).startswith('@string/')
+            for node in ref_nodes
         )
 
 
