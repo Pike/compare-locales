@@ -100,3 +100,101 @@ class TranslatableTest(BaseHelper):
                 ),
             )
         )
+
+
+class PrintfSTest(BaseHelper):
+    file = File('values/strings.xml', 'values/strings.xml')
+    refContent = ANDROID_WRAPPER % b'%s'
+
+    def test_match(self):
+        self._test(
+            ANDROID_WRAPPER % b'"%s"',
+            tuple()
+        )
+        self._test(
+            ANDROID_WRAPPER % b'"%1$s"',
+            tuple()
+        )
+        self._test(
+            ANDROID_WRAPPER % b'"$s %1$s"',
+            tuple()
+        )
+        self._test(
+            ANDROID_WRAPPER % b'"$1$s %1$s"',
+            tuple()
+        )
+
+    def test_mismatch(self):
+        self._test(
+            ANDROID_WRAPPER % b'"%d"',
+            (
+                (
+                    "error",
+                    0,
+                    "Mismatching formatter",
+                    "android"
+                ),
+            )
+        )
+
+    def test_off_position(self):
+        self._test(
+            ANDROID_WRAPPER % b'%2$s',
+            (
+                (
+                    "error",
+                    0,
+                    "Formatter %2$s not found in reference",
+                    "android"
+                ),
+            )
+        )
+
+
+class PrintfDTest(BaseHelper):
+    file = File('values/strings.xml', 'values/strings.xml')
+    refContent = ANDROID_WRAPPER % b'%d'
+
+    def test_match(self):
+        self._test(
+            ANDROID_WRAPPER % b'"%d"',
+            tuple()
+        )
+        self._test(
+            ANDROID_WRAPPER % b'"%1$d"',
+            tuple()
+        )
+        self._test(
+            ANDROID_WRAPPER % b'"$d %1$d"',
+            tuple()
+        )
+        self._test(
+            ANDROID_WRAPPER % b'"$1$d %1$d"',
+            tuple()
+        )
+
+    def test_mismatch(self):
+        self._test(
+            ANDROID_WRAPPER % b'"%s"',
+            (
+                (
+                    "error",
+                    0,
+                    "Mismatching formatter",
+                    "android"
+                ),
+            )
+        )
+
+    def test_off_position(self):
+        self._test(
+            ANDROID_WRAPPER % b'%2$d',
+            (
+                (
+                    "error",
+                    0,
+                    "Formatter %2$d not found in reference",
+                    "android"
+                ),
+            )
+        )

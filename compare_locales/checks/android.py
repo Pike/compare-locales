@@ -6,6 +6,7 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 
 import re
+from xml.dom import minidom
 
 from .base import Checker
 from ..parser.android import textContent
@@ -53,6 +54,18 @@ class AndroidChecker(Checker):
         for report_tuple in check_apostrophes(l10nstring):
             yield report_tuple
 
+        params, errors = get_params(refs)
+        for error, pos in errors:
+            yield (
+                "warning",
+                pos,
+                error,
+                "android"
+            )
+        if params:
+            for report_tuple in check_params(params, l10nstring):
+                yield report_tuple
+
     def not_translatable(self, *nodes):
         return any(
             node.hasAttribute("translatable")
@@ -96,5 +109,79 @@ def check_apostrophes(string):
                 "error",
                 m.start(),
                 "Apostrophe must be escaped",
+                "android"
+            )
+
+
+def get_params(refs):
+    '''Get printf parameters and internal errors.
+
+    Returns a sparse map of positions to formatter, and a list
+    of errors. Errors covered so far are mismatching formatters.
+    '''
+    params = {}
+    errors = []
+    next_implicit = 1
+    for ref in refs:
+        if isinstance(ref, minidom.Node):
+            ref = textContent(ref)
+        for m in re.finditer(r'%(?P<order>[1-9]\$)?(?P<format>s|d)', ref):
+            order = m.group('order')
+            if order:
+                order = int(order[0])
+            else:
+                order = next_implicit
+                next_implicit += 1
+            fmt = m.group('format')
+            if order not in params:
+                params[order] = fmt
+            else:
+                # check for consistency errors
+                if params[order] == fmt:
+                    continue
+                msg = "Conflicting formatting, %{order}${f1} vs %{order}${f2}"
+                errors.append((
+                    msg.format(order=order, f1=fmt, f2=params[order]),
+                    m.start()
+                ))
+    return params, errors
+
+
+def check_params(params, string):
+    '''Compare the printf parameters in the given string to the reference
+    parameters.
+
+    Also yields errors that are internal to the parameters inside string,
+    as found by `get_params`.
+    '''
+    lparams, errors = get_params([string])
+    for error, pos in errors:
+        yield (
+            "error",
+            pos,
+            error,
+            "android"
+        )
+    # Compare reference for each localized parameter.
+    # If there's no reference found, error, as an out-of-bounds
+    # parameter crashes.
+    # This assumes that all parameters are actually used in the reference,
+    # which should be OK.
+    # If there's a mismatch in the formatter, error.
+    for order in sorted(lparams):
+        if order not in params:
+            yield (
+                "error",
+                0,
+                "Formatter %{}${} not found in reference".format(
+                    order, lparams[order]
+                ),
+                "android"
+            )
+        elif params[order] != lparams[order]:
+            yield (
+                "error",
+                0,
+                "Mismatching formatter",
                 "android"
             )
