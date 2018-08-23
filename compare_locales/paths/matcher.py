@@ -9,6 +9,19 @@ from compare_locales import mozpath
 import six
 
 
+# Android uses non-standard locale codes, these are the mappings
+# back and forth
+ANDROID_LEGACY_MAP = {
+    'he': 'iw',
+    'id': 'in',
+    'yi': 'ji'
+}
+ANDROID_STANDARD_MAP = {
+    legacy: standard
+    for standard, legacy in six.iteritems(ANDROID_LEGACY_MAP)
+}
+
+
 class Matcher(object):
     '''Path pattern matcher
     Supports path matching similar to mozpath.match(), but does
@@ -53,11 +66,29 @@ class Matcher(object):
         return subpattern.expand(self.env)
 
     def match(self, path):
-        '''
-        True if the given path matches the file pattern.
+        '''Test the given path against this matcher and its environment.
+
+        Return None if there's no match, and the dictionary of matched
+        variables in this matcher if there's a match.
         '''
         self._cache_regex()
-        return re.match(self._cached_re, path)
+        m = re.match(self._cached_re, path)
+        if m is None:
+            return None
+        d = m.groupdict()
+        if 'android_locale' in d and 'locale' not in d:
+            # map android_locale to locale code
+            locale = d['android_locale']
+            # map legacy locale codes, he <-> iw, id <-> in, yi <-> ji
+            locale = re.sub(
+                r'(iw|in|ji)(?=\Z|-)',
+                lambda legacy: ANDROID_STANDARD_MAP[legacy.group(1)],
+                locale
+            )
+            locale = re.sub(r'-r([A-Z]{2})', r'-\1', locale)
+            locale = locale.replace('b+', '').replace('+', '-')
+            d['locale'] = locale
+        return d
 
     def _cache_regex(self):
         if self._cached_re is not None:
@@ -77,7 +108,7 @@ class Matcher(object):
         env = {}
         env.update(
             (key, Literal(value))
-            for key, value in m.groupdict().items()
+            for key, value in m.items()
         )
         env.update(other.env)
         return other.pattern.expand(env)
@@ -149,13 +180,14 @@ class Variable(Node):
     def regex_pattern(self, env):
         if self.repeat:
             return '(?P={})'.format(self.name)
+        return '(?P<{}>{})'.format(self.name, self._pattern_from_env(env))
+
+    def _pattern_from_env(self, env):
         if self.name in env:
             # make sure we match the value in the environment
-            body = env[self.name].regex_pattern(self._no_cycle(env))
-        else:
-            # match anything, including path segments
-            body = '.+?'
-        return '(?P<{}>{})'.format(self.name, body)
+            return env[self.name].regex_pattern(self._no_cycle(env))
+        # match anything, including path segments
+        return '.+?'
 
     def expand(self, env):
         '''Create a string for this Variable.
@@ -175,6 +207,50 @@ class Variable(Node):
         env = env.copy()
         env.pop(self.name)
         return env
+
+
+class AndroidLocale(Variable):
+    '''Subclass for Android locale code mangling.
+
+    Supports ab-rCD and b+ab+Scrip+DE.
+    Language and Language-Region tags get mapped to ab-rCD, more complex
+    Locale tags to b+.
+    '''
+    def __init__(self, repeat=False):
+        self.name = 'android_locale'
+        self.repeat = repeat
+
+    def _pattern_from_env(self, env):
+        android_locale = self._get_android_locale(env)
+        if android_locale is not None:
+            return re.escape(android_locale)
+        return '.+?'
+
+    def expand(self, env):
+        '''Create a string for this Variable.
+
+        This expansion happens recursively. We avoid recusion loops
+        by removing the current variable from the environment that's used
+        to expand child variable references.
+        '''
+        android_locale = self._get_android_locale(env)
+        return android_locale or ''
+
+    def _get_android_locale(self, env):
+        if 'locale' not in env:
+            return None
+        android = bcp47 = env['locale'].expand(self._no_cycle(env))
+        # map legacy locale codes, he <-> iw, id <-> in, yi <-> ji
+        android = bcp47 = re.sub(
+            r'(he|id|yi)(?=\Z|-)',
+            lambda standard: ANDROID_LEGACY_MAP[standard.group(1)],
+            bcp47
+        )
+        if re.match(r'[a-z]{2,3}-[A-Z]{2}', bcp47):
+            android = '{}-r{}'.format(*bcp47.split('-'))
+        elif '-' in bcp47:
+            android = 'b+' + bcp47.replace('-', '+')
+        return android
 
 
 class Star(Node):
@@ -240,7 +316,12 @@ class PatternParser(object):
 
     def variable(self, match):
         varname = match.group('varname')
-        self.pattern.append(Variable(varname, varname in self._known_vars))
+        # Special case Android locale code matching.
+        # It's kinda sad, but true.
+        if varname == 'android_locale':
+            self.pattern.append(AndroidLocale(varname in self._known_vars))
+        else:
+            self.pattern.append(Variable(varname, varname in self._known_vars))
         self._known_vars.add(varname)
 
     def wildcard(self, match):

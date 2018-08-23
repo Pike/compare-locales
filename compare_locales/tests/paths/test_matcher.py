@@ -4,9 +4,10 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 from __future__ import absolute_import
+import six
 import unittest
 
-from compare_locales.paths import Matcher
+from compare_locales.paths.matcher import Matcher, ANDROID_STANDARD_MAP
 
 
 class TestMatcher(unittest.TestCase):
@@ -75,17 +76,17 @@ class TestMatcher(unittest.TestCase):
 
     def test_variables(self):
         self.assertDictEqual(
-            Matcher('foo/bar.file').match('foo/bar.file').groupdict(),
+            Matcher('foo/bar.file').match('foo/bar.file'),
             {}
         )
         self.assertDictEqual(
-            Matcher('{path}/bar.file').match('foo/bar.file').groupdict(),
+            Matcher('{path}/bar.file').match('foo/bar.file'),
             {
                 'path': 'foo'
             }
         )
         self.assertDictEqual(
-            Matcher('{ path }/bar.file').match('foo/bar.file').groupdict(),
+            Matcher('{ path }/bar.file').match('foo/bar.file'),
             {
                 'path': 'foo'
             }
@@ -96,7 +97,7 @@ class TestMatcher(unittest.TestCase):
         )
         self.assertDictEqual(
             Matcher('{ var }/foopy/{ var }/bears')
-            .match('same_value/foopy/same_value/bears').groupdict(),
+            .match('same_value/foopy/same_value/bears'),
             {
                 'var': 'same_value'
             }
@@ -107,7 +108,7 @@ class TestMatcher(unittest.TestCase):
         )
         self.assertDictEqual(
             Matcher('{ var }/foopy/bears', {'var': 'one'})
-            .match('one/foopy/bears').groupdict(),
+            .match('one/foopy/bears'),
             {
                 'var': 'one'
             }
@@ -116,7 +117,7 @@ class TestMatcher(unittest.TestCase):
             Matcher('{one}/{two}/something', {
                 'one': 'some/segment',
                 'two': 'with/a/lot/of'
-            }).match('some/segment/with/a/lot/of/something').groupdict(),
+            }).match('some/segment/with/a/lot/of/something'),
             {
                 'one': 'some/segment',
                 'two': 'with/a/lot/of'
@@ -155,6 +156,142 @@ class TestMatcher(unittest.TestCase):
                 'generic': ['keep']
             }
         )
+
+
+class TestAndroid(unittest.TestCase):
+    '''special case handling for `android_locale` to handle the funky
+    locale codes in Android apps
+    '''
+    def test_match(self):
+        # test matches as well as groupdict aliasing.
+        one = Matcher('values-{android_locale}/strings.xml')
+        self.assertEqual(
+            one.match('values-de/strings.xml'),
+            {
+                'android_locale': 'de',
+                'locale': 'de'
+            }
+        )
+        self.assertEqual(
+            one.match('values-de-rDE/strings.xml'),
+            {
+                'android_locale': 'de-rDE',
+                'locale': 'de-DE'
+            }
+        )
+        self.assertEqual(
+            one.match('values-b+sr+Latn/strings.xml'),
+            {
+                'android_locale': 'b+sr+Latn',
+                'locale': 'sr-Latn'
+            }
+        )
+        self.assertEqual(
+            one.with_env(
+                {'locale': 'de'}
+            ).match('values-de/strings.xml'),
+            {
+                'android_locale': 'de',
+                'locale': 'de'
+            }
+        )
+        self.assertEqual(
+            one.with_env(
+                {'locale': 'de-DE'}
+            ).match('values-de-rDE/strings.xml'),
+            {
+                'android_locale': 'de-rDE',
+                'locale': 'de-DE'
+            }
+        )
+        self.assertEqual(
+            one.with_env(
+                {'locale': 'sr-Latn'}
+            ).match('values-b+sr+Latn/strings.xml'),
+            {
+                'android_locale': 'b+sr+Latn',
+                'locale': 'sr-Latn'
+            }
+        )
+
+    def test_repeat(self):
+        self.assertEqual(
+            Matcher('{android_locale}/{android_locale}').match(
+                'b+sr+Latn/b+sr+Latn'
+            ),
+            {
+                'android_locale': 'b+sr+Latn',
+                'locale': 'sr-Latn'
+            }
+        )
+        self.assertEqual(
+            Matcher(
+                '{android_locale}/{android_locale}',
+                env={'locale': 'sr-Latn'}
+            ).match(
+                'b+sr+Latn/b+sr+Latn'
+            ),
+            {
+                'android_locale': 'b+sr+Latn',
+                'locale': 'sr-Latn'
+            }
+        )
+
+    def test_mismatch(self):
+        # test failed matches
+        one = Matcher('values-{android_locale}/strings.xml')
+        self.assertIsNone(
+            one.with_env({'locale': 'de'}).match(
+                'values-fr.xml'
+            )
+        )
+        self.assertIsNone(
+            one.with_env({'locale': 'de-DE'}).match(
+                'values-de-DE.xml'
+            )
+        )
+        self.assertIsNone(
+            one.with_env({'locale': 'sr-Latn'}).match(
+                'values-sr-Latn.xml'
+            )
+        )
+        self.assertIsNone(
+            Matcher('{android_locale}/{android_locale}').match(
+                'b+sr+Latn/de-rDE'
+            )
+        )
+
+    def test_prefix(self):
+        one = Matcher('values-{android_locale}/strings.xml')
+        self.assertEqual(
+            one.with_env({'locale': 'de'}).prefix,
+            'values-de/strings.xml'
+        )
+        self.assertEqual(
+            one.with_env({'locale': 'de-DE'}).prefix,
+            'values-de-rDE/strings.xml'
+        )
+        self.assertEqual(
+            one.with_env({'locale': 'sr-Latn'}).prefix,
+            'values-b+sr+Latn/strings.xml'
+        )
+
+    def test_aliases(self):
+        # test legacy locale code mapping
+        # he <-> iw, id <-> in, yi <-> ji
+        one = Matcher('values-{android_locale}/strings.xml')
+        for legacy, standard in six.iteritems(ANDROID_STANDARD_MAP):
+            self.assertDictEqual(
+                one.match('values-{}/strings.xml'.format(legacy)),
+                {
+                    'android_locale': legacy,
+                    'locale': standard
+                }
+            )
+            self.assertEqual(
+                one.with_env({'locale': standard}).prefix,
+                'values-{}/strings.xml'.format(legacy)
+            )
 
 
 class TestRootedMatcher(unittest.TestCase):
