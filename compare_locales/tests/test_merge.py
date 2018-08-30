@@ -272,8 +272,8 @@ eff = effVal""")
         self.assertTrue(os.path.isfile(mergefile))
         p = getParser(mergefile)
         p.readFile(mergefile)
-        [m, n] = p.parse()
-        self.assertEqual([e.key for e in m], ["bar", "foo", "eff"])
+        entities = p.parse()
+        self.assertEqual(list(entities.keys()), ["bar", "foo", "eff"])
 
     def test_missing_file(self):
         self.assertTrue(os.path.isdir(self.tmp))
@@ -333,9 +333,9 @@ eff = leffVal
         self.assertTrue(os.path.isfile(mergefile))
         p = getParser(mergefile)
         p.readFile(mergefile)
-        [m, n] = p.parse()
-        self.assertEqual([e.key for e in m], ["eff", "foo", "bar"])
-        self.assertEqual(m[n['bar']].val, '%d barVal')
+        entities = p.parse()
+        self.assertEqual(list(entities.keys()), ["eff", "foo", "bar"])
+        self.assertEqual(entities['bar'].val, '%d barVal')
 
     def testObsolete(self):
         self.assertTrue(os.path.isdir(self.tmp))
@@ -492,8 +492,8 @@ class TestDTD(unittest.TestCase, ContentMixin):
         self.assertTrue(os.path.isfile(mergefile))
         p = getParser(mergefile)
         p.readFile(mergefile)
-        [m, n] = p.parse()
-        self.assertEqual([e.key for e in m], ["bar", "foo", "eff"])
+        entities = p.parse()
+        self.assertEqual(list(entities.keys()), ["bar", "foo", "eff"])
 
     def testJunk(self):
         self.assertTrue(os.path.isdir(self.tmp))
@@ -531,8 +531,8 @@ class TestDTD(unittest.TestCase, ContentMixin):
         self.assertTrue(os.path.isfile(mergefile))
         p = getParser(mergefile)
         p.readFile(mergefile)
-        [m, n] = p.parse()
-        self.assertEqual([e.key for e in m], ["foo", "eff", "bar"])
+        entities = p.parse()
+        self.assertEqual(list(entities.keys()), ["foo", "eff", "bar"])
 
     def test_reference_junk(self):
         self.assertTrue(os.path.isdir(self.tmp))
@@ -743,14 +743,14 @@ eff = lEff {
 
         p = getParser(mergepath)
         p.readFile(mergepath)
-        merged_entities, merged_map = p.parse()
-        self.assertEqual([e.key for e in merged_entities], ["foo"])
-        merged_foo = merged_entities[merged_map['foo']]
+        merged_entities = p.parse()
+        self.assertEqual(list(merged_entities.keys()), ["foo"])
+        merged_foo = merged_entities['foo']
 
         # foo should be l10n
         p.readFile(self.l10n)
-        l10n_entities, l10n_map = p.parse()
-        l10n_foo = l10n_entities[l10n_map['foo']]
+        l10n_entities = p.parse()
+        l10n_foo = l10n_entities['foo']
         self.assertTrue(merged_foo.equals(l10n_foo))
 
     def testMatchingReferences(self):
@@ -886,14 +886,14 @@ eff = lEff
 
         p = getParser(mergepath)
         p.readFile(mergepath)
-        merged_entities, merged_map = p.parse()
-        self.assertEqual([e.key for e in merged_entities], ["eff"])
-        merged_eff = merged_entities[merged_map['eff']]
+        merged_entities = p.parse()
+        self.assertEqual(list(merged_entities.keys()), ["eff"])
+        merged_eff = merged_entities['eff']
 
         # eff should be l10n
         p.readFile(self.l10n)
-        l10n_entities, l10n_map = p.parse()
-        l10n_eff = l10n_entities[l10n_map['eff']]
+        l10n_entities = p.parse()
+        l10n_eff = l10n_entities['eff']
         self.assertTrue(merged_eff.equals(l10n_eff))
 
     def test_term_attributes(self):
@@ -988,8 +988,8 @@ bar = lBar
 
         p = getParser(mergepath)
         p.readFile(mergepath)
-        merged_entities, _ = p.parse()
-        self.assertEqual([e.key for e in merged_entities], [])
+        merged_entities = p.parse()
+        self.assertEqual(merged_entities, tuple())
 
     def testMissingGroupComment(self):
         self.reference("""\

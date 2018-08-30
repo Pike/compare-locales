@@ -21,7 +21,7 @@ class BaseHelper(unittest.TestCase):
     def setUp(self):
         p = getParser(self.file.file)
         p.readContents(self.refContent)
-        self.refList, self.refMap = p.parse()
+        self.refList = p.parse()
 
     def _test(self, content, refWarnOrErrors):
         p = getParser(self.file.file)
@@ -32,7 +32,7 @@ class BaseHelper(unittest.TestCase):
         checker = getChecker(self.file)
         if checker.needs_reference:
             checker.set_reference(self.refList)
-        ref = self.refList[self.refMap[l10n.key]]
+        ref = self.refList[l10n.key]
         found = tuple(checker.check(ref, l10n))
         self.assertEqual(found, refWarnOrErrors)
 
@@ -406,7 +406,7 @@ class TestAndroid(unittest.TestCase):
         p.readContents(b'<!ENTITY other "some &good.ref;">')
         ref = p.parse()
         checker = getChecker(f)
-        checker.set_reference(ref[0])
+        checker.set_reference(ref)
         # good string
         ref = self.getDTDEntity("plain string")
         l10n = self.getDTDEntity("plain localized string")

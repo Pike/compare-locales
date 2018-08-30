@@ -20,6 +20,7 @@ from json import dumps
 from compare_locales import parser
 from compare_locales import paths, mozpath
 from compare_locales.checks import getChecker
+from compare_locales.keyedtuple import KeyedTuple
 
 
 class Tree(object):
@@ -363,7 +364,7 @@ class ContentComparer:
         if not os.path.isdir(outdir):
             os.makedirs(outdir)
 
-    def merge(self, ref_entities, ref_map, ref_file, l10n_file, merge_file,
+    def merge(self, ref_entities, ref_file, l10n_file, merge_file,
               missing, skips, ctx, capabilities, encoding):
         '''Create localized file in merge dir
 
@@ -431,8 +432,8 @@ class ContentComparer:
             if f is None:
                 f = codecs.open(merge_file, 'ab', encoding)
             trailing = (['\n'] +
-                        [ref_entities[ref_map[key]].all for key in missing] +
-                        [ref_entities[ref_map[skip.key]].all for skip in skips
+                        [ref_entities[key].all for key in missing] +
+                        [ref_entities[skip.key].all for skip in skips
                          if not isinstance(skip, parser.Junk)])
 
             def ensureNewline(s):
@@ -479,7 +480,7 @@ class ContentComparer:
         '''
         self.notify('obsoleteFile', l10n, None)
         self.merge(
-            [], {}, ref_file, l10n, merge_file,
+            KeyedTuple([]), ref_file, l10n, merge_file,
             [], [], None, parser.CAN_COPY, None
         )
 
@@ -490,8 +491,7 @@ class ContentComparer:
             # no comparison, XXX report?
             # At least, merge
             self.merge(
-                [], {},
-                ref_file, l10n, merge_file, [], [], None,
+                KeyedTuple([]), ref_file, l10n, merge_file, [], [], None,
                 parser.CAN_COPY, None)
             return
         try:
@@ -499,18 +499,18 @@ class ContentComparer:
         except Exception as e:
             self.notify('error', ref_file, str(e))
             return
-        ref_entities, ref_map = p.parse()
+        ref_entities = p.parse()
         try:
             p.readContents(l10n.getContents())
-            l10n_entities, l10n_map = p.parse()
+            l10n_entities = p.parse()
             l10n_ctx = p.ctx
         except Exception as e:
             self.notify('error', l10n, str(e))
             return
 
         ar = AddRemove()
-        ar.set_left(e.key for e in ref_entities)
-        ar.set_right(e.key for e in l10n_entities)
+        ar.set_left(ref_entities.keys())
+        ar.set_right(l10n_entities.keys())
         report = missing = obsolete = changed = unchanged = keys = 0
         missing_w = changed_w = unchanged_w = 0  # word stats
         missings = []
@@ -525,7 +525,7 @@ class ContentComparer:
         for action, entity_id in ar:
             if action == 'delete':
                 # missing entity
-                if isinstance(ref_entities[ref_map[entity_id]], parser.Junk):
+                if isinstance(ref_entities[entity_id], parser.Junk):
                     self.notify('warning', l10n, 'Parser error in en-US')
                     continue
                 _rv = self.notify('missingEntity', l10n, entity_id)
@@ -536,16 +536,16 @@ class ContentComparer:
                     # not report
                     missings.append(entity_id)
                     missing += 1
-                    refent = ref_entities[ref_map[entity_id]]
+                    refent = ref_entities[entity_id]
                     missing_w += refent.count_words()
                 else:
                     # just report
                     report += 1
             elif action == 'add':
                 # obsolete entity or junk
-                if isinstance(l10n_entities[l10n_map[entity_id]],
+                if isinstance(l10n_entities[entity_id],
                               parser.Junk):
-                    junk = l10n_entities[l10n_map[entity_id]]
+                    junk = l10n_entities[entity_id]
                     params = (junk.val,) + junk.position() + junk.position(-1)
                     self.notify('error', l10n,
                                 'Unparsed content "%s" from line %d column %d'
@@ -557,8 +557,8 @@ class ContentComparer:
                     obsolete += 1
             else:
                 # entity found in both ref and l10n, check for changed
-                refent = ref_entities[ref_map[entity_id]]
-                l10nent = l10n_entities[l10n_map[entity_id]]
+                refent = ref_entities[entity_id]
+                l10nent = l10n_entities[entity_id]
                 if self.keyRE.search(entity_id):
                     keys += 1
                 else:
@@ -584,7 +584,7 @@ class ContentComparer:
 
         if merge_file is not None:
             self.merge(
-                ref_entities, ref_map, ref_file,
+                ref_entities, ref_file,
                 l10n, merge_file, missings, skips, l10n_ctx,
                 p.capabilities, p.encoding)
 
@@ -618,7 +618,7 @@ class ContentComparer:
         if (caps & (parser.CAN_COPY | parser.CAN_MERGE)):
             # even if we can merge, pretend we can only copy
             self.merge(
-                [], {}, orig, missing, merge_file,
+                KeyedTuple([]), orig, missing, merge_file,
                 ['trigger copy'], [], None, parser.CAN_COPY, None
             )
 
@@ -632,7 +632,7 @@ class ContentComparer:
 
         try:
             p.readContents(f.getContents())
-            entities, map = p.parse()
+            entities = p.parse()
         except Exception as ex:
             self.notify('error', f, str(ex))
             return

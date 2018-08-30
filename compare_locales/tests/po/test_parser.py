@@ -130,7 +130,7 @@ msgstr ""
                 (Whitespace, '\n'),
             )
         )
-        entities, _ = self.parser.parse()
+        entities = self.parser.parse()
         self.assertListEqual(
             [e.localized for e in entities],
             [True, False]

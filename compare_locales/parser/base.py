@@ -9,6 +9,7 @@ import bisect
 import codecs
 from collections import Counter
 import logging
+from compare_locales.keyedtuple import KeyedTuple
 
 import six
 
@@ -284,9 +285,7 @@ class Parser(object):
         self.ctx = Parser.Context(contents)
 
     def parse(self):
-        list_ = list(self)
-        map_ = dict((e.key, i) for i, e in enumerate(list_))
-        return (list_, map_)
+        return KeyedTuple(self)
 
     def __iter__(self):
         return self.walk(only_localizable=True)
