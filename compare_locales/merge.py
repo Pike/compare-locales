@@ -10,7 +10,7 @@ import six
 
 
 from compare_locales import parser as cl
-from compare_locales.compare import AddRemove
+from compare_locales.compare.utils import AddRemove
 
 
 class MergeNotSupportedError(ValueError):

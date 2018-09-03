@@ -11,7 +11,8 @@ import shutil
 
 from compare_locales.parser import getParser
 from compare_locales.paths import File
-from compare_locales.compare import ContentComparer, Observer
+from compare_locales.compare.content import ContentComparer
+from compare_locales.compare.observer import Observer
 from compare_locales import mozpath
 
 

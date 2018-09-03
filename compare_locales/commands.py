@@ -13,7 +13,8 @@ import os
 from compare_locales import mozpath
 from compare_locales import version
 from compare_locales.paths import EnumerateApp, TOMLParser, ConfigNotFound
-from compare_locales.compare import compareProjects, Observer
+from compare_locales.compare import compareProjects
+from compare_locales.compare.observer import Observer
 
 
 class CompareLocales(object):
