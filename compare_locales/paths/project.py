@@ -100,7 +100,7 @@ class ProjectConfig(object):
         self.locales = locales
         for child in self.children:
             if not child.locales or deep:
-                child.set_locales(locales, deep=True)
+                child.set_locales(locales, deep=deep)
             else:
                 locs = [loc for loc in locales if loc in child.locales]
                 child.set_locales(locs)
