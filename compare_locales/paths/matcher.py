@@ -72,7 +72,7 @@ class Matcher(object):
         variables in this matcher if there's a match.
         '''
         self._cache_regex()
-        m = re.match(self._cached_re, path)
+        m = self._cached_re.match(path)
         if m is None:
             return None
         d = m.groupdict()
