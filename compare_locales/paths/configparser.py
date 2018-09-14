@@ -20,52 +20,68 @@ class ConfigNotFound(EnvironmentError):
             path)
 
 
-class TOMLParser(object):
-    @classmethod
-    def parse(cls, path, env=None, ignore_missing_includes=False):
-        parser = cls(path, env=env,
-                     ignore_missing_includes=ignore_missing_includes)
-        parser.load()
-        parser.processBasePath()
-        parser.processEnv()
-        parser.processPaths()
-        parser.processFilters()
-        parser.processIncludes()
-        parser.processLocales()
-        return parser.asConfig()
-
-    def __init__(self, path, env=None, ignore_missing_includes=False):
+class ParseContext(object):
+    def __init__(self, path, env, ignore_missing_includes):
         self.path = path
-        self.env = env if env is not None else {}
+        self.env = env
         self.ignore_missing_includes = ignore_missing_includes
         self.data = None
         self.pc = ProjectConfig(path)
 
-    def load(self):
+
+class TOMLParser(object):
+    @classmethod
+    def parse(cls, path, env=None, ignore_missing_includes=False):
+        parser = cls()
+        return parser._parse(
+            path, env=env, ignore_missing_includes=ignore_missing_includes
+        )
+
+    def _parse(self, path, env=None, ignore_missing_includes=False):
+        ctx = self.context(
+            path, env=env, ignore_missing_includes=ignore_missing_includes
+        )
+        self.load(ctx)
+        self.processBasePath(ctx)
+        self.processEnv(ctx)
+        self.processPaths(ctx)
+        self.processFilters(ctx)
+        self.processIncludes(ctx)
+        self.processLocales(ctx)
+        return self.asConfig(ctx)
+
+    def context(self, path, env=None, ignore_missing_includes=False):
+        return ParseContext(
+            path,
+            env if env is not None else {},
+            ignore_missing_includes,
+        )
+
+    def load(self, ctx):
         try:
-            with open(self.path, 'rb') as fin:
-                self.data = toml.load(fin)
+            with open(ctx.path, 'rb') as fin:
+                ctx.data = toml.load(fin)
         except (toml.TomlError, IOError):
-            raise ConfigNotFound(self.path)
+            raise ConfigNotFound(ctx.path)
 
-    def processBasePath(self):
-        assert self.data is not None
-        self.pc.set_root(self.data.get('basepath', '.'))
+    def processBasePath(self, ctx):
+        assert ctx.data is not None
+        ctx.pc.set_root(ctx.data.get('basepath', '.'))
 
-    def processEnv(self):
-        assert self.data is not None
-        self.pc.add_environment(**self.data.get('env', {}))
+    def processEnv(self, ctx):
+        assert ctx.data is not None
+        ctx.pc.add_environment(**ctx.data.get('env', {}))
         # add parser environment, possibly overwriting file variables
-        self.pc.add_environment(**self.env)
+        ctx.pc.add_environment(**ctx.env)
 
-    def processLocales(self):
-        assert self.data is not None
-        if 'locales' in self.data:
-            self.pc.set_locales(self.data['locales'])
+    def processLocales(self, ctx):
+        assert ctx.data is not None
+        if 'locales' in ctx.data:
+            ctx.pc.set_locales(ctx.data['locales'])
 
-    def processPaths(self):
-        assert self.data is not None
-        for data in self.data.get('paths', []):
+    def processPaths(self, ctx):
+        assert ctx.data is not None
+        for data in ctx.data.get('paths', []):
             paths = {
                 "l10n": data['l10n']
             }
@@ -73,11 +89,11 @@ class TOMLParser(object):
                 paths['locales'] = data['locales']
             if 'reference' in data:
                 paths['reference'] = data['reference']
-            self.pc.add_paths(paths)
+            ctx.pc.add_paths(paths)
 
-    def processFilters(self):
-        assert self.data is not None
-        for data in self.data.get('filters', []):
+    def processFilters(self, ctx):
+        assert ctx.data is not None
+        for data in ctx.data.get('filters', []):
             paths = data['path']
             if isinstance(paths, six.string_types):
                 paths = [paths]
@@ -87,34 +103,34 @@ class TOMLParser(object):
             }
             if 'key' in data:
                 rule['key'] = data['key']
-            self.pc.add_rules(rule)
+            ctx.pc.add_rules(rule)
 
-    def processIncludes(self):
-        assert self.data is not None
-        if 'includes' not in self.data:
+    def processIncludes(self, ctx):
+        assert ctx.data is not None
+        if 'includes' not in ctx.data:
             return
-        for include in self.data['includes']:
+        for include in ctx.data['includes']:
             # resolve include['path'] against our root and env
             p = mozpath.normpath(
                 expand(
-                    self.pc.root,
+                    ctx.pc.root,
                     include['path'],
-                    self.pc.environ
+                    ctx.pc.environ
                 )
             )
             try:
-                child = self.parse(
-                    p, env=self.env,
-                    ignore_missing_includes=self.ignore_missing_includes
+                child = self._parse(
+                    p, env=ctx.env,
+                    ignore_missing_includes=ctx.ignore_missing_includes
                 )
             except ConfigNotFound as e:
-                if not self.ignore_missing_includes:
+                if not ctx.ignore_missing_includes:
                     raise
                 (logging
                     .getLogger('compare-locales.io')
                     .error('%s: %s', e.strerror, e.filename))
                 continue
-            self.pc.add_child(child)
+            ctx.pc.add_child(child)
 
-    def asConfig(self):
-        return self.pc
+    def asConfig(self, ctx):
+        return ctx.pc

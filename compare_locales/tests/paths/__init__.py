@@ -40,14 +40,15 @@ class MockProjectFiles(ProjectFiles):
 
 
 class MockTOMLParser(TOMLParser):
-    def __init__(self, path_data, env=None, ignore_missing_includes=False):
+    def context(self, path_data, env=None, ignore_missing_includes=False):
         # mock, use the path as data. Yeah, not nice
-        super(MockTOMLParser, self).__init__(
+        ctx = super(MockTOMLParser, self).context(
             '/tmp/base.toml',
             env=env, ignore_missing_includes=ignore_missing_includes
         )
-        self.data = toml.loads(path_data)
+        ctx.data = toml.loads(path_data)
+        return ctx
 
-    def load(self):
+    def load(self, ctx):
         # we mocked this
         pass

@@ -14,9 +14,9 @@ from compare_locales.paths.project import ProjectConfig
 
 def parsers_for(data):
     class MockTOMLParser(TOMLParser):
-        def load(self):
-            p = mozpath.basename(self.path)
-            self.data = toml.loads(data[p])
+        def load(self, ctx):
+            p = mozpath.basename(ctx.path)
+            ctx.data = toml.loads(data[p])
     return MockTOMLParser
 
 
