@@ -40,15 +40,9 @@ class MockProjectFiles(ProjectFiles):
 
 
 class MockTOMLParser(TOMLParser):
-    def context(self, path_data, env=None, ignore_missing_includes=False):
-        # mock, use the path as data. Yeah, not nice
-        ctx = super(MockTOMLParser, self).context(
-            '/tmp/base.toml',
-            env=env, ignore_missing_includes=ignore_missing_includes
-        )
-        ctx.data = toml.loads(path_data)
-        return ctx
+    def __init__(self, mock_data):
+        self.mock_data = mock_data
 
     def load(self, ctx):
-        # we mocked this
-        pass
+        p = mozpath.basename(ctx.path)
+        ctx.data = toml.loads(self.mock_data[p])

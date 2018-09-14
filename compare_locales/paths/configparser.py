@@ -30,14 +30,7 @@ class ParseContext(object):
 
 
 class TOMLParser(object):
-    @classmethod
-    def parse(cls, path, env=None, ignore_missing_includes=False):
-        parser = cls()
-        return parser._parse(
-            path, env=env, ignore_missing_includes=ignore_missing_includes
-        )
-
-    def _parse(self, path, env=None, ignore_missing_includes=False):
+    def parse(self, path, env=None, ignore_missing_includes=False):
         ctx = self.context(
             path, env=env, ignore_missing_includes=ignore_missing_includes
         )
@@ -119,7 +112,7 @@ class TOMLParser(object):
                 )
             )
             try:
-                child = self._parse(
+                child = self.parse(
                     p, env=ctx.env,
                     ignore_missing_includes=ctx.ignore_missing_includes
                 )

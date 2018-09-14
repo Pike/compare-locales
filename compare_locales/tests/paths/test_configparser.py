@@ -6,23 +6,13 @@
 from __future__ import absolute_import, unicode_literals
 import unittest
 
-import pytoml as toml
-from compare_locales import mozpath
-from compare_locales.paths.configparser import TOMLParser
+from . import MockTOMLParser
 from compare_locales.paths.project import ProjectConfig
-
-
-def parsers_for(data):
-    class MockTOMLParser(TOMLParser):
-        def load(self, ctx):
-            p = mozpath.basename(ctx.path)
-            ctx.data = toml.loads(data[p])
-    return MockTOMLParser
 
 
 class TestConfigParser(unittest.TestCase):
     def test_imports(self):
-        Parser = parsers_for({
+        parser = MockTOMLParser({
             "root.toml": """
 basepath = "."
 [env]
@@ -34,5 +24,5 @@ basepath = "."
 basepath = "."
 """
         })
-        config = Parser.parse("root.toml")
+        config = parser.parse("root.toml")
         self.assertIsInstance(config, ProjectConfig)

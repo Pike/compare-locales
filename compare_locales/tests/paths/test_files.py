@@ -198,7 +198,8 @@ class TestL10nMerge(unittest.TestCase):
     # need to go through TOMLParser, as that's handling most of the
     # environment
     def test_merge_paths(self):
-        cfg = MockTOMLParser.parse(
+        parser = MockTOMLParser({
+            "base.toml":
             '''\
 basepath = "."
 locales = [
@@ -209,7 +210,9 @@ locales = [
 [[paths]]
     reference = "reference/*"
     l10n = "{l}*"
-''',
+'''})
+        cfg = parser.parse(
+            '/tmp/base.toml',
             env={'l10n_base': '/tmp/l10n'}
         )
         mocks = {

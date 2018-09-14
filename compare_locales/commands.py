@@ -107,7 +107,7 @@ to stdout and to hide the default text output.
         for config_path in config_paths:
             if config_path.endswith('.toml'):
                 try:
-                    config = TOMLParser.parse(config_path, env=config_env)
+                    config = TOMLParser().parse(config_path, env=config_env)
                 except ConfigNotFound as e:
                     self.parser.exit('config file %s not found' % e.filename)
                 if locales:
