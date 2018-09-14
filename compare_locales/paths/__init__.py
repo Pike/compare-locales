@@ -44,10 +44,9 @@ class File(object):
 
     @property
     def localpath(self):
-        f = self.file
         if self.module:
-            f = mozpath.join(self.module, f)
-        return f
+            return mozpath.join(self.locale, self.module, self.file)
+        return self.file
 
     def __hash__(self):
         return hash(self.localpath)

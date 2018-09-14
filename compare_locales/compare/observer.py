@@ -9,14 +9,12 @@ from __future__ import print_function
 from collections import defaultdict
 import six
 
-from json import dumps
-
 from .utils import Tree
 
 
 class Observer(object):
 
-    def __init__(self, quiet=0, filter=None, file_stats=False):
+    def __init__(self, quiet=0, filter=None):
         '''Create Observer
         For quiet=1, skip per-entity missing and obsolete strings,
         for quiet=2, skip missing and obsolete files. For quiet=3,
@@ -26,29 +24,7 @@ class Observer(object):
         self.details = Tree(list)
         self.quiet = quiet
         self.filter = filter
-        self.file_stats = None
-        if file_stats:
-            self.file_stats = defaultdict(lambda: defaultdict(dict))
-
-    # support pickling
-    def __getstate__(self):
-        state = dict(summary=self._dictify(self.summary), details=self.details)
-        if self.file_stats is not None:
-            state['file_stats'] = self._dictify(self.file_stats)
-        return state
-
-    def __setstate__(self, state):
-        self.summary = defaultdict(lambda: defaultdict(int))
-        if 'summary' in state:
-            for loc, stats in six.iteritems(state['summary']):
-                self.summary[loc].update(stats)
-        self.file_stats = None
-        if 'file_stats' in state:
-            self.file_stats = defaultdict(lambda: defaultdict(dict))
-            for k, d in six.iteritems(state['file_stats']):
-                self.file_stats[k].update(d)
-        self.details = state['details']
-        self.filter = None
+        self.error = False
 
     def _dictify(self, d):
         plaindict = {}
@@ -74,98 +50,84 @@ class Observer(object):
                 self.filter(file, entity='') == 'ignore'):
             return
         for category, value in six.iteritems(stats):
+            if category == 'errors':
+                # updateStats isn't called with `errors`, but make sure
+                # we handle this if that changes
+                self.error = True
             self.summary[file.locale][category] += value
-        if self.file_stats is None:
-            return
-        if 'missingInFiles' in stats:
-            # keep track of how many strings are in a missing file
-            # we got the {'missingFile': 'error'} from the notify pass
-            self.details[file].append({'count': stats['missingInFiles']})
-            # missingInFiles should just be "missing" in file stats
-            self.file_stats[file.locale][file.localpath]['missing'] = \
-                stats['missingInFiles']
-            return  # there are no other stats for missing files
-        self.file_stats[file.locale][file.localpath].update(stats)
 
     def notify(self, category, file, data):
         rv = 'error'
         if category in ['missingFile', 'obsoleteFile']:
             if self.filter is not None:
                 rv = self.filter(file)
-            if rv != "ignore" and self.quiet < 2:
+            if rv == "ignore" or self.quiet >= 2:
+                return rv
+            if self.quiet == 0 or category == 'missingFile':
                 self.details[file].append({category: rv})
             return rv
-        if category in ['missingEntity', 'obsoleteEntity']:
-            if self.filter is not None:
-                rv = self.filter(file, data)
+        if self.filter is not None:
+            rv = self.filter(file, data)
             if rv == "ignore":
                 return rv
-            if self.quiet < 1:
+        if category in ['missingEntity', 'obsoleteEntity']:
+            if (
+                (category == 'missingEntity' and self.quiet < 2)
+                or (category == 'obsoleteEntity' and self.quiet < 1)
+            ):
                 self.details[file].append({category: data})
             return rv
-        if category in ('error', 'warning') and self.quiet < 3:
-            self.details[file].append({category: data})
+        if category == 'error':
+            # Set error independently of quiet
+            self.error = True
+        if category in ('error', 'warning'):
+            if (
+                (category == 'error' and self.quiet < 4)
+                or (category == 'warning' and self.quiet < 3)
+            ):
+                self.details[file].append({category: data})
             self.summary[file.locale][category + 's'] += 1
         return rv
 
-    def toExhibit(self):
-        items = []
-        for locale in sorted(six.iterkeys(self.summary)):
-            summary = self.summary[locale]
-            if locale is not None:
-                item = {'id': 'xxx/' + locale,
-                        'label': locale,
-                        'locale': locale}
-            else:
-                item = {'id': 'xxx',
-                        'label': 'xxx',
-                        'locale': 'xxx'}
-            item['type'] = 'Build'
-            total = sum([summary[k]
-                         for k in ('changed', 'unchanged', 'report', 'missing',
-                                   'missingInFiles')
-                         if k in summary])
-            total_w = sum([summary[k]
-                           for k in ('changed_w', 'unchanged_w', 'missing_w')
-                           if k in summary])
-            rate = (('changed' in summary and summary['changed'] * 100) or
-                    0) / total
-            item.update((k, summary.get(k, 0))
-                        for k in ('changed', 'unchanged'))
-            item.update((k, summary[k])
-                        for k in ('report', 'errors', 'warnings')
-                        if k in summary)
-            item['missing'] = summary.get('missing', 0) + \
-                summary.get('missingInFiles', 0)
-            item['completion'] = rate
-            item['total'] = total
-            item.update((k, summary.get(k, 0))
-                        for k in ('changed_w', 'unchanged_w', 'missing_w'))
-            item['total_w'] = total_w
-            result = 'success'
-            if item.get('warnings', 0):
-                result = 'warning'
-            if item.get('errors', 0) or item.get('missing', 0):
-                result = 'failure'
-            item['result'] = result
-            items.append(item)
-        data = {
-            "properties": dict.fromkeys(
-                ("completion", "errors", "warnings", "missing", "report",
-                 "missing_w", "changed_w", "unchanged_w",
-                 "unchanged", "changed", "obsolete"),
-                {"valueType": "number"}),
-            "types": {
-                "Build": {"pluralLabel": "Builds"}
-            }}
-        data['items'] = items
-        return dumps(data, indent=2)
 
-    def serialize(self, type="text"):
-        if type == "exhibit":
-            return self.toExhibit()
-        if type == "json":
-            return dumps(self.toJSON())
+class ObserverList(Observer):
+    def __init__(self, quiet=0):
+        super(ObserverList, self).__init__(quiet=quiet)
+        self.observers = []
+
+    def __iter__(self):
+        return iter(self.observers)
+
+    def append(self, observer):
+        self.observers.append(observer)
+
+    def notify(self, category, file, data):
+        """Check observer for the found data, and if it's
+        not to ignore, notify stat_observers.
+        """
+        rvs = set(
+            observer.notify(category, file, data)
+            for observer in self.observers
+            )
+        if all(rv == 'ignore' for rv in rvs):
+            return 'ignore'
+        # our return value doesn't count
+        super(ObserverList, self).notify(category, file, data)
+        rvs.discard('ignore')
+        if 'error' in rvs:
+            return 'error'
+        assert len(rvs) == 1
+        return rvs.pop()
+
+    def updateStats(self, file, stats):
+        """Check observer for the found data, and if it's
+        not to ignore, notify stat_observers.
+        """
+        for observer in self.observers:
+            observer.updateStats(file, stats)
+        super(ObserverList, self).updateStats(file, stats)
+
+    def serializeDetails(self):
 
         def tostr(t):
             if t[1] == 'key':
@@ -187,22 +149,64 @@ class Observer(object):
                     o.append(indent + '// remove this file')
             return '\n'.join(o)
 
+        return '\n'.join(tostr(c) for c in self.details.getContent())
+
+    def serializeSummaries(self):
+        summaries = {
+            loc: []
+            for loc in self.summary.keys()
+        }
+        for observer in self.observers:
+            for loc, lst in summaries.items():
+                lst.append(observer.summary.get(loc))
+        if len(self.observers) > 1:
+            # add ourselves if there's more than one project
+            for loc, lst in summaries.items():
+                lst.append(self.summary.get(loc))
+        # normalize missing and missingInFiles -> missing
+        for summarylist in summaries.values():
+            for summary in summarylist:
+                if 'missingInFiles' in summary:
+                    summary['missing'] = (
+                        summary.get('missing', 0)
+                        + summary.pop('missingInFiles')
+                    )
+        keys = (
+            'errors',
+            'missing', 'missing_w',
+            'obsolete', 'obsolete_w',
+            'changed', 'changed_w',
+            'unchanged', 'unchanged_w',
+            'keys',
+        )
+        leads = [
+            '{:12}'.format(k) for k in keys
+        ]
         out = []
-        for locale, summary in sorted(six.iteritems(self.summary)):
-            if locale is not None:
+        for locale, summaries in sorted(six.iteritems(summaries)):
+            if locale:
                 out.append(locale + ':')
+            segment = [''] * len(keys)
+            for summary in summaries:
+                for row, key in enumerate(keys):
+                    segment[row] += ' {:6}'.format(summary.get(key, ''))
+
             out += [
-                k + ': ' + str(v) for k, v in sorted(six.iteritems(summary))]
-            total = sum([summary[k]
+                lead + row
+                for lead, row in zip(leads, segment)
+                if row.strip()
+            ]
+
+            total = sum([summaries[-1].get(k, 0)
                          for k in ['changed', 'unchanged', 'report', 'missing',
                                    'missingInFiles']
-                         if k in summary])
+                         ])
             rate = 0
             if total:
                 rate = (('changed' in summary and summary['changed'] * 100) or
                         0) / total
             out.append('%d%% of entries changed' % rate)
-        return '\n'.join([tostr(c) for c in self.details.getContent()] + out)
+        return '\n'.join(out)
 
     def __str__(self):
         return 'observer'

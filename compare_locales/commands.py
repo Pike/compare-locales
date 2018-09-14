@@ -8,13 +8,14 @@ from __future__ import absolute_import
 from __future__ import print_function
 import logging
 from argparse import ArgumentParser
+import json
 import os
+import sys
 
 from compare_locales import mozpath
 from compare_locales import version
 from compare_locales.paths import EnumerateApp, TOMLParser, ConfigNotFound
 from compare_locales.compare import compareProjects
-from compare_locales.compare.observer import Observer
 
 
 class CompareLocales(object):
@@ -38,8 +39,8 @@ or the all-locales file referenced by the application\'s l10n.ini."""
                             default=0, help='Make more noise')
         parser.add_argument('-q', '--quiet', action='count',
                             default=0, help='''Show less data.
-Specified once, doesn't record entities. Specified twice, also drops
-missing and obsolete files. Specify thrice to hide errors and warnings and
+Specified once, doesn't obsolete entities. Specified twice, also drops
+missing entities. Specify thrice to warnings and four time to
 just show stats''')
         parser.add_argument('--validate', action='store_true',
                             help='Run compare-locales against reference')
@@ -56,8 +57,6 @@ use {ab_CD} to specify a different directory for each locale''')
         parser.add_argument('-D', action='append', metavar='var=value',
                             default=[], dest='defines',
                             help='Overwrite variables in TOML files')
-        parser.add_argument('--unified', action="store_true",
-                            help="Show output for all projects unified")
         parser.add_argument('--full', action="store_true",
                             help="Compare projects that are disabled")
         parser.add_argument('--return-zero', action="store_true",
@@ -69,13 +68,9 @@ Use this option with care. If specified, the merge directory will
 be clobbered for each module. That means, the subdirectory will
 be completely removed, any files that were there are lost.
 Be careful to specify the right merge directory when using this option.""")
-        parser.add_argument('--data', choices=['text', 'exhibit', 'json'],
-                            default='text',
-                            help='''Choose data and format (one of text,
-exhibit, json); text: (default) Show which files miss which strings, together
-with warnings and errors. Also prints a summary; json: Serialize the internal
-tree, useful for tools. Also always succeeds; exhibit: Serialize the summary
-data in a json useful for Exhibit
+        parser.add_argument('--json',
+                            help='''Serialize to json. Use - to serialize
+to stdout and to hide the default text output.
 ''')
         return parser
 
@@ -86,9 +81,9 @@ data in a json useful for Exhibit
         subclasses.
         """
         cmd = cls()
-        return cmd.handle_()
+        return cmd.handle()
 
-    def handle_(self):
+    def handle(self):
         """The instance part of the classmethod call."""
         self.parser = self.get_parser()
         args = self.parser.parse_args()
@@ -96,51 +91,17 @@ data in a json useful for Exhibit
         logging_level = logging.WARNING - (args.verbose - args.quiet) * 10
         logging.basicConfig()
         logging.getLogger().setLevel(logging_level)
-        kwargs = vars(args)
-        # strip handled arguments
-        kwargs.pop('verbose')
-        return_zero = kwargs.pop('return_zero')
-        rv = self.handle(**kwargs)
-        if return_zero:
-            rv = 0
-        return rv
 
-    def handle(self, config_paths, l10n_base_dir, locales,
-               merge=None, defines=None, unified=False, full=False, quiet=0,
-               validate=False,
-               clobber=False, data='text'):
-        # using nargs multiple times in argparser totally screws things
-        # up, repair that.
-        # First files are configs, then the base dir, everything else is
-        # locales
-        all_args = config_paths + [l10n_base_dir] + locales
-        config_paths = []
-        locales = []
-        if defines is None:
-            defines = []
-        while all_args and not os.path.isdir(all_args[0]):
-            config_paths.append(all_args.pop(0))
-        if not config_paths:
-            self.parser.error('no configuration file given')
-        for cf in config_paths:
-            if not os.path.isfile(cf):
-                self.parser.error('config file %s not found' % cf)
-        if not all_args:
-            self.parser.error('l10n-base-dir not found')
-        l10n_base_dir = mozpath.abspath(all_args.pop(0))
-        if validate:
-            # signal validation mode by setting locale list to [None]
-            locales = [None]
-        else:
-            locales.extend(all_args)
+        config_paths, l10n_base_dir, locales = self.extract_positionals(args)
+
         # when we compare disabled projects, we set our locales
         # on all subconfigs, so deep is True.
-        locales_deep = full
+        locales_deep = args.full
         configs = []
         config_env = {
             'l10n_base': l10n_base_dir
         }
-        for define in defines:
+        for define in args.defines:
             var, _, value = define.partition('=')
             config_env[var] = value
         for config_path in config_paths:
@@ -157,31 +118,57 @@ data in a json useful for Exhibit
                     config_path, l10n_base_dir, locales)
                 configs.append(app.asConfig())
         try:
-            unified_observer = None
-            if unified:
-                unified_observer = Observer(quiet=quiet)
             observers = compareProjects(
                 configs,
-                quiet=quiet,
-                stat_observer=unified_observer,
-                merge_stage=merge, clobber_merge=clobber)
+                l10n_base_dir,
+                quiet=args.quiet,
+                merge_stage=args.merge, clobber_merge=args.clobber)
         except (OSError, IOError) as exc:
             print("FAIL: " + str(exc))
             self.parser.exit(2)
-        if unified:
-            observers = [unified_observer]
 
-        rv = 0
-        for observer in observers:
-            print(observer.serialize(type=data))
-            # summary is a dict of lang-summary dicts
-            # find out if any of our results has errors, return 1 if so
-            if rv > 0:
-                continue  # we already have errors
-            for loc, summary in observer.summary.items():
-                if summary.get('errors', 0) > 0:
-                    rv = 1
-                    # no need to check further summaries, but
-                    # continue to run through observers
-                    break
+        if args.json is None or args.json != '-':
+            print(observers.serializeDetails())
+            if len(configs) > 1:
+                print("\nSummaries for")
+                for config_path in config_paths:
+                    print("  " + config_path)
+                print("    and the union of these, counting each string once")
+            print(observers.serializeSummaries())
+        if args.json is not None:
+            data = [observer.toJSON() for observer in observers]
+            stdout = args.json == '-'
+            indent = 1 if stdout else None
+            fh = sys.stdout if stdout else open(args.json, 'w')
+            json.dump(data, fh, sort_keys=True, indent=indent)
+            if stdout:
+                fh.write('\n')
+            fh.close()
+        rv = 1 if observers.error else 0
         return rv
+
+    def extract_positionals(self, args):
+        # using nargs multiple times in argparser totally screws things
+        # up, repair that.
+        # First files are configs, then the base dir, everything else is
+        # locales
+        all_args = args.config_paths + [args.l10n_base_dir] + args.locales
+        config_paths = []
+        # The first directory is our l10n base, split there.
+        while all_args and not os.path.isdir(all_args[0]):
+            config_paths.append(all_args.pop(0))
+        if not config_paths:
+            self.parser.error('no configuration file given')
+        for cf in config_paths:
+            if not os.path.isfile(cf):
+                self.parser.error('config file %s not found' % cf)
+        if not all_args:
+            self.parser.error('l10n-base-dir not found')
+        l10n_base_dir = mozpath.abspath(all_args.pop(0))
+        if args.validate:
+            # signal validation mode by setting locale list to [None]
+            locales = [None]
+        else:
+            locales = all_args
+
+        return config_paths, l10n_base_dir, locales

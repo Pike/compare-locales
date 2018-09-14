@@ -12,13 +12,13 @@ import shutil
 from compare_locales import paths, mozpath
 
 from .content import ContentComparer
-from .observer import Observer
+from .observer import Observer, ObserverList
 from .utils import Tree, AddRemove
 
 
 __all__ = [
     'ContentComparer',
-    'Observer',
+    'Observer', 'ObserverList',
     'AddRemove', 'Tree',
     'compareProjects',
 ]
@@ -26,14 +26,15 @@ __all__ = [
 
 def compareProjects(
             project_configs,
+            l10n_base_dir,
             stat_observer=None,
-            file_stats=False,
             merge_stage=None,
             clobber_merge=False,
             quiet=0,
         ):
     locales = set()
-    observers = []
+    comparer = ContentComparer(quiet)
+    observers = comparer.observers
     for project in project_configs:
         # disable filter if we're in validation mode
         if None in project.locales:
@@ -44,18 +45,11 @@ def compareProjects(
             Observer(
                 quiet=quiet,
                 filter=filter,
-                file_stats=file_stats,
             ))
         locales.update(project.locales)
-    if stat_observer is not None:
-        stat_observers = [stat_observer]
-    else:
-        stat_observers = None
-    comparer = ContentComparer(observers, stat_observers=stat_observers)
     for locale in sorted(locales):
         files = paths.ProjectFiles(locale, project_configs,
                                    mergebase=merge_stage)
-        root = mozpath.commonprefix([m['l10n'].prefix for m in files.matchers])
         if merge_stage is not None:
             if clobber_merge:
                 mergematchers = set(_m.get('merge') for _m in files.matchers)
@@ -68,7 +62,7 @@ def compareProjects(
         for l10npath, refpath, mergepath, extra_tests in files:
             # module and file path are needed for legacy filter.py support
             module = None
-            fpath = mozpath.relpath(l10npath, root)
+            fpath = mozpath.relpath(l10npath, l10n_base_dir)
             for _m in files.matchers:
                 if _m['l10n'].match(l10npath):
                     if _m['module']:
