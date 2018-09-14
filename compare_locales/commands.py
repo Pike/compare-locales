@@ -128,9 +128,13 @@ to stdout and to hide the default text output.
             self.parser.exit(2)
 
         if args.json is None or args.json != '-':
-            print(observers.serializeDetails())
+            details = observers.serializeDetails()
+            if details:
+                print(details)
             if len(configs) > 1:
-                print("\nSummaries for")
+                if details:
+                    print('')
+                print("Summaries for")
                 for config_path in config_paths:
                     print("  " + config_path)
                 print("    and the union of these, counting each string once")
