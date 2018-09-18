@@ -30,6 +30,21 @@ class ProjectConfig(object):
         self.children = []
         self._cache = None
 
+    def same(self, other):
+        '''Equality test, ignoring locales.
+        '''
+        if other.__class__ is not self.__class__:
+            return False
+        if len(self.children) != len(other.children):
+            return False
+        for prop in ('path', 'root', 'paths', 'rules', 'environ'):
+            if getattr(self, prop) != getattr(other, prop):
+                return False
+        for this_child, other_child in zip(self.children, other.children):
+            if not this_child.same(other_child):
+                return False
+        return True
+
     def set_root(self, basepath):
         if self.path is None:
             self.root = None

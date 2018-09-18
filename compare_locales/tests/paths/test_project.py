@@ -170,3 +170,34 @@ class TestProjectConfig(unittest.TestCase):
         child = ProjectConfig(None)
         pc.add_child(child)
         self.assertListEqual([pc, child], list(pc.configs))
+
+
+class TestSameConfig(unittest.TestCase):
+
+    def test_path(self):
+        one = ProjectConfig('one.toml')
+        one.set_locales(['ab'])
+        self.assertTrue(one.same(ProjectConfig('one.toml')))
+        self.assertFalse(one.same(ProjectConfig('two.toml')))
+
+    def test_paths(self):
+        one = ProjectConfig('one.toml')
+        one.set_locales(['ab'])
+        one.add_paths({
+            'l10n': '/tmp/somedir/{locale}/**'
+        })
+        other = ProjectConfig('one.toml')
+        self.assertFalse(one.same(other))
+        other.add_paths({
+            'l10n': '/tmp/somedir/{locale}/**'
+        })
+        self.assertTrue(one.same(other))
+
+    def test_children(self):
+        one = ProjectConfig('one.toml')
+        one.add_child(ProjectConfig('inner.toml'))
+        one.set_locales(['ab'])
+        other = ProjectConfig('one.toml')
+        self.assertFalse(one.same(other))
+        other.add_child(ProjectConfig('inner.toml'))
+        self.assertTrue(one.same(other))

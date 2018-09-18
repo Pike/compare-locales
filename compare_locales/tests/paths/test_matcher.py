@@ -66,8 +66,16 @@ class TestMatcher(unittest.TestCase):
             Matcher('foo/**/bar/*').prefix, 'foo/'
         )
         self.assertEqual(
+            Matcher('foo/{v}/bar').prefix,
+            'foo/'
+        )
+        self.assertEqual(
             Matcher('foo/{v}/bar', {'v': 'expanded'}).prefix,
             'foo/expanded/bar'
+        )
+        self.assertEqual(
+            Matcher('foo/{v}/*/bar').prefix,
+            'foo/'
         )
         self.assertEqual(
             Matcher('foo/{v}/*/bar', {'v': 'expanded'}).prefix,
@@ -156,6 +164,63 @@ class TestMatcher(unittest.TestCase):
                 'generic': ['keep']
             }
         )
+
+    def test_eq(self):
+        self.assertEqual(
+            Matcher('foo'),
+            Matcher('foo')
+        )
+        self.assertNotEqual(
+            Matcher('foo'),
+            Matcher('bar')
+        )
+        self.assertEqual(
+            Matcher('foo', root='/bar/'),
+            Matcher('foo', root='/bar/')
+        )
+        self.assertNotEqual(
+            Matcher('foo', root='/bar/'),
+            Matcher('foo', root='/baz/')
+        )
+        self.assertNotEqual(
+            Matcher('foo'),
+            Matcher('foo', root='/bar/')
+        )
+        self.assertEqual(
+            Matcher('foo', env={'one': 'two'}),
+            Matcher('foo', env={'one': 'two'})
+        )
+        self.assertEqual(
+            Matcher('foo'),
+            Matcher('foo', env={})
+        )
+        self.assertNotEqual(
+            Matcher('foo', env={'one': 'two'}),
+            Matcher('foo', env={'one': 'three'})
+        )
+        self.assertEqual(
+            Matcher('foo', env={'other': 'val'}),
+            Matcher('foo', env={'one': 'two'})
+        )
+
+
+class ConcatTest(unittest.TestCase):
+    def test_plain(self):
+        left = Matcher('some/path/')
+        right = Matcher('with/file')
+        concatenated = left.concat(right)
+        self.assertEqual(str(concatenated), 'some/path/with/file')
+        self.assertEqual(concatenated.prefix, 'some/path/with/file')
+        pattern_concatenated = left.concat('with/file')
+        self.assertEqual(concatenated, pattern_concatenated)
+
+    def test_stars(self):
+        left = Matcher('some/*/path/')
+        right = Matcher('with/file')
+        concatenated = left.concat(right)
+        self.assertEqual(concatenated.prefix, 'some/')
+        concatenated = right.concat(left)
+        self.assertEqual(concatenated.prefix, 'with/filesome/')
 
 
 class TestAndroid(unittest.TestCase):

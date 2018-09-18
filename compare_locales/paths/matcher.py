@@ -113,6 +113,58 @@ class Matcher(object):
         env.update(other.env)
         return other.pattern.expand(env)
 
+    def concat(self, other):
+        '''Concat two Matcher objects.
+
+        The intent is to create one Matcher with variable substitutions that
+        behaves as if you joined the resulting paths.
+        This doesn't do path separator logic, though, and it won't resolve
+        parent directories.
+        '''
+        if not isinstance(other, Matcher):
+            other_matcher = Matcher(other)
+        else:
+            other_matcher = other
+        other_pattern = other_matcher.pattern
+        if other_pattern.root is not None:
+            raise ValueError('Other matcher must not be rooted')
+        result = Matcher(self)
+        result.pattern += other_pattern
+        if self.pattern.prefix_length == len(self.pattern):
+            result.pattern.prefix_length += other_pattern.prefix_length
+        result.env.update(other_matcher.env)
+        return result
+
+    def __str__(self):
+        return self.pattern.expand(self.env)
+
+    def __repr__(self):
+        return '{}({!r}, env={!r}, root={!r})'.format(
+            type(self).__name__, self.pattern, self.env, self.pattern.root
+        )
+
+    def __ne__(self, other):
+        return not (self == other)
+
+    def __eq__(self, other):
+        '''Equality for Matcher.
+
+        The equality for Matchers is defined to have the same pattern,
+        and no conflicting environment. Additional environment settings
+        in self or other are OK.
+        '''
+        if other.__class__ is not self.__class__:
+            return NotImplemented
+        if self.pattern != other.pattern:
+            return False
+        if self.env and other.env:
+            for k in self.env:
+                if k not in other.env:
+                    continue
+                if self.env[k] != other.env[k]:
+                    return False
+        return True
+
 
 def expand(root, path, env):
     '''Expand a given path relative to the given root,
@@ -121,7 +173,7 @@ def expand(root, path, env):
     This will break if the path contains wildcards.
     '''
     matcher = Matcher(path, env=env, root=root)
-    return matcher.pattern.expand(matcher.env)
+    return str(matcher)
 
 
 class Node(object):
@@ -163,6 +215,20 @@ class Pattern(list, Node):
             child.expand(env) for child in self
         )
 
+    def __ne__(self, other):
+        return not (self == other)
+
+    def __eq__(self, other):
+        if not super(Pattern, self).__eq__(other):
+            return False
+        if other.__class__ == list:
+            # good for tests and debugging
+            return True
+        return (
+            self.root == other.root
+            and self.prefix_length == other.prefix_length
+        )
+
 
 class Literal(six.text_type, Node):
     def regex_pattern(self, env):
@@ -196,7 +262,9 @@ class Variable(Node):
         by removing the current variable from the environment that's used
         to expand child variable references.
         '''
-        return env.get(self.name, Literal('')).expand(self._no_cycle(env))
+        if self.name not in env:
+            raise StopIteration
+        return env[self.name].expand(self._no_cycle(env))
 
     def _no_cycle(self, env):
         '''Remove our variable name from the environment.
@@ -207,6 +275,20 @@ class Variable(Node):
         env = env.copy()
         env.pop(self.name)
         return env
+
+    def __repr__(self):
+        return 'Variable(name="{}")'.format(self.name)
+
+    def __ne__(self, other):
+        return not (self == other)
+
+    def __eq__(self, other):
+        if other.__class__ is not self.__class__:
+            return False
+        return (
+            self.name == other.name
+            and self.repeat == other.repeat
+        )
 
 
 class AndroidLocale(Variable):
@@ -263,6 +345,17 @@ class Star(Node):
     def expand(self, env):
         return env['s%d' % self.number]
 
+    def __repr__(self):
+        return type(self).__name__
+
+    def __ne__(self, other):
+        return not (self == other)
+
+    def __eq__(self, other):
+        if other.__class__ is not self.__class__:
+            return False
+        return self.number == other.number
+
 
 class Starstar(Star):
     def __init__(self, number, suffix):
@@ -271,6 +364,14 @@ class Starstar(Star):
 
     def regex_pattern(self, env):
         return '(?P<s{}>.+{})?'.format(self.number, self.suffix)
+
+    def __ne__(self, other):
+        return not (self == other)
+
+    def __eq__(self, other):
+        if not super(Starstar, self).__eq__(other):
+            return False
+        return self.suffix == other.suffix
 
 
 PATH_SPECIAL = re.compile(
@@ -291,6 +392,10 @@ class PatternParser(object):
         self._known_vars = None
 
     def parse(self, pattern):
+        if isinstance(pattern, Pattern):
+            return pattern
+        if isinstance(pattern, Matcher):
+            return pattern.pattern
         # Initializing result and state
         self.pattern = Pattern()
         self._stargroup = itertools.count(1)
