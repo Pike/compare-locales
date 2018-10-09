@@ -176,6 +176,10 @@ def expand(root, path, env):
     return str(matcher)
 
 
+class MissingEnvironment(Exception):
+    pass
+
+
 class Node(object):
     '''Abstract base class for all nodes in parsed patterns.'''
     def regex_pattern(self, env):
@@ -211,9 +215,15 @@ class Pattern(list, Node):
             first_seg = self[0].expand(env)
             if not first_seg.startswith('/'):
                 root = self.root
-        return root + ''.join(
-            child.expand(env) for child in self
-        )
+        return root + ''.join(self._expand_children(env))
+
+    def _expand_children(self, env):
+        # Helper iterator to convert Exception to a stopped iterator
+        for child in self:
+            try:
+                yield child.expand(env)
+            except MissingEnvironment:
+                return
 
     def __ne__(self, other):
         return not (self == other)
@@ -263,7 +273,7 @@ class Variable(Node):
         to expand child variable references.
         '''
         if self.name not in env:
-            raise StopIteration
+            raise MissingEnvironment
         return env[self.name].expand(self._no_cycle(env))
 
     def _no_cycle(self, env):
