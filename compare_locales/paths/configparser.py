@@ -82,6 +82,8 @@ class TOMLParser(object):
                 paths['locales'] = data['locales']
             if 'reference' in data:
                 paths['reference'] = data['reference']
+            if 'test' in data:
+                paths['test'] = data['test']
             ctx.pc.add_paths(paths)
 
     def processFilters(self, ctx):
