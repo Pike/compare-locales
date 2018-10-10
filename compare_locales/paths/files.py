@@ -141,15 +141,22 @@ class ProjectFiles(object):
         patterns.
         '''
         base = matcher.prefix
-        if os.path.isfile(base):
-            if matcher.match(base):
+        if self._isfile(base):
+            if matcher.match(base) is not None:
                 yield base
             return
-        for d, dirs, files in os.walk(base):
+        for d, dirs, files in self._walk(base):
             for f in files:
                 p = mozpath.join(d, f)
-                if matcher.match(p):
+                if matcher.match(p) is not None:
                     yield p
+
+    def _isfile(self, path):
+        return os.path.isfile(path)
+
+    def _walk(self, base):
+        for d, dirs, files in os.walk(base):
+            yield d, dirs, files
 
     def match(self, path):
         '''Return the tuple of l10n_path, reference, mergepath, tests

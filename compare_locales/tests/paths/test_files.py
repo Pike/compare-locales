@@ -23,16 +23,12 @@ class TestProjectPaths(unittest.TestCase):
         cfg.add_paths({
             'l10n': '{l10n_base}/{locale}/*'
         })
-        mocks = {
-            '/tmp/de/': [
-                'good.ftl',
-                'not/subdir/bad.ftl'
-            ],
-            '/tmp/fr/': [
-                'good.ftl',
-                'not/subdir/bad.ftl'
-            ],
-        }
+        mocks = [
+            '/tmp/de/good.ftl',
+            '/tmp/de/not/subdir/bad.ftl',
+            '/tmp/fr/good.ftl',
+            '/tmp/fr/not/subdir/bad.ftl',
+        ]
         files = MockProjectFiles(mocks, 'de', [cfg])
         self.assertListEqual(
             list(files), [('/tmp/de/good.ftl', None, None, set())])
@@ -51,6 +47,26 @@ class TestProjectPaths(unittest.TestCase):
         files = MockProjectFiles(mocks, 'fr', [cfg])
         self.assertListEqual(list(files), [])
 
+    def test_single_reference_path(self):
+        cfg = ProjectConfig(None)
+        cfg.add_environment(l10n_base='/tmp/l10n')
+        cfg.locales.append('de')
+        cfg.add_paths({
+            'l10n': '{l10n_base}/{locale}/good.ftl',
+            'reference': '/tmp/reference/good.ftl'
+        })
+        mocks = [
+            '/tmp/reference/good.ftl',
+            '/tmp/reference/not/subdir/bad.ftl',
+        ]
+        files = MockProjectFiles(mocks, 'de', [cfg])
+        self.assertListEqual(
+            list(files),
+            [
+                ('/tmp/l10n/de/good.ftl', '/tmp/reference/good.ftl', None,
+                 set()),
+            ])
+
     def test_reference_path(self):
         cfg = ProjectConfig(None)
         cfg.add_environment(l10n_base='/tmp/l10n')
@@ -59,20 +75,14 @@ class TestProjectPaths(unittest.TestCase):
             'l10n': '{l10n_base}/{locale}/*',
             'reference': '/tmp/reference/*'
         })
-        mocks = {
-            '/tmp/l10n/de/': [
-                'good.ftl',
-                'not/subdir/bad.ftl'
-            ],
-            '/tmp/l10n/fr/': [
-                'good.ftl',
-                'not/subdir/bad.ftl'
-            ],
-            '/tmp/reference/': [
-                'ref.ftl',
-                'not/subdir/bad.ftl'
-            ],
-        }
+        mocks = [
+            '/tmp/l10n/de/good.ftl',
+            '/tmp/l10n/de/not/subdir/bad.ftl',
+            '/tmp/l10n/fr/good.ftl',
+            '/tmp/l10n/fr/not/subdir/bad.ftl',
+            '/tmp/reference/ref.ftl',
+            '/tmp/reference/not/subdir/bad.ftl',
+        ]
         files = MockProjectFiles(mocks, 'de', [cfg])
         self.assertListEqual(
             list(files),
@@ -126,22 +136,14 @@ class TestProjectPaths(unittest.TestCase):
             'l10n': '/tmp/{locale}/minor/*',
             'locales': ['de']
         })
-        mocks = {
-            '/tmp/de/major/': [
-                'good.ftl',
-                'not/subdir/bad.ftl'
-            ],
-            '/tmp/de/minor/': [
-                'good.ftl',
-            ],
-            '/tmp/fr/major/': [
-                'good.ftl',
-                'not/subdir/bad.ftl'
-            ],
-            '/tmp/fr/minor/': [
-                'good.ftl',
-            ],
-        }
+        mocks = [
+            '/tmp/de/major/good.ftl',
+            '/tmp/de/major/not/subdir/bad.ftl',
+            '/tmp/de/minor/good.ftl',
+            '/tmp/fr/major/good.ftl',
+            '/tmp/fr/major/not/subdir/bad.ftl',
+            '/tmp/fr/minor/good.ftl',
+        ]
         files = MockProjectFiles(mocks, 'de', [cfg])
         self.assertListEqual(
             list(files),
@@ -170,20 +172,14 @@ class TestProjectPaths(unittest.TestCase):
             'l10n': '{l10n_base}/{locale}/*',
             'reference': '/tmp/reference/*'
         })
-        mocks = {
-            '/tmp/l10n/de/': [
-                'good.ftl',
-                'not/subdir/bad.ftl'
-            ],
-            '/tmp/l10n/fr/': [
-                'good.ftl',
-                'not/subdir/bad.ftl'
-            ],
-            '/tmp/reference/': [
-                'ref.ftl',
-                'not/subdir/bad.ftl'
-            ],
-        }
+        mocks = [
+            '/tmp/l10n/de/good.ftl',
+            '/tmp/l10n/de/not/subdir/bad.ftl',
+            '/tmp/l10n/fr/good.ftl',
+            '/tmp/l10n/fr/not/subdir/bad.ftl',
+            '/tmp/reference/ref.ftl',
+            '/tmp/reference/not/subdir/bad.ftl',
+        ]
         # `None` switches on validation mode
         files = MockProjectFiles(mocks, None, [cfg])
         self.assertListEqual(
@@ -215,20 +211,14 @@ locales = [
             '/tmp/base.toml',
             env={'l10n_base': '/tmp/l10n'}
         )
-        mocks = {
-            '/tmp/l10n/de/': [
-                'good.ftl',
-                'not/subdir/bad.ftl'
-            ],
-            '/tmp/l10n/fr/': [
-                'good.ftl',
-                'not/subdir/bad.ftl'
-            ],
-            '/tmp/reference/': [
-                'ref.ftl',
-                'not/subdir/bad.ftl'
-            ],
-        }
+        mocks = [
+            '/tmp/l10n/de/good.ftl',
+            '/tmp/l10n/de/not/subdir/bad.ftl',
+            '/tmp/l10n/fr/good.ftl',
+            '/tmp/l10n/fr/not/subdir/bad.ftl',
+            '/tmp/reference/ref.ftl',
+            '/tmp/reference/not/subdir/bad.ftl',
+        ]
         files = MockProjectFiles(mocks, 'de', [cfg], '/tmp/mergers')
         self.assertListEqual(
             list(files),

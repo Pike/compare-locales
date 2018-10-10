@@ -25,18 +25,47 @@ class SetupMixin(object):
             module='toolkit', locale='de')
 
 
+class MockNode(object):
+    def __init__(self, name):
+        self.name = name
+        self.files = []
+        self.dirs = {}
+
+    def walk(self):
+        subdirs = sorted(self.dirs)
+        if self.name is not None:
+            yield self.name, subdirs, self.files
+        for subdir in subdirs:
+            child = self.dirs[subdir]
+            for tpl in child.walk():
+                yield tpl
+
+
 class MockProjectFiles(ProjectFiles):
     def __init__(self, mocks, locale, projects, mergebase=None):
         (super(MockProjectFiles, self)
             .__init__(locale, projects, mergebase=mergebase))
         self.mocks = mocks
 
-    def _files(self, matcher):
-        base = matcher.prefix
-        for path in self.mocks.get(base, []):
-            p = mozpath.join(base, path)
-            if matcher.match(p):
-                yield p
+    def _isfile(self, path):
+        return path in self.mocks
+
+    def _walk(self, base):
+        base = mozpath.normpath(base)
+        local_files = [
+            mozpath.split(mozpath.relpath(f, base))
+            for f in self.mocks if f.startswith(base)
+        ]
+        root = MockNode(base)
+        for segs in local_files:
+            node = root
+            for n, seg in enumerate(segs[:-1]):
+                if seg not in node.dirs:
+                    node.dirs[seg] = MockNode('/'.join([base] + segs[:n+1]))
+                node = node.dirs[seg]
+            node.files.append(segs[-1])
+        for tpl in root.walk():
+            yield tpl
 
 
 class MockTOMLParser(TOMLParser):
