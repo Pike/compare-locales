@@ -17,18 +17,18 @@ class MergeNotSupportedError(ValueError):
     pass
 
 
-def merge_channels(name, *resources):
+def merge_channels(name, resources):
     try:
         parser = cl.getParser(name)
     except UserWarning:
         raise MergeNotSupportedError(
             'Unsupported file format ({}).'.format(name))
 
-    entities = merge_resources(parser, *resources)
+    entities = merge_resources(parser, resources)
     return encode(serialize_legacy_resource(entities), parser.encoding)
 
 
-def merge_resources(parser, *resources):
+def merge_resources(parser, resources):
     # A map of comments to the keys of entities they belong to.
     comments = {}
 

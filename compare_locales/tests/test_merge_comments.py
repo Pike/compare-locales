@@ -19,7 +19,7 @@ foo = Foo 2
 bar = Bar 2
 """)
         self.assertEqual(
-            merge_channels(self.name, *channels), b"""
+            merge_channels(self.name, channels), b"""
 foo = Foo 1
 # Bar Comment 1
 bar = Bar 1
@@ -35,7 +35,7 @@ foo = Foo 2
 bar = Bar 2
 """)
         self.assertEqual(
-            merge_channels(self.name, *channels), b"""
+            merge_channels(self.name, channels), b"""
 foo = Foo 1
 # Bar Comment 2
 bar = Bar 1
@@ -52,7 +52,7 @@ foo = Foo 2
 bar = Bar 2
 """)
         self.assertEqual(
-            merge_channels(self.name, *channels), b"""
+            merge_channels(self.name, channels), b"""
 foo = Foo 1
 # Bar Comment 1
 bar = Bar 1
@@ -73,7 +73,7 @@ foo = Foo 1
 foo = Foo 2
 """)
         self.assertEqual(
-            merge_channels(self.name, *channels), b"""
+            merge_channels(self.name, channels), b"""
 # Standalone Comment 1
 
 # Foo Comment 1
@@ -91,7 +91,7 @@ foo = Foo 1
 foo = Foo 2
 """)
         self.assertEqual(
-            merge_channels(self.name, *channels), b"""
+            merge_channels(self.name, channels), b"""
 # Standalone Comment 2
 
 # Foo Comment 1
@@ -111,7 +111,7 @@ foo = Foo 1
 foo = Foo 2
 """)
         self.assertEqual(
-            merge_channels(self.name, *channels), b"""
+            merge_channels(self.name, channels), b"""
 # Standalone Comment 2
 
 # Standalone Comment 1
@@ -133,7 +133,7 @@ foo = Foo 1
 foo = Foo 2
 """)
         self.assertEqual(
-            merge_channels(self.name, *channels), b"""
+            merge_channels(self.name, channels), b"""
 # Standalone Comment
 
 # Foo Comment 1
@@ -154,7 +154,7 @@ bar = Bar 1
 bar = Bar 2
 """)
         self.assertEqual(
-            merge_channels(self.name, *channels), b"""
+            merge_channels(self.name, channels), b"""
 # Ambiguous Comment
 
 foo = Foo 1
@@ -177,7 +177,7 @@ foo = Foo 1
 bar = Bar 2
 """)
         self.assertEqual(
-            merge_channels(self.name, *channels), b"""
+            merge_channels(self.name, channels), b"""
 # Ambiguous Comment
 foo = Foo 1
 
