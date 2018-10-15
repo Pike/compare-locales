@@ -16,6 +16,55 @@ ANDROID_WRAPPER = b'''<?xml version="1.0" encoding="utf-8"?>
 '''
 
 
+class SimpleStringsTest(BaseHelper):
+    file = File('values/strings.xml', 'values/strings.xml')
+    refContent = ANDROID_WRAPPER % b'plain'
+
+    def test_simple_string(self):
+        self._test(
+            ANDROID_WRAPPER % b'foo',
+            tuple()
+        )
+
+    def test_single_cdata(self):
+        self._test(
+            ANDROID_WRAPPER % b'<![CDATA[text]]>',
+            tuple()
+        )
+        self._test(
+            ANDROID_WRAPPER % b'<![CDATA[\n  text\n  ]]>',
+            tuple()
+        )
+
+    def test_mix_cdata(self):
+        self._test(
+            ANDROID_WRAPPER % b'<![CDATA[text]]> with <![CDATA[cdatas]]>',
+            (
+                (
+                    "error",
+                    0,
+                    "Only plain text allowed, "
+                    "or one CDATA surrounded by whitespace",
+                    "android"
+                 ),
+            )
+        )
+
+    def test_element_fails(self):
+        self._test(
+            ANDROID_WRAPPER % b'one<br/>two',
+            (
+                (
+                    "error",
+                    0,
+                    "Only plain text allowed, "
+                    "or one CDATA surrounded by whitespace",
+                    "android"
+                 ),
+            )
+        )
+
+
 class QuotesTest(BaseHelper):
     file = File('values/strings.xml', 'values/strings.xml')
     refContent = ANDROID_WRAPPER % b'plain'

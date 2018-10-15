@@ -100,12 +100,16 @@ class XMLJunk(Junk):
 
 
 def textContent(node):
+    for child in node.childNodes:
+        if child.nodeType == minidom.Node.CDATA_SECTION_NODE:
+            return child.data
     if (
-            node.nodeType == minidom.Node.TEXT_NODE or
-            node.nodeType == minidom.Node.CDATA_SECTION_NODE
+            node.childNodes.length != 1 or
+            node.childNodes[0].nodeType != minidom.Node.TEXT_NODE
     ):
-        return node.nodeValue
-    return ''.join(textContent(child) for child in node.childNodes)
+        # Return something, we'll fail in checks on this
+        return node.toxml()
+    return node.childNodes[0].data
 
 
 class AndroidParser(Parser):

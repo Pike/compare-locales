@@ -34,14 +34,15 @@ class AndroidChecker(Checker):
         if refNode.nodeName != "string":
             yield ("warning", 0, "Unsupported resource type", "android")
             return
-        for report_tuple in self.check_string([refNode], l10nNode):
+        for report_tuple in self.check_string([refNode], l10nEnt):
             yield report_tuple
 
-    def check_string(self, refs, l10n):
+    def check_string(self, refs, l10nEnt):
         '''Check a single string literal against a list of references.
 
         There should be multiple nodes given for <plurals> or <string-array>.
         '''
+        l10n = l10nEnt.node
         if self.not_translatable(l10n, *refs):
             yield (
                 "error",
@@ -65,8 +66,16 @@ class AndroidChecker(Checker):
                 "strings must be translatable",
                 "android"
             )
-        l10nstring = textContent(l10n)
-        for report_tuple in check_apostrophes(l10nstring):
+        if self.non_simple_data(l10n):
+            yield (
+                "error",
+                0,
+                "Only plain text allowed, "
+                "or one CDATA surrounded by whitespace",
+                "android"
+            )
+            return
+        for report_tuple in check_apostrophes(l10nEnt.val):
             yield report_tuple
 
         params, errors = get_params(refs)
@@ -78,7 +87,7 @@ class AndroidChecker(Checker):
                 "android"
             )
         if params:
-            for report_tuple in check_params(params, l10nstring):
+            for report_tuple in check_params(params, l10nEnt.val):
                 yield report_tuple
 
     def not_translatable(self, *nodes):
@@ -98,6 +107,30 @@ class AndroidChecker(Checker):
             textContent(node).startswith('@string/')
             for node in ref_nodes
         )
+
+    def non_simple_data(self, node):
+        '''Only allow single text nodes, or, a single CDATA node
+        surrounded by whitespace.
+        '''
+        cdata = [
+            child
+            for child in node.childNodes
+            if child.nodeType == minidom.Node.CDATA_SECTION_NODE
+        ]
+        if len(cdata) == 0:
+            if node.childNodes.length != 1:
+                return True
+            return node.childNodes[0].nodeType != minidom.Node.TEXT_NODE
+        if len(cdata) > 1:
+            return True
+        for child in node.childNodes:
+            if child == cdata[0]:
+                continue
+            if child.nodeType != minidom.Node.TEXT_NODE:
+                return True
+            if child.data.strip() != "":
+                return True
+        return False
 
 
 silencer = re.compile(r'\\.|""')
