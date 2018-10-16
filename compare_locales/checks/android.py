@@ -50,6 +50,14 @@ class AndroidChecker(Checker):
                 "android"
             )
             return
+        if self.no_at_string(l10n):
+            yield (
+                "error",
+                0,
+                "strings must be translatable",
+                "android"
+            )
+            return
         if self.no_at_string(*refs):
             yield (
                 "warning",
