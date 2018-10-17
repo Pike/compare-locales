@@ -385,7 +385,7 @@ class Starstar(Star):
 
 
 PATH_SPECIAL = re.compile(
-    r'(?P<starstar>(?<![^/])\*\*(?P<suffix>/|$))'
+    r'(?P<starstar>(?<![^/}])\*\*(?P<suffix>/|$))'
     r'|'
     r'(?P<star>\*)'
     r'|'

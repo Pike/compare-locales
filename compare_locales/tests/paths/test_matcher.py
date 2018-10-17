@@ -131,6 +131,26 @@ class TestMatcher(unittest.TestCase):
                 'two': 'with/a/lot/of'
             }
         )
+        self.assertDictEqual(
+            Matcher('{l}**', {
+                'l': 'foo/{locale}/'
+            }).match('foo/it/path'),
+            {
+                'l': 'foo/it/',
+                'locale': 'it',
+                's1': 'path',
+            }
+        )
+        self.assertDictEqual(
+            Matcher('{l}*', {
+                'l': 'foo/{locale}/'
+            }).match('foo/it/path'),
+            {
+                'l': 'foo/it/',
+                'locale': 'it',
+                's1': 'path',
+            }
+        )
 
     def test_variables_sub(self):
         one = Matcher('{base}/{loc}/*', {'base': 'ONE_BASE'})
