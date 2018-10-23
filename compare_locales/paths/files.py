@@ -166,7 +166,7 @@ class ProjectFiles(object):
         '''
         for matchers in self.matchers:
             matcher = matchers['l10n']
-            if matcher.match(path):
+            if matcher.match(path) is not None:
                 ref = merge = None
                 if 'reference' in matchers:
                     ref = matcher.sub(matchers['reference'], path)
@@ -176,7 +176,7 @@ class ProjectFiles(object):
             if 'reference' not in matchers:
                 continue
             matcher = matchers['reference']
-            if matcher.match(path):
+            if matcher.match(path) is not None:
                 merge = None
                 l10n = matcher.sub(matchers['l10n'], path)
                 if 'merge' in matchers:

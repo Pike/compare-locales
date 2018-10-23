@@ -66,6 +66,16 @@ class TestProjectPaths(unittest.TestCase):
                 ('/tmp/l10n/de/good.ftl', '/tmp/reference/good.ftl', None,
                  set()),
             ])
+        self.assertTupleEqual(
+            files.match('/tmp/reference/good.ftl'),
+            ('/tmp/l10n/de/good.ftl', '/tmp/reference/good.ftl', None,
+             set()),
+            )
+        self.assertTupleEqual(
+            files.match('/tmp/l10n/de/good.ftl'),
+            ('/tmp/l10n/de/good.ftl', '/tmp/reference/good.ftl', None,
+             set()),
+            )
 
     def test_reference_path(self):
         cfg = ProjectConfig(None)
