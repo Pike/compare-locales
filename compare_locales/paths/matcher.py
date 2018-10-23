@@ -208,21 +208,23 @@ class Pattern(list, Node):
             child.regex_pattern(env) for child in self
         )
 
-    def expand(self, env):
+    def expand(self, env, raise_missing=False):
         root = ''
         if self.root is not None:
             # make sure we're not hiding a full path
             first_seg = self[0].expand(env)
             if not first_seg.startswith('/'):
                 root = self.root
-        return root + ''.join(self._expand_children(env))
+        return root + ''.join(self._expand_children(env, raise_missing))
 
-    def _expand_children(self, env):
+    def _expand_children(self, env, raise_missing):
         # Helper iterator to convert Exception to a stopped iterator
         for child in self:
             try:
-                yield child.expand(env)
+                yield child.expand(env, raise_missing=True)
             except MissingEnvironment:
+                if raise_missing:
+                    raise
                 return
 
     def __ne__(self, other):
@@ -244,7 +246,7 @@ class Literal(six.text_type, Node):
     def regex_pattern(self, env):
         return re.escape(self)
 
-    def expand(self, env):
+    def expand(self, env, raise_missing=False):
         return self
 
 
@@ -265,7 +267,7 @@ class Variable(Node):
         # match anything, including path segments
         return '.+?'
 
-    def expand(self, env):
+    def expand(self, env, raise_missing=False):
         '''Create a string for this Variable.
 
         This expansion happens recursively. We avoid recusion loops
@@ -274,7 +276,9 @@ class Variable(Node):
         '''
         if self.name not in env:
             raise MissingEnvironment
-        return env[self.name].expand(self._no_cycle(env))
+        return env[self.name].expand(
+            self._no_cycle(env), raise_missing=raise_missing
+        )
 
     def _no_cycle(self, env):
         '''Remove our variable name from the environment.
@@ -318,7 +322,7 @@ class AndroidLocale(Variable):
             return re.escape(android_locale)
         return '.+?'
 
-    def expand(self, env):
+    def expand(self, env, raise_missing=False):
         '''Create a string for this Variable.
 
         This expansion happens recursively. We avoid recusion loops
@@ -326,7 +330,9 @@ class AndroidLocale(Variable):
         to expand child variable references.
         '''
         android_locale = self._get_android_locale(env)
-        return android_locale or ''
+        if android_locale is None:
+            raise MissingEnvironment
+        return android_locale
 
     def _get_android_locale(self, env):
         if 'locale' not in env:
@@ -352,7 +358,7 @@ class Star(Node):
     def regex_pattern(self, env):
         return '(?P<s{}>[^/]*)'.format(self.number)
 
-    def expand(self, env):
+    def expand(self, env, raise_missing=False):
         return env['s%d' % self.number]
 
     def __repr__(self):

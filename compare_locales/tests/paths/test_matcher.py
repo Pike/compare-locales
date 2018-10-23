@@ -81,6 +81,10 @@ class TestMatcher(unittest.TestCase):
             Matcher('foo/{v}/*/bar', {'v': 'expanded'}).prefix,
             'foo/expanded/'
         )
+        self.assertEqual(
+            Matcher('foo/{v}/*/bar', {'v': '{missing}'}).prefix,
+            'foo/'
+        )
 
     def test_variables(self):
         self.assertDictEqual(
@@ -359,6 +363,10 @@ class TestAndroid(unittest.TestCase):
         self.assertEqual(
             one.with_env({'locale': 'sr-Latn'}).prefix,
             'values-b+sr+Latn/strings.xml'
+        )
+        self.assertEqual(
+            one.prefix,
+            'values-'
         )
 
     def test_aliases(self):
