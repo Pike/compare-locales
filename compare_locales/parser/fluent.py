@@ -8,9 +8,11 @@ import re
 
 from fluent.syntax import FluentParser as FTLParser
 from fluent.syntax import ast as ftl
+from fluent.syntax.serializer import serialize_comment
 from .base import (
     CAN_SKIP,
     EntityBase, Entity, Comment, Junk, Whitespace,
+    LiteralEntity,
     Parser
 )
 
@@ -93,6 +95,21 @@ class FluentEntity(Entity):
     def attributes(self):
         for attr_node in self.entry.attributes:
             yield FluentAttribute(self, attr_node)
+
+    def unwrap(self):
+        return self.all
+
+    def wrap(self, raw_val):
+        """Create literal entity the given raw value.
+
+        For Fluent, we're exposing the message source to tools like
+        Pontoon.
+        We also recreate the comment from this entity to the created entity.
+        """
+        all = raw_val
+        if self.entry.comment is not None:
+            all = serialize_comment(self.entry.comment) + all
+        return LiteralEntity(self.key, raw_val, all)
 
 
 class FluentMessage(FluentEntity):

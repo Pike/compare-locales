@@ -19,6 +19,7 @@ from xml.dom.minidom import Node
 from .base import (
     CAN_SKIP,
     EntityBase, Entity, Comment, Junk, Whitespace,
+    LiteralEntity,
     Parser
 )
 
@@ -53,6 +54,17 @@ class AndroidEntity(Entity):
 
     def value_position(self, offset=0):
         return (0, offset)
+
+    def wrap(self, raw_val):
+        clone = self.node.cloneNode(True)
+        if clone.childNodes.length == 1:
+            child = clone.childNodes[0]
+        else:
+            for child in clone.childNodes:
+                if child.nodeType == Node.CDATA_SECTION_NODE:
+                    break
+        child.data = raw_val
+        return LiteralEntity(self.key, raw_val, clone.toxml())
 
 
 class NodeMixin(object):

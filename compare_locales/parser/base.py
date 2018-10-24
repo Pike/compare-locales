@@ -122,6 +122,54 @@ class Entity(EntityBase):
         '''
         return True
 
+    def unwrap(self):
+        """Return the literal value to be used by tools.
+        """
+        return self.raw_val
+
+    def wrap(self, raw_val):
+        """Create literal entity based on reference and raw value.
+
+        This is used by the serialization logic.
+        """
+        all = (
+            self.ctx.contents[self.span[0]:self.val_span[0]] +
+            raw_val +
+            self.ctx.contents[self.val_span[1]:self.span[1]]
+        )
+        return LiteralEntity(self.key, raw_val, all)
+
+
+class LiteralEntity(Entity):
+    """Subclass of Entity to represent entities without context slices.
+
+    It's storing string literals for key, raw_val and all instead of spans.
+    """
+    def __init__(self, key, val, all):
+        super(LiteralEntity, self).__init__(None, None, None, None, None)
+        self._key = key
+        self._raw_val = val
+        self._all = all
+
+    @property
+    def key(self):
+        return self._key
+
+    @property
+    def raw_val(self):
+        return self._raw_val
+
+    @property
+    def all(self):
+        return self._all
+
+
+class PlaceholderEntity(LiteralEntity):
+    """Subclass of Entity to be removed in merges.
+    """
+    def __init__(self, key):
+        super(PlaceholderEntity, self).__init__(key, "", "\nplaceholder\n")
+
 
 class Comment(EntityBase):
     def __init__(self, ctx, span):
