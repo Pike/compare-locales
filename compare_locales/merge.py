@@ -48,8 +48,6 @@ def merge_resources(parser, resources, keep_newest=True):
     Values are also taken from the newest, unless keep_newest is False,
     then values are taken from the oldest first.
     '''
-    # A map of comments to the keys of entities they belong to.
-    comments = {}
 
     def parse_resource(resource):
         # The counter dict keeps track of number of identical comments.
@@ -73,22 +71,15 @@ def merge_resources(parser, resources, keep_newest=True):
             # prune.
             return (entity, entity)
 
-        # When comments change, AddRemove gives us one 'add' and one 'delete'
-        # (because a comment's key is its content).  In merge_two we'll try to
-        # de-duplicate comments by looking at the entity they belong to.  Set
-        # up the back-reference from the comment to its entity here.
-        if isinstance(entity, cl.Entity) and entity.pre_comment:
-            comments[entity.pre_comment] = entity.key
-
         return (entity.key, entity)
 
     entities = six.moves.reduce(
-        lambda x, y: merge_two(comments, x, y, keep_newer=keep_newest),
+        lambda x, y: merge_two(x, y, keep_newer=keep_newest),
         map(parse_resource, resources))
     return entities.values()
 
 
-def merge_two(comments, newer, older, keep_newer=True):
+def merge_two(newer, older, keep_newer=True):
     '''Merge two OrderedDicts.
 
     The order of the result dict is determined by `newer`.
@@ -112,18 +103,7 @@ def merge_two(comments, newer, older, keep_newer=True):
         if entity is not None:
             return entity
 
-        entity = backup.get(key)
-
-        # If it's a backup comment attached to an entity, try to find that
-        # entity in default and return None to use its comment instead
-        # in prune.
-        if isinstance(entity, cl.Comment) and entity in comments:
-            next_entity = default.get(comments[entity], None)
-            if next_entity is not None and next_entity.pre_comment:
-                # We'll prune this before returning the merged result.
-                return None
-
-        return entity
+        return backup.get(key)
 
     # Create a flat sequence of all entities in order reported by AddRemove.
     contents = [(key, get_entity(key)) for _, key in diff]
