@@ -69,7 +69,7 @@ def serialize(filename, reference, old_l10n, new_data):
     # .val can just be "", merge_channels doesn't need that
     new_l10n = []
     for key, new_raw_val in six.iteritems(new_data):
-        if new_raw_val is None:
+        if new_raw_val is None or key not in ref_mapping:
             continue
         ref_ent = ref_mapping[key]
         new_l10n.append(ref_ent.wrap(new_raw_val))
