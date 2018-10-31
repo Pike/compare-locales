@@ -121,6 +121,26 @@ class TestAndroidSerializer(Helper, unittest.TestCase):
 """
         )
 
+    def test_same_string(self):
+        self._test(
+            """\
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="title">Unable to connect</string>
+</resources>
+""",
+            {
+                "title": "Unable to connect"
+            },
+            """\
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- The page html title (i.e. the <title> tag content) -->
+    <string name="title">Unable to connect</string>
+    </resources>
+"""
+        )
+
 
 class TestAndroidDuplicateComment(Helper, unittest.TestCase):
     name = 'strings.xml'
@@ -148,13 +168,15 @@ class TestAndroidDuplicateComment(Helper, unittest.TestCase):
     <string name="contextmenu_link_share"/>
   </resources>
 """,
-            {},
+            {
+                "contextmenu_link_share": "translation"
+            },
             """\
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
 
     <!-- Label used in the contextmenu shown when long-pressing on a link -->
-    <string name="contextmenu_link_share"/>
+    <string name="contextmenu_link_share">translation</string>
   </resources>
 """
         )

@@ -13,6 +13,7 @@ break the full parsing, and result in a single Junk entry.
 from __future__ import absolute_import
 from __future__ import unicode_literals
 
+import re
 from xml.dom import minidom
 from xml.dom.minidom import Node
 
@@ -142,6 +143,13 @@ def textContent(node):
     return node.childNodes[0].data
 
 
+NEWLINE = re.compile(r'[ \t]*\n[ \t]*')
+
+
+def normalize(val):
+    return NEWLINE.sub('\n', val.strip(' \t'))
+
+
 class AndroidParser(Parser):
     # Android does l10n fallback at runtime, don't merge en-US strings
     capabilities = CAN_SKIP
@@ -173,8 +181,9 @@ class AndroidParser(Parser):
         while child_num < len(root_children):
             node = root_children[child_num]
             if node.nodeType == Node.COMMENT_NODE:
-                current_comment = XMLComment(node.toxml(), node.nodeValue)
-                child_num += 1
+                current_comment, child_num = self.handleComment(
+                    node, root_children, child_num
+                )
                 if child_num < len(root_children):
                     node = root_children[child_num]
                 else:
@@ -188,6 +197,12 @@ class AndroidParser(Parser):
                 child_num += 1
                 if current_comment is None:
                     if not only_localizable:
+                        yield white_space
+                    continue
+                if node.nodeValue.count('\n') > 1:
+                    if not only_localizable:
+                        if current_comment is not None:
+                            yield current_comment
                         yield white_space
                     continue
                 if child_num < len(root_children):
@@ -226,3 +241,33 @@ class AndroidParser(Parser):
             )
         else:
             return XMLJunk(element.toxml())
+
+    def handleComment(self, node, root_children, child_num):
+        all = node.toxml()
+        val = normalize(node.nodeValue)
+        while True:
+            child_num += 1
+            if child_num >= len(root_children):
+                break
+            node = root_children[child_num]
+            if node.nodeType == Node.TEXT_NODE:
+                if node.nodeValue.count('\n') > 1:
+                    break
+                white = node
+                child_num += 1
+                if child_num >= len(root_children):
+                    break
+                node = root_children[child_num]
+            else:
+                white = None
+            if node.nodeType != Node.COMMENT_NODE:
+                if white is not None:
+                    # do not consume this node
+                    child_num -= 1
+                break
+            if white:
+                all += white.toxml()
+                val += normalize(white.nodeValue)
+            all += node.toxml()
+            val += normalize(node.nodeValue)
+        return XMLComment(all, val), child_num
