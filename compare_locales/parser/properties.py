@@ -48,17 +48,31 @@ class PropertiesParser(Parser):
         Parser.__init__(self)
 
     def getNext(self, ctx, offset):
+        junk_offset = offset
         # overwritten to parse values line by line
         contents = ctx.contents
 
-        m = self.reWhitespace.match(contents, offset)
-        if m:
-            return Whitespace(ctx, m.span())
-
         m = self.reComment.match(contents, offset)
         if m:
-            self.last_comment = self.Comment(ctx, m.span())
-            return self.last_comment
+            current_comment = self.Comment(ctx, m.span())
+            offset = m.end()
+        else:
+            current_comment = None
+
+        m = self.reWhitespace.match(contents, offset)
+        if m:
+            white_space = Whitespace(ctx, m.span())
+            offset = m.end()
+            if (
+                current_comment is not None
+                and white_space.raw_val.count('\n') > 1
+            ):
+                # standalone comment
+                return current_comment
+            if current_comment is None:
+                return white_space
+        else:
+            white_space = None
 
         m = self.reKey.match(contents, offset)
         if m:
@@ -83,13 +97,16 @@ class PropertiesParser(Parser):
             if ws:
                 endval = ws.start()
 
-            pre_comment = self.last_comment
-            self.last_comment = None
             entity = PropertiesEntity(
-                ctx, pre_comment,
+                ctx, current_comment, white_space,
                 (m.start(), endval),   # full span
                 m.span('key'),
                 (m.end(), endval))   # value span
             return entity
 
-        return self.getJunk(ctx, offset, self.reKey, self.reComment)
+        if current_comment is not None:
+            return current_comment
+        if white_space is not None:
+            return white_space
+
+        return self.getJunk(ctx, junk_offset, self.reKey, self.reComment)

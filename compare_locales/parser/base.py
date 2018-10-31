@@ -44,12 +44,15 @@ class EntityBase(object):
 
     <--- definition ---->
     '''
-    def __init__(self, ctx, pre_comment, span, key_span, val_span):
+    def __init__(
+        self, ctx, pre_comment, inner_white, span, key_span, val_span
+    ):
         self.ctx = ctx
         self.span = span
         self.key_span = key_span
         self.val_span = val_span
         self.pre_comment = pre_comment
+        self.inner_white = inner_white
 
     def position(self, offset=0):
         """Get the 1-based line and column of the character
@@ -78,7 +81,11 @@ class EntityBase(object):
 
     @property
     def all(self):
-        return self.ctx.contents[self.span[0]:self.span[1]]
+        start = self.span[0]
+        if hasattr(self, 'pre_comment') and self.pre_comment is not None:
+            start = self.pre_comment.span[0]
+        end = self.span[1]
+        return self.ctx.contents[start:end]
 
     @property
     def key(self):
@@ -146,7 +153,7 @@ class LiteralEntity(Entity):
     It's storing string literals for key, raw_val and all instead of spans.
     """
     def __init__(self, key, val, all):
-        super(LiteralEntity, self).__init__(None, None, None, None, None)
+        super(LiteralEntity, self).__init__(None, None, None, None, None, None)
         self._key = key
         self._raw_val = val
         self._all = all
@@ -300,7 +307,6 @@ class Parser(object):
         if not hasattr(self, 'encoding'):
             self.encoding = 'utf-8'
         self.ctx = None
-        self.last_comment = None
 
     def readFile(self, file):
         '''Read contents from disk, with universal_newlines'''
@@ -357,21 +363,49 @@ class Parser(object):
             next_offset = entity.span[1]
 
     def getNext(self, ctx, offset):
+        '''Parse the next fragment.
+
+        Parse comments first, then white-space.
+        If an entity follows, create that entity with such pre_comment and
+        inner white-space. If not, emit comment or white-space as standlone.
+        It's OK that this might parse whitespace more than once.
+        Comments are associated with entities if they're not separated by
+        blank lines. Multiple consecutive comments are joined.
+        '''
+        junk_offset = offset
+        m = self.reComment.match(ctx.contents, offset)
+        if m:
+            current_comment = self.Comment(ctx, m.span())
+            offset = m.end()
+        else:
+            current_comment = None
         m = self.reWhitespace.match(ctx.contents, offset)
         if m:
-            return Whitespace(ctx, m.span())
+            white_space = Whitespace(ctx, m.span())
+            offset = m.end()
+            if (
+                current_comment is not None
+                and white_space.raw_val.count('\n') > 1
+            ):
+                # standalone comment
+                # return the comment, and reparse the whitespace next time
+                return current_comment
+            if current_comment is None:
+                return white_space
+        else:
+            white_space = None
         m = self.reKey.match(ctx.contents, offset)
         if m:
             try:
-                return self.createEntity(ctx, m)
+                return self.createEntity(ctx, m, current_comment, white_space)
             except BadEntity:
                 # fall through to Junk, probably
                 pass
-        m = self.reComment.match(ctx.contents, offset)
-        if m:
-            self.last_comment = self.Comment(ctx, m.span())
-            return self.last_comment
-        return self.getJunk(ctx, offset, self.reKey, self.reComment)
+        if current_comment is not None:
+            return current_comment
+        if white_space is not None:
+            return white_space
+        return self.getJunk(ctx, junk_offset, self.reKey, self.reComment)
 
     def getJunk(self, ctx, offset, *expressions):
         junkend = None
@@ -381,10 +415,11 @@ class Parser(object):
                 junkend = min(junkend, m.start()) if junkend else m.start()
         return Junk(ctx, (offset, junkend or len(ctx.contents)))
 
-    def createEntity(self, ctx, m):
-        pre_comment = self.last_comment
-        self.last_comment = None
-        return Entity(ctx, pre_comment, m.span(), m.span('key'), m.span('val'))
+    def createEntity(self, ctx, m, current_comment, white_space):
+        return Entity(
+            ctx, current_comment, white_space,
+            m.span(), m.span('key'), m.span('val')
+        )
 
     @classmethod
     def findDuplicates(cls, entities):

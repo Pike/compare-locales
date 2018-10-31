@@ -9,7 +9,6 @@ import unittest
 
 from compare_locales.tests import ParserTestMixin
 from compare_locales.parser import (
-    Comment,
     Junk,
     Whitespace,
 )
@@ -33,9 +32,7 @@ class TestAndroidParser(ParserTestMixin, unittest.TestCase):
             (
                 (DocumentWrapper, '<?xml'),
                 (Whitespace, '\n  '),
-                (Comment, ' bar '),
-                (Whitespace, '\n  '),
-                ('foo', 'value'),
+                ('foo', 'value', 'bar'),
                 (Whitespace, '\n'),
                 (DocumentWrapper, '</resources>')
             )

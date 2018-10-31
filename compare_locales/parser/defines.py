@@ -31,7 +31,6 @@ class DefinesParser(Parser):
     reWhitespace = re.compile('\n+', re.M)
 
     EMPTY_LINES = 1 << 0
-    PAST_FIRST_LINE = 1 << 1
 
     class Comment(OffsetComment):
         comment_offset = 2
@@ -46,29 +45,42 @@ class DefinesParser(Parser):
         Parser.__init__(self)
 
     def getNext(self, ctx, offset):
+        junk_offset = offset
         contents = ctx.contents
+
+        m = self.reComment.match(ctx.contents, offset)
+        if m:
+            current_comment = self.Comment(ctx, m.span())
+            offset = m.end()
+        else:
+            current_comment = None
 
         m = self.reWhitespace.match(contents, offset)
         if m:
-            if ctx.state & self.EMPTY_LINES:
-                return Whitespace(ctx, m.span())
-            if ctx.state & self.PAST_FIRST_LINE and len(m.group()) == 1:
-                return Whitespace(ctx, m.span())
-            else:
+            # leading whitespace or blank lines outside of EMPTY_LINES are bad
+            if (
+                offset == 0 or
+                not (len(m.group()) == 1 or ctx.state & self.EMPTY_LINES)
+            ):
+                if current_comment:
+                    return current_comment
                 return Junk(ctx, m.span())
+            white_space = Whitespace(ctx, m.span())
+            offset = m.end()
+            if current_comment is None:
+                return white_space
+        else:
+            white_space = None
 
-        # We're not in the first line anymore.
-        ctx.state |= self.PAST_FIRST_LINE
-
-        m = self.reComment.match(contents, offset)
-        if m:
-            self.last_comment = self.Comment(ctx, m.span())
-            return self.last_comment
         m = self.reKey.match(contents, offset)
         if m:
-            return self.createEntity(ctx, m)
+            return self.createEntity(ctx, m, current_comment, white_space)
         m = self.rePI.match(contents, offset)
         if m:
+            if current_comment:
+                return current_comment
+            if white_space:
+                return white_space
             instr = DefinesInstruction(ctx, m.span(), m.span('val'))
             if instr.val == 'filter emptyLines':
                 ctx.state |= self.EMPTY_LINES
@@ -76,4 +88,4 @@ class DefinesParser(Parser):
                 ctx.state &= ~ self.EMPTY_LINES
             return instr
         return self.getJunk(
-            ctx, offset, self.reComment, self.reKey, self.rePI)
+            ctx, junk_offset, self.reComment, self.reKey, self.rePI)

@@ -105,6 +105,7 @@ class TestDTD(ParserTestMixin, unittest.TestCase):
 <!-- This Source Code Form is subject to the terms of the Mozilla Public
    - License, v. 2.0. If a copy of the MPL was not distributed with this file,
    - You can obtain one at http://mozilla.org/MPL/2.0/.  -->
+
 <!ENTITY foo "value">
 ''')
         entities = list(p.walk())
@@ -218,6 +219,37 @@ spanning lines -->  <!--
         self.assertEqual(entity.val, ' last line ')
         entity = next(entities)
         self.assertIsInstance(entity, parser.Whitespace)
+
+    def test_pre_comment(self):
+        self.parser.readContents(b'''\
+<!-- comment -->
+<!ENTITY one "string">
+
+<!-- standalone -->
+
+<!-- glued --><!ENTITY second "string">
+''')
+        entities = self.parser.walk()
+
+        entity = next(entities)
+        self.assertIsInstance(entity.pre_comment, parser.Comment)
+        self.assertEqual(entity.pre_comment.val, ' comment ')
+        entity = next(entities)
+        self.assertIsInstance(entity, parser.Whitespace)
+
+        entity = next(entities)
+        self.assertIsInstance(entity, parser.Comment)
+        self.assertEqual(entity.val, ' standalone ')
+        entity = next(entities)
+        self.assertIsInstance(entity, parser.Whitespace)
+
+        entity = next(entities)
+        self.assertIsInstance(entity.pre_comment, parser.Comment)
+        self.assertEqual(entity.pre_comment.val, ' glued ')
+        entity = next(entities)
+        self.assertIsInstance(entity, parser.Whitespace)
+        with self.assertRaises(StopIteration):
+            next(entities)
 
 
 if __name__ == '__main__':

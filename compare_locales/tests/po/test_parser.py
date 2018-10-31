@@ -8,7 +8,6 @@ import unittest
 from compare_locales.tests import ParserTestMixin
 from compare_locales.parser import (
     BadEntity,
-    Comment,
     Whitespace,
 )
 
@@ -88,8 +87,11 @@ msgstr "translated string"
             source,
             (
                 (Whitespace, '\n'),
-                (Comment, 'extracted-comments'),
-                (('untranslated string', None), 'translated string'),
+                (
+                    ('untranslated string', None),
+                    'translated string',
+                    'extracted-comments',
+                ),
                 (Whitespace, '\n'),
             )
         )

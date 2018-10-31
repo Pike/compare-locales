@@ -39,3 +39,29 @@ foo = Foo 1…
         self.assertEqual(u_output, u"""
 foo = Foo 1…
 """)
+
+    def test_repetitive(self):
+        channels = (b"""\
+# comment
+one = one
+# comment
+three = three
+""", b"""\
+# comment
+one = one
+# comment
+two = two
+# comment
+three = three
+""")
+        output = merge_channels(self.name, channels)
+        self.assertMultiLineEqual(
+            decode(output, "utf-8"),
+            """\
+# comment
+one = one
+# comment
+two = two
+three = three
+"""
+        )

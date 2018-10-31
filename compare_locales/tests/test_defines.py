@@ -69,10 +69,11 @@ class TestDefinesParser(ParserTestMixin, unittest.TestCase):
             (Whitespace, '\n\n'),
             ('MOZ_LANGPACK_CREATOR', 'mozilla.org'),
             (Whitespace, '\n\n'),
-            (Comment, 'non-English'),
-            (Whitespace, '\n'),
-            ('MOZ_LANGPACK_CONTRIBUTORS',
-             '<em:contributor>Joe Solon</em:contributor>'),
+            (
+                'MOZ_LANGPACK_CONTRIBUTORS',
+                '<em:contributor>Joe Solon</em:contributor>',
+                'non-English',
+            ),
             (Whitespace, '\n\n'),
             (DefinesInstruction, 'unfilter emptyLines'),
             (Junk, '\n\n')))
@@ -91,9 +92,7 @@ class TestDefinesParser(ParserTestMixin, unittest.TestCase):
             (Whitespace, '\n'),
             (DefinesInstruction, 'filter emptyLines'),
             (Whitespace, '\n\n'),
-            (Comment, u'češtině'),
-            (Whitespace, '\n'),
-            ('seamonkey_l10n_long', ''),
+            ('seamonkey_l10n_long', '', 'češtině'),
             (Whitespace, '\n\n'),
             (DefinesInstruction, 'unfilter emptyLines'),
             (Junk, '\n\n')))
