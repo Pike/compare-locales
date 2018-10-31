@@ -116,7 +116,6 @@ class TestAndroidSerializer(Helper, unittest.TestCase):
             """\
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- The page html title (i.e. the <title> tag content) -->
     <string name="title">Unable to connect</string>
     </resources>
 """

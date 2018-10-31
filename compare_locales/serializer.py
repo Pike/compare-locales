@@ -110,31 +110,15 @@ def sanitize_old(known_keys, old_l10n, new_data):
 
 def placeholder(entry):
     if isinstance(entry, Entity):
-        placeholder_ = PlaceholderEntity(entry.key)
-        placeholder_.pre_comment = entry.pre_comment
-        return placeholder_
+        return PlaceholderEntity(entry.key)
     return entry
 
 
 def prune_placeholders(entries):
-    pruned = []
-    for entry in entries:
-        if not isinstance(entry, PlaceholderEntity):
-            pruned.append(entry)
-            continue
-        if entry.pre_comment is not None:
-            # Prune comment of placeholder.
-            # This may not be the placeholder pre_comment object itself,
-            # but a comment with the same value (and similar position),
-            # due to how we key comments in merge_resources.
-            # Search last first, and stop if we're finding something other
-            # than Whitespace. 'Cause then we're either having a standalone
-            # comment of something real.
-            i = len(pruned) - 1
-            while i >= 0 and isinstance(pruned[i], Whitespace):
-                i -= 1
-            if i >= 0 and pruned[i].equals(entry.pre_comment):
-                del pruned[i]
+    pruned = [
+        entry for entry in entries
+        if not isinstance(entry, PlaceholderEntity)
+    ]
 
     def prune_whitespace(acc, entity):
         if len(acc) and isinstance(entity, Whitespace):

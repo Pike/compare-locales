@@ -72,7 +72,13 @@ class AndroidEntity(Entity):
                 if child.nodeType == Node.CDATA_SECTION_NODE:
                     break
         child.data = raw_val
-        return LiteralEntity(self.key, raw_val, clone.toxml())
+        all = []
+        if self.pre_comment is not None:
+            all.append(self.pre_comment.all)
+        if self.inner_white is not None:
+            all.append(self.inner_white.all)
+        all.append(clone.toxml())
+        return LiteralEntity(self.key, raw_val, ''.join(all))
 
 
 class NodeMixin(object):

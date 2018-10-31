@@ -79,11 +79,15 @@ class EntityBase(object):
             pos = self.val_span[0] + offset
         return self.ctx.linecol(pos)
 
-    @property
-    def all(self):
+    def _span_start(self):
         start = self.span[0]
         if hasattr(self, 'pre_comment') and self.pre_comment is not None:
             start = self.pre_comment.span[0]
+        return start
+
+    @property
+    def all(self):
+        start = self._span_start()
         end = self.span[1]
         return self.ctx.contents[start:end]
 
@@ -139,8 +143,9 @@ class Entity(EntityBase):
 
         This is used by the serialization logic.
         """
+        start = self._span_start()
         all = (
-            self.ctx.contents[self.span[0]:self.val_span[0]] +
+            self.ctx.contents[start:self.val_span[0]] +
             raw_val +
             self.ctx.contents[self.val_span[1]:self.span[1]]
         )
