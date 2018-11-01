@@ -102,3 +102,24 @@ class TestAndroidParser(ParserTestMixin, unittest.TestCase):
                 (Junk, 'no xml'),
             )
         )
+
+    def test_empty_strings(self):
+        source = '''\
+<?xml version="1.0" ?>
+<resources>
+  <string name="one"></string>
+  <string name="two"/>
+</resources>
+'''
+        self._test(
+            source,
+            (
+                (DocumentWrapper, '<?xml'),
+                (Whitespace, '\n  '),
+                ('one', ''),
+                (Whitespace, '\n  '),
+                ('two', ''),
+                (Whitespace, '\n'),
+                (DocumentWrapper, '</resources>')
+            )
+        )

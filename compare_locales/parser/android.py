@@ -131,6 +131,8 @@ class XMLJunk(Junk):
 
 
 def textContent(node):
+    if node.childNodes.length == 0:
+        return ''
     for child in node.childNodes:
         if child.nodeType == minidom.Node.CDATA_SECTION_NODE:
             return child.data
