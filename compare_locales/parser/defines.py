@@ -35,6 +35,11 @@ class DefinesParser(Parser):
     class Comment(OffsetComment):
         comment_offset = 2
 
+    class Context(Parser.Context):
+        def __init__(self, contents):
+            super(DefinesParser.Context, self).__init__(contents)
+            self.filter_empty_lines = False
+
     def __init__(self):
         self.reComment = re.compile('(?:^# .*?\n)*(?:^# [^\n]*)', re.M)
         # corresponds to
@@ -57,10 +62,11 @@ class DefinesParser(Parser):
 
         m = self.reWhitespace.match(contents, offset)
         if m:
-            # leading whitespace or blank lines outside of EMPTY_LINES are bad
+            # blank lines outside of filter_empty_lines or
+            # leading whitespace are bad
             if (
                 offset == 0 or
-                not (len(m.group()) == 1 or ctx.state & self.EMPTY_LINES)
+                not (len(m.group()) == 1 or ctx.filter_empty_lines)
             ):
                 if current_comment:
                     return current_comment
@@ -83,9 +89,9 @@ class DefinesParser(Parser):
                 return white_space
             instr = DefinesInstruction(ctx, m.span(), m.span('val'))
             if instr.val == 'filter emptyLines':
-                ctx.state |= self.EMPTY_LINES
+                ctx.filter_empty_lines = True
             if instr.val == 'unfilter emptyLines':
-                ctx.state &= ~ self.EMPTY_LINES
+                ctx.filter_empty_lines = False
             return instr
         return self.getJunk(
             ctx, junk_offset, self.reComment, self.reKey, self.rePI)

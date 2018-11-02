@@ -291,8 +291,7 @@ class Parser(object):
         "Fixture for content and line numbers"
         def __init__(self, contents):
             self.contents = contents
-            # Subclasses may use bitmasks to keep state.
-            self.state = 0
+            # cache split lines
             self._lines = None
 
         def linecol(self, position):
@@ -341,7 +340,7 @@ class Parser(object):
         self.readUnicode(contents)
 
     def readUnicode(self, contents):
-        self.ctx = Parser.Context(contents)
+        self.ctx = self.Context(contents)
 
     def parse(self):
         return KeyedTuple(self)
