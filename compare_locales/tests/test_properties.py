@@ -208,6 +208,24 @@ t\xa0e = three\xa0''', (
             ('t\xa0e', 'three\xa0'),
         ))
 
+    def test_pre_comment(self):
+        self._test('''\
+# comment
+one = string
+
+# standalone
+
+# glued
+second = string
+''', (
+            ('one', 'string', 'comment'),
+            (Whitespace, '\n\n'),
+            (Comment, 'standalone'),
+            (Whitespace, '\n\n'),
+            ('second', 'string', 'glued'),
+            (Whitespace, '\n'),
+        ))
+
 
 if __name__ == '__main__':
     unittest.main()

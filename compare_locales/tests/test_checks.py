@@ -265,7 +265,7 @@ class TestAndroid(unittest.TestCase):
     def getNext(self, v):
         ctx = Parser.Context(v)
         return DTDEntity(
-            ctx, '', (0, len(v)), (), (0, len(v)))
+            ctx, None, None, (0, len(v)), (), (0, len(v)))
 
     def getDTDEntity(self, v):
         if isinstance(v, six.binary_type):
@@ -273,7 +273,7 @@ class TestAndroid(unittest.TestCase):
         v = v.replace('"', '&quot;')
         ctx = Parser.Context('<!ENTITY foo "%s">' % v)
         return DTDEntity(
-            ctx, '', (0, len(v) + 16), (9, 12), (14, len(v) + 14))
+            ctx, None, None, (0, len(v) + 16), (9, 12), (14, len(v) + 14))
 
     def test_android_dtd(self):
         """Testing the actual android checks. The logic is involved,

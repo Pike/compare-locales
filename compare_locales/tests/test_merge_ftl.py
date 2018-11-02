@@ -16,7 +16,7 @@ foo = Foo 1
 foo = Foo 2
 """)
         self.assertEqual(
-            merge_channels(self.name, *channels), b"""
+            merge_channels(self.name, channels), b"""
 foo = Foo 1
 """)
 
@@ -28,7 +28,7 @@ foo = Foo 1
 foo = Foo 2
 """)
         self.assertEqual(
-            merge_channels(self.name, *channels), b"""
+            merge_channels(self.name, channels), b"""
 foo = Foo 1
     .attr = Attr 1
 """)
@@ -41,7 +41,7 @@ foo = Foo 2
     .attr = Attr 2
 """)
         self.assertEqual(
-            merge_channels(self.name, *channels), b"""
+            merge_channels(self.name, channels), b"""
 foo = Foo 1
 """)
 
@@ -54,7 +54,7 @@ foo = Foo 2
     .attr = Attr 2
 """)
         self.assertEqual(
-            merge_channels(self.name, *channels), b"""
+            merge_channels(self.name, channels), b"""
 foo = Foo 1
     .attr = Attr 1
 """)
@@ -67,7 +67,7 @@ foo = Foo 1
 foo = Foo 2
 """)
         self.assertEqual(
-            merge_channels(self.name, *channels), b"""
+            merge_channels(self.name, channels), b"""
 ## Group Comment 1
 foo = Foo 1
 """)
@@ -80,7 +80,7 @@ foo = Foo 1
 foo = Foo 2
 """)
         self.assertEqual(
-            merge_channels(self.name, *channels), b"""
+            merge_channels(self.name, channels), b"""
 ## Group Comment 2
 foo = Foo 1
 """)
@@ -94,7 +94,7 @@ foo = Foo 1
 foo = Foo 2
 """)
         self.assertEqual(
-            merge_channels(self.name, *channels), b"""
+            merge_channels(self.name, channels), b"""
 ## Group Comment 2
 ## Group Comment 1
 foo = Foo 1
@@ -110,7 +110,7 @@ foo = Foo 1
 foo = Foo 2
 """)
         self.assertEqual(
-            merge_channels(self.name, *channels), b"""
+            merge_channels(self.name, channels), b"""
 // Section Comment
 [[ Section ]]
 ## Group Comment
@@ -125,7 +125,7 @@ foo = Foo 1
 foo = Foo 2
 """)
         self.assertEqual(
-            merge_channels(self.name, *channels), b"""
+            merge_channels(self.name, channels), b"""
 # Comment 1
 foo = Foo 1
 """)
@@ -138,7 +138,7 @@ foo = Foo 1
 foo = Foo 2
 """)
         self.assertEqual(
-            merge_channels(self.name, *channels), b"""
+            merge_channels(self.name, channels), b"""
 foo = Foo 1
 """)
 
@@ -151,7 +151,7 @@ foo = Foo 1
 foo = Foo 2
 """)
         self.assertEqual(
-            merge_channels(self.name, *channels), b"""
+            merge_channels(self.name, channels), b"""
 # Comment 1
 foo = Foo 1
 """)
@@ -165,7 +165,7 @@ foo = Foo 1
 foo = Foo 2
 """)
         self.assertEqual(
-            merge_channels(self.name, *channels), b"""
+            merge_channels(self.name, channels), b"""
 foo = Foo 1
 
 # Comment 1
@@ -180,7 +180,7 @@ foo = Foo 2
 # Comment 2
 """)
         self.assertEqual(
-            merge_channels(self.name, *channels), b"""
+            merge_channels(self.name, channels), b"""
 foo = Foo 1
 
 # Comment 2
@@ -197,7 +197,7 @@ foo = Foo 2
 # Comment 2
 """)
         self.assertEqual(
-            merge_channels(self.name, *channels), b"""
+            merge_channels(self.name, channels), b"""
 foo = Foo 1
 
 # Comment 2
@@ -214,7 +214,7 @@ foo = Foo 1
 foo = Foo 2
 """)
         self.assertEqual(
-            merge_channels(self.name, *channels), b"""
+            merge_channels(self.name, channels), b"""
 ### Resource Comment 1
 
 foo = Foo 1
@@ -229,7 +229,7 @@ foo = Foo 1
 foo = Foo 2
 """)
         self.assertEqual(
-            merge_channels(self.name, *channels), b"""
+            merge_channels(self.name, channels), b"""
 ### Resource Comment 1
 
 foo = Foo 1
@@ -246,7 +246,7 @@ foo = Foo 1
 foo = Foo 2
 """)
         self.assertEqual(
-            merge_channels(self.name, *channels), b"""
+            merge_channels(self.name, channels), b"""
 ### Resource Comment 2
 
 ### Resource Comment 1
@@ -265,7 +265,7 @@ foo
     .attr = Attribute 2
 """)
         self.assertEqual(
-            merge_channels(self.name, *channels), b"""
+            merge_channels(self.name, channels), b"""
 # Comment 1
 foo =
     .attr = Attribute 1
@@ -285,7 +285,7 @@ foo
     .attr = Attribute 2
 """)
         self.assertEqual(
-            merge_channels(self.name, *channels), b"""
+            merge_channels(self.name, channels), b"""
 # Same comment
 
 foo =

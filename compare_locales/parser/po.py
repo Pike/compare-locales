@@ -64,7 +64,7 @@ class PoParser(Parser):
 
     reKey = re.compile('msgctxt|msgid')
     reValue = re.compile('(?P<white>[ \t\r\n]*)(?P<cmd>msgstr)')
-    reComment = re.compile(r'(?:#.*?\n)*')
+    reComment = re.compile(r'(?:#.*?\n)+')
     # string list item:
     # leading whitespace
     # `"`
@@ -75,7 +75,7 @@ class PoParser(Parser):
     def __init__(self):
         super(PoParser, self).__init__()
 
-    def createEntity(self, ctx, m):
+    def createEntity(self, ctx, m, current_comment, white_space):
         start = cursor = m.start()
         id_start = cursor
         try:
@@ -95,11 +95,10 @@ class PoParser(Parser):
             cursor = m.end()
         val_start = cursor
         msgstr, cursor = self._parse_string_list(ctx, cursor, 'msgstr')
-        pre_comment = self.last_comment
-        self.last_comment = None
         e = PoEntity(
             ctx,
-            pre_comment,
+            current_comment,
+            white_space,
             (start, cursor),
             (id_start, id_end),
             (val_start, cursor)
