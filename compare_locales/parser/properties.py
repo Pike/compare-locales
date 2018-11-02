@@ -55,6 +55,10 @@ class PropertiesParser(Parser):
         m = self.reComment.match(contents, offset)
         if m:
             current_comment = self.Comment(ctx, m.span())
+            if offset == 0 and 'License' in current_comment.val:
+                # Heuristic. A early comment with "License" is probably
+                # a license header, and should be standalone.
+                return current_comment
             offset = m.end()
         else:
             current_comment = None

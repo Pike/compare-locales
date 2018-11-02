@@ -380,6 +380,12 @@ class Parser(object):
         m = self.reComment.match(ctx.contents, offset)
         if m:
             current_comment = self.Comment(ctx, m.span())
+            if offset < 2 and 'License' in current_comment.val:
+                # Heuristic. A early comment with "License" is probably
+                # a license header, and should be standalone.
+                # Not glueing ourselves to offset == 0 as we might have
+                # skipped a BOM.
+                return current_comment
             offset = m.end()
         else:
             current_comment = None

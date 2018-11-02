@@ -156,6 +156,18 @@ foo = bar
             (Comment, 'LOCALIZATION NOTE'),
             (Whitespace, '\n\n\n')))
 
+    def test_standalone_license(self):
+        self._test('''\
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at http://mozilla.org/MPL/2.0/.
+foo = value
+''', (
+            (Comment, 'MPL'),
+            (Whitespace, '\n'),
+            ('foo', 'value'),
+            (Whitespace, '\n')))
+
     def test_empty_file(self):
         self._test('', tuple())
         self._test('\n', ((Whitespace, '\n'),))
