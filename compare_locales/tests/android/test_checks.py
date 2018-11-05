@@ -26,6 +26,12 @@ class SimpleStringsTest(BaseHelper):
             tuple()
         )
 
+    def test_empty_string(self):
+        self._test(
+            ANDROID_WRAPPER % b'',
+            tuple()
+        )
+
     def test_single_cdata(self):
         self._test(
             ANDROID_WRAPPER % b'<![CDATA[text]]>',

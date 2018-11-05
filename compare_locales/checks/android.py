@@ -118,6 +118,9 @@ class AndroidChecker(Checker):
             if child.nodeType == minidom.Node.CDATA_SECTION_NODE
         ]
         if len(cdata) == 0:
+            if node.childNodes.length == 0:
+                # empty translation is OK
+                return False
             if node.childNodes.length != 1:
                 return True
             return node.childNodes[0].nodeType != minidom.Node.TEXT_NODE
