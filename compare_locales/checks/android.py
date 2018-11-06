@@ -187,7 +187,7 @@ def get_params(refs):
     for ref in refs:
         if isinstance(ref, minidom.Node):
             ref = textContent(ref)
-        for m in re.finditer(r'%(?P<order>[1-9]\$)?(?P<format>s|d)', ref):
+        for m in re.finditer(r'%(?P<order>[1-9]\$)?(?P<format>[sSd])', ref):
             order = m.group('order')
             if order:
                 order = int(order[0])

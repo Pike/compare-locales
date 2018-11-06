@@ -209,6 +209,17 @@ class PrintfSTest(BaseHelper):
                 ),
             )
         )
+        self._test(
+            ANDROID_WRAPPER % b'"%S"',
+            (
+                (
+                    "error",
+                    0,
+                    "Mismatching formatter",
+                    "android"
+                ),
+            )
+        )
 
     def test_off_position(self):
         self._test(
@@ -218,6 +229,41 @@ class PrintfSTest(BaseHelper):
                     "error",
                     0,
                     "Formatter %2$s not found in reference",
+                    "android"
+                ),
+            )
+        )
+
+
+class PrintfCapSTest(BaseHelper):
+    file = File('values/strings.xml', 'values/strings.xml')
+    refContent = ANDROID_WRAPPER % b'%S'
+
+    def test_match(self):
+        self._test(
+            ANDROID_WRAPPER % b'"%S"',
+            tuple()
+        )
+
+    def test_mismatch(self):
+        self._test(
+            ANDROID_WRAPPER % b'"%s"',
+            (
+                (
+                    "error",
+                    0,
+                    "Mismatching formatter",
+                    "android"
+                ),
+            )
+        )
+        self._test(
+            ANDROID_WRAPPER % b'"%d"',
+            (
+                (
+                    "error",
+                    0,
+                    "Mismatching formatter",
                     "android"
                 ),
             )
@@ -249,6 +295,17 @@ class PrintfDTest(BaseHelper):
     def test_mismatch(self):
         self._test(
             ANDROID_WRAPPER % b'"%s"',
+            (
+                (
+                    "error",
+                    0,
+                    "Mismatching formatter",
+                    "android"
+                ),
+            )
+        )
+        self._test(
+            ANDROID_WRAPPER % b'"%S"',
             (
                 (
                     "error",
