@@ -167,10 +167,18 @@ class FluentParser(Parser):
                 end = entry.span.end
                 # strip leading whitespace
                 start += re.match('[ \t\r\n]*', entry.content).end()
+                if not only_localizable and entry.span.start < start:
+                    yield Whitespace(
+                        self.ctx, (entry.span.start, start)
+                    )
                 # strip trailing whitespace
                 ws, we = re.search('[ \t\r\n]*$', entry.content).span()
                 end -= we - ws
                 yield Junk(self.ctx, (start, end))
+                if not only_localizable and end < entry.span.end:
+                    yield Whitespace(
+                        self.ctx, (end, entry.span.end)
+                    )
             elif isinstance(entry, ftl.BaseComment) and not only_localizable:
                 span = (entry.span.start, entry.span.end)
                 yield FluentComment(self.ctx, span, entry)

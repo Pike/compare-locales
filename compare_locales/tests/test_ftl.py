@@ -344,3 +344,42 @@ baz = Baz
 
         with self.assertRaises(StopIteration):
             next(entities)
+
+    def test_junk(self):
+        self.parser.readUnicode('''\
+# Comment
+
+Line of junk
+
+# Comment
+msg = value
+''')
+        entities = self.parser.walk()
+
+        entity = next(entities)
+        self.assertTrue(isinstance(entity,  parser.FluentComment))
+        self.assertEqual(entity.val, 'Comment')
+
+        entity = next(entities)
+        self.assertTrue(isinstance(entity, parser.Whitespace))
+        self.assertEqual(entity.val, '\n\n')
+
+        entity = next(entities)
+        self.assertTrue(isinstance(entity,  parser.Junk))
+        self.assertEqual(entity.val, 'Line of junk')
+
+        entity = next(entities)
+        self.assertTrue(isinstance(entity, parser.Whitespace))
+        self.assertEqual(entity.val, '\n\n')
+
+        entity = next(entities)
+        self.assertTrue(isinstance(entity, parser.FluentEntity))
+        self.assertEqual(entity.val, 'value')
+        self.assertEqual(entity.entry.comment.content, 'Comment')
+
+        entity = next(entities)
+        self.assertTrue(isinstance(entity, parser.Whitespace))
+        self.assertEqual(entity.val, '\n')
+
+        with self.assertRaises(StopIteration):
+            next(entities)

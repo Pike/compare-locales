@@ -45,6 +45,34 @@ foo = Foo 2
 foo = Foo 1
 """)
 
+    def test_junk_in_first(self):
+        channels = (b"""\
+line of junk
+""", b"""\
+one = entry
+""")
+        self.assertMultiLineEqual(
+            merge_channels(self.name, channels).decode('utf-8'),
+            """\
+one = entry
+line of junk
+"""
+        )
+
+    def test_junk_in_last(self):
+        channels = (b"""\
+one = entry
+""", b"""\
+line of junk
+""")
+        self.assertMultiLineEqual(
+            merge_channels(self.name, channels).decode('utf-8'),
+            """\
+line of junk
+one = entry
+"""
+        )
+
     def test_attribute_changed(self):
         channels = (b"""
 foo = Foo 1
