@@ -73,6 +73,13 @@ class DefinesParser(Parser):
                 return Junk(ctx, m.span())
             white_space = Whitespace(ctx, m.span())
             offset = m.end()
+            if (
+                current_comment is not None
+                and white_space.raw_val.count('\n') > 1
+            ):
+                # standalone comment
+                # return the comment, and reparse the whitespace next time
+                return current_comment
             if current_comment is None:
                 return white_space
         else:
@@ -81,12 +88,14 @@ class DefinesParser(Parser):
         m = self.reKey.match(contents, offset)
         if m:
             return self.createEntity(ctx, m, current_comment, white_space)
+        # defines instructions don't have comments
+        # Any pending commment is standalone
+        if current_comment:
+            return current_comment
+        if white_space:
+            return white_space
         m = self.rePI.match(contents, offset)
         if m:
-            if current_comment:
-                return current_comment
-            if white_space:
-                return white_space
             instr = DefinesInstruction(ctx, m.span(), m.span('val'))
             if instr.val == 'filter emptyLines':
                 ctx.filter_empty_lines = True

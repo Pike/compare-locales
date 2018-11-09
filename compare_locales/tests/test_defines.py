@@ -193,6 +193,36 @@ class TestDefinesParser(ParserTestMixin, unittest.TestCase):
             ('tre', '  '),
             (Whitespace, '\n'),))
 
+    def test_standalone_comments(self):
+        self._test(
+            '''\
+#filter emptyLines
+# One comment
+
+# Second comment
+
+#define foo
+# bar comment
+#define bar
+
+#unfilter emptyLines
+''',
+            (
+                (DefinesInstruction, 'filter emptyLines'),
+                (Whitespace, '\n'),
+                (Comment, 'One comment'),
+                (Whitespace, '\n\n'),
+                (Comment, 'Second comment'),
+                (Whitespace, '\n\n'),
+                ('foo', ''),
+                (Whitespace, '\n'),
+                ('bar', '', 'bar comment'),
+                (Whitespace, '\n\n'),
+                (DefinesInstruction, 'unfilter emptyLines'),
+                (Whitespace, '\n'),
+            )
+        )
+
 
 if __name__ == '__main__':
     unittest.main()
