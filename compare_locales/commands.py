@@ -8,7 +8,7 @@ from __future__ import absolute_import
 from __future__ import print_function
 import logging
 from argparse import ArgumentParser
-import json
+from json import dump as json_dump
 import os
 import sys
 
@@ -20,14 +20,14 @@ from compare_locales.compare import compareProjects
 
 class CompareLocales(object):
     """Check the localization status of gecko applications.
-The first arguments are paths to the l10n.ini or toml files for the
+The first arguments are paths to the l10n.toml or ini files for the
 applications, followed by the base directory of the localization repositories.
 Then you pass in the list of locale codes you want to compare. If there are
-not locales given, the list of locales will be taken from the l10n.toml file
+no locales given, the list of locales will be taken from the l10n.toml file
 or the all-locales file referenced by the application\'s l10n.ini."""
 
     def __init__(self):
-        self.parser = None
+        self.parser = self.get_parser()
 
     def get_parser(self):
         """Get an ArgumentParser, with class docstring as description.
@@ -39,8 +39,8 @@ or the all-locales file referenced by the application\'s l10n.ini."""
                             default=0, help='Make more noise')
         parser.add_argument('-q', '--quiet', action='count',
                             default=0, help='''Show less data.
-Specified once, doesn't obsolete entities. Specified twice, also drops
-missing entities. Specify thrice to warnings and four time to
+Specified once, don't show obsolete entities. Specified twice, also hide
+missing entities. Specify thrice to exclude warnings and four times to
 just show stats''')
         parser.add_argument('--validate', action='store_true',
                             help='Run compare-locales against reference')
@@ -54,11 +54,15 @@ use {ab_CD} to specify a different directory for each locale''')
         parser.add_argument('locales', nargs='*', metavar='locale-code',
                             help='Locale code and top-level directory of '
                                  'each localization')
+        parser.add_argument('--json',
+                            help='''Serialize to JSON. Value is the name of
+the output file, pass "-" to serialize to stdout and hide the default output.
+''')
         parser.add_argument('-D', action='append', metavar='var=value',
                             default=[], dest='defines',
                             help='Overwrite variables in TOML files')
         parser.add_argument('--full', action="store_true",
-                            help="Compare projects that are disabled")
+                            help="Compare sub-projects that are disabled")
         parser.add_argument('--return-zero', action="store_true",
                             help="Return 0 regardless of l10n status")
         parser.add_argument('--clobber-merge', action="store_true",
@@ -68,10 +72,6 @@ Use this option with care. If specified, the merge directory will
 be clobbered for each module. That means, the subdirectory will
 be completely removed, any files that were there are lost.
 Be careful to specify the right merge directory when using this option.""")
-        parser.add_argument('--json',
-                            help='''Serialize to json. Use - to serialize
-to stdout and to hide the default text output.
-''')
         return parser
 
     @classmethod
@@ -81,27 +81,46 @@ to stdout and to hide the default text output.
         subclasses.
         """
         cmd = cls()
-        return cmd.handle()
+        args = cmd.parser.parse_args()
+        return cmd.handle(**vars(args))
 
-    def handle(self):
-        """The instance part of the classmethod call."""
-        self.parser = self.get_parser()
-        args = self.parser.parse_args()
+    def handle(
+        self,
+        quiet=0, verbose=0,
+        validate=False,
+        merge=None,
+        config_paths=[], l10n_base_dir=None, locales=[],
+        defines=[],
+        full=False,
+        return_zero=False,
+        clobber=False,
+        json=None,
+    ):
+        """The instance part of the classmethod call.
+
+        Using keyword arguments as that is what we need for mach
+        commands in mozilla-central.
+        """
         # log as verbose or quiet as we want, warn by default
-        logging_level = logging.WARNING - (args.verbose - args.quiet) * 10
+        logging_level = logging.WARNING - (verbose - quiet) * 10
         logging.basicConfig()
         logging.getLogger().setLevel(logging_level)
 
-        config_paths, l10n_base_dir, locales = self.extract_positionals(args)
+        config_paths, l10n_base_dir, locales = self.extract_positionals(
+            validate=validate,
+            config_paths=config_paths,
+            l10n_base_dir=l10n_base_dir,
+            locales=locales,
+        )
 
         # when we compare disabled projects, we set our locales
         # on all subconfigs, so deep is True.
-        locales_deep = args.full
+        locales_deep = full
         configs = []
         config_env = {
             'l10n_base': l10n_base_dir
         }
-        for define in args.defines:
+        for define in defines:
             var, _, value = define.partition('=')
             config_env[var] = value
         for config_path in config_paths:
@@ -121,13 +140,13 @@ to stdout and to hide the default text output.
             observers = compareProjects(
                 configs,
                 l10n_base_dir,
-                quiet=args.quiet,
-                merge_stage=args.merge, clobber_merge=args.clobber)
+                quiet=quiet,
+                merge_stage=merge, clobber_merge=clobber)
         except (OSError, IOError) as exc:
             print("FAIL: " + str(exc))
             self.parser.exit(2)
 
-        if args.json is None or args.json != '-':
+        if json is None or json != '-':
             details = observers.serializeDetails()
             if details:
                 print(details)
@@ -139,24 +158,28 @@ to stdout and to hide the default text output.
                     print("  " + config_path)
                 print("    and the union of these, counting each string once")
             print(observers.serializeSummaries())
-        if args.json is not None:
+        if json is not None:
             data = [observer.toJSON() for observer in observers]
-            stdout = args.json == '-'
+            stdout = json == '-'
             indent = 1 if stdout else None
-            fh = sys.stdout if stdout else open(args.json, 'w')
-            json.dump(data, fh, sort_keys=True, indent=indent)
+            fh = sys.stdout if stdout else open(json, 'w')
+            json_dump(data, fh, sort_keys=True, indent=indent)
             if stdout:
                 fh.write('\n')
             fh.close()
-        rv = 1 if observers.error else 0
+        rv = 1 if not return_zero and observers.error else 0
         return rv
 
-    def extract_positionals(self, args):
+    def extract_positionals(
+        self,
+        validate=False,
+        config_paths=[], l10n_base_dir=None, locales=[],
+    ):
         # using nargs multiple times in argparser totally screws things
         # up, repair that.
         # First files are configs, then the base dir, everything else is
         # locales
-        all_args = args.config_paths + [args.l10n_base_dir] + args.locales
+        all_args = config_paths + [l10n_base_dir] + locales
         config_paths = []
         # The first directory is our l10n base, split there.
         while all_args and not os.path.isdir(all_args[0]):
@@ -169,7 +192,7 @@ to stdout and to hide the default text output.
         if not all_args:
             self.parser.error('l10n-base-dir not found')
         l10n_base_dir = mozpath.abspath(all_args.pop(0))
-        if args.validate:
+        if validate:
             # signal validation mode by setting locale list to [None]
             locales = [None]
         else:

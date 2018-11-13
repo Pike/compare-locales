@@ -173,6 +173,7 @@ class ObserverList(Observer):
                     )
         keys = (
             'errors',
+            'warnings',
             'missing', 'missing_w',
             'obsolete', 'obsolete_w',
             'changed', 'changed_w',
