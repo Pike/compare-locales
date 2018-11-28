@@ -8,6 +8,7 @@ import six
 import unittest
 
 from compare_locales.paths.matcher import Matcher, ANDROID_STANDARD_MAP
+from . import Rooted
 
 
 class TestMatcher(unittest.TestCase):
@@ -387,32 +388,53 @@ class TestAndroid(unittest.TestCase):
             )
 
 
-class TestRootedMatcher(unittest.TestCase):
+class TestRootedMatcher(Rooted, unittest.TestCase):
     def test_root_path(self):
-        one = Matcher('some/path', root='/rooted/dir')
+        one = Matcher('some/path', root=self.root)
         self.assertIsNone(one.match('some/path'))
-        self.assertIsNotNone(one.match('/rooted/dir/some/path'))
+        self.assertIsNotNone(one.match(self.path('/some/path')))
 
     def test_copy(self):
-        one = Matcher('some/path', root='/rooted/dir')
-        other = Matcher(one, root='/different-rooted/dir')
+        one = Matcher('some/path', root=self.path('/one-root'))
+        other = Matcher(one, root=self.path('/different-root'))
         self.assertIsNone(other.match('some/path'))
-        self.assertIsNone(other.match('/rooted/dir/some/path'))
-        self.assertIsNotNone(other.match('/different-rooted/dir/some/path'))
+        self.assertIsNone(
+            other.match(self.path('/one-root/some/path'))
+        )
+        self.assertIsNotNone(
+            other.match(self.path('/different-root/some/path'))
+        )
 
     def test_rooted(self):
-        one = Matcher('/rooted/full/path', root='/different-root')
-        self.assertIsNone(one.match('/different-root/rooted/full/path'))
-        self.assertIsNotNone(one.match('/rooted/full/path'))
+        r1 = self.path('/one-root')
+        r2 = self.path('/other-root')
+        one = Matcher(self.path('/one-root/full/path'), root=r2)
+        self.assertIsNone(one.match(self.path('/other-root/full/path')))
+        # concat r2 and r1. r1 is absolute, so we gotta trick that
+        concat_root = r2
+        if not r1.startswith('/'):
+            # windows absolute paths don't start with '/', add one
+            concat_root += '/'
+        concat_root += r1
+        self.assertIsNone(one.match(concat_root + '/full/path'))
+        self.assertIsNotNone(one.match(self.path('/one-root/full/path')))
 
     def test_variable(self):
+        r1 = self.path('/one-root')
+        r2 = self.path('/other-root')
         one = Matcher(
             '{var}/path',
             env={'var': 'relative-dir'},
-            root='/rooted/dir'
+            root=r1
         )
         self.assertIsNone(one.match('relative-dir/path'))
-        self.assertIsNotNone(one.match('/rooted/dir/relative-dir/path'))
-        other = Matcher(one, env={'var': '/different/rooted-dir'})
-        self.assertIsNone(other.match('/rooted/dir/relative-dir/path'))
-        self.assertIsNotNone(other.match('/different/rooted-dir/path'))
+        self.assertIsNotNone(
+            one.match(self.path('/one-root/relative-dir/path'))
+        )
+        other = Matcher(one, env={'var': r2})
+        self.assertIsNone(
+            other.match(self.path('/one-root/relative-dir/path'))
+        )
+        self.assertIsNotNone(
+            other.match(self.path('/other-root/path'))
+        )

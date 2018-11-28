@@ -5,11 +5,21 @@
 
 from __future__ import absolute_import
 
+import tempfile
 from compare_locales.paths import (
     ProjectConfig, File, ProjectFiles, TOMLParser
 )
 from compare_locales import mozpath
 import pytoml as toml
+
+
+class Rooted(object):
+    def setUp(self):
+        # Use tempdir as self.root, that's absolute on all platforms
+        self.root = mozpath.normpath(tempfile.gettempdir())
+
+    def path(self, leaf=''):
+        return self.root + leaf
 
 
 class SetupMixin(object):

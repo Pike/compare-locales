@@ -12,125 +12,161 @@ from compare_locales.paths import (
 from . import (
     MockProjectFiles,
     MockTOMLParser,
+    Rooted,
 )
 
 
-class TestProjectPaths(unittest.TestCase):
+class TestProjectPaths(Rooted, unittest.TestCase):
     def test_l10n_path(self):
         cfg = ProjectConfig(None)
-        cfg.add_environment(l10n_base='/tmp')
+        cfg.add_environment(l10n_base=self.root)
         cfg.locales.append('de')
         cfg.add_paths({
             'l10n': '{l10n_base}/{locale}/*'
         })
         mocks = [
-            '/tmp/de/good.ftl',
-            '/tmp/de/not/subdir/bad.ftl',
-            '/tmp/fr/good.ftl',
-            '/tmp/fr/not/subdir/bad.ftl',
+            self.path(leaf)
+            for leaf in (
+                '/de/good.ftl',
+                '/de/not/subdir/bad.ftl',
+                '/fr/good.ftl',
+                '/fr/not/subdir/bad.ftl',
+            )
         ]
         files = MockProjectFiles(mocks, 'de', [cfg])
         self.assertListEqual(
-            list(files), [('/tmp/de/good.ftl', None, None, set())])
+            list(files),
+            [
+                (self.path('/de/good.ftl'), None, None, set())
+            ]
+        )
         self.assertTupleEqual(
-            files.match('/tmp/de/something.ftl'),
-            ('/tmp/de/something.ftl', None, None, set()))
-        self.assertIsNone(files.match('/tmp/fr/something.ftl'))
+            files.match(self.path('/de/good.ftl')),
+            (self.path('/de/good.ftl'), None, None, set())
+        )
+        self.assertIsNone(files.match(self.path('/fr/something.ftl')))
         files = MockProjectFiles(mocks, 'de', [cfg], mergebase='merging')
         self.assertListEqual(
             list(files),
-            [('/tmp/de/good.ftl', None, 'merging/de/good.ftl', set())])
+            [
+                (self.path('/de/good.ftl'), None, 'merging/de/good.ftl', set())
+            ]
+        )
         self.assertTupleEqual(
-            files.match('/tmp/de/something.ftl'),
-            ('/tmp/de/something.ftl', None, 'merging/de/something.ftl', set()))
+            files.match(self.path('/de/something.ftl')),
+            (self.path('/de/something.ftl'),
+             None,
+             'merging/de/something.ftl',
+             set()))
         # 'fr' is not in the locale list, should return no files
         files = MockProjectFiles(mocks, 'fr', [cfg])
         self.assertListEqual(list(files), [])
 
     def test_single_reference_path(self):
         cfg = ProjectConfig(None)
-        cfg.add_environment(l10n_base='/tmp/l10n')
+        cfg.add_environment(l10n_base=self.path('/l10n'))
         cfg.locales.append('de')
         cfg.add_paths({
             'l10n': '{l10n_base}/{locale}/good.ftl',
-            'reference': '/tmp/reference/good.ftl'
+            'reference': self.path('/reference/good.ftl')
         })
         mocks = [
-            '/tmp/reference/good.ftl',
-            '/tmp/reference/not/subdir/bad.ftl',
+            self.path('/reference/good.ftl'),
+            self.path('/reference/not/subdir/bad.ftl'),
         ]
         files = MockProjectFiles(mocks, 'de', [cfg])
         self.assertListEqual(
             list(files),
             [
-                ('/tmp/l10n/de/good.ftl', '/tmp/reference/good.ftl', None,
+                (self.path('/l10n/de/good.ftl'),
+                 self.path('/reference/good.ftl'),
+                 None,
                  set()),
             ])
         self.assertTupleEqual(
-            files.match('/tmp/reference/good.ftl'),
-            ('/tmp/l10n/de/good.ftl', '/tmp/reference/good.ftl', None,
+            files.match(self.path('/reference/good.ftl')),
+            (self.path('/l10n/de/good.ftl'),
+             self.path('/reference/good.ftl'),
+             None,
              set()),
             )
         self.assertTupleEqual(
-            files.match('/tmp/l10n/de/good.ftl'),
-            ('/tmp/l10n/de/good.ftl', '/tmp/reference/good.ftl', None,
+            files.match(self.path('/l10n/de/good.ftl')),
+            (self.path('/l10n/de/good.ftl'),
+             self.path('/reference/good.ftl'),
+             None,
              set()),
             )
 
     def test_reference_path(self):
         cfg = ProjectConfig(None)
-        cfg.add_environment(l10n_base='/tmp/l10n')
+        cfg.add_environment(l10n_base=self.path('/l10n'))
         cfg.locales.append('de')
         cfg.add_paths({
             'l10n': '{l10n_base}/{locale}/*',
-            'reference': '/tmp/reference/*'
+            'reference': self.path('/reference/*')
         })
         mocks = [
-            '/tmp/l10n/de/good.ftl',
-            '/tmp/l10n/de/not/subdir/bad.ftl',
-            '/tmp/l10n/fr/good.ftl',
-            '/tmp/l10n/fr/not/subdir/bad.ftl',
-            '/tmp/reference/ref.ftl',
-            '/tmp/reference/not/subdir/bad.ftl',
+            self.path(leaf)
+            for leaf in [
+                '/l10n/de/good.ftl',
+                '/l10n/de/not/subdir/bad.ftl',
+                '/l10n/fr/good.ftl',
+                '/l10n/fr/not/subdir/bad.ftl',
+                '/reference/ref.ftl',
+                '/reference/not/subdir/bad.ftl',
+            ]
         ]
         files = MockProjectFiles(mocks, 'de', [cfg])
         self.assertListEqual(
             list(files),
             [
-                ('/tmp/l10n/de/good.ftl', '/tmp/reference/good.ftl', None,
+                (self.path('/l10n/de/good.ftl'),
+                 self.path('/reference/good.ftl'),
+                 None,
                  set()),
-                ('/tmp/l10n/de/ref.ftl', '/tmp/reference/ref.ftl', None,
+                (self.path('/l10n/de/ref.ftl'),
+                 self.path('/reference/ref.ftl'),
+                 None,
                  set()),
             ])
         self.assertTupleEqual(
-            files.match('/tmp/l10n/de/good.ftl'),
-            ('/tmp/l10n/de/good.ftl', '/tmp/reference/good.ftl', None,
+            files.match(self.path('/l10n/de/good.ftl')),
+            (self.path('/l10n/de/good.ftl'),
+             self.path('/reference/good.ftl'),
+             None,
              set()),
             )
         self.assertTupleEqual(
-            files.match('/tmp/reference/good.ftl'),
-            ('/tmp/l10n/de/good.ftl', '/tmp/reference/good.ftl', None,
+            files.match(self.path('/reference/good.ftl')),
+            (self.path('/l10n/de/good.ftl'),
+             self.path('/reference/good.ftl'),
+             None,
              set()),
             )
-        self.assertIsNone(files.match('/tmp/l10n/de/subdir/bad.ftl'))
-        self.assertIsNone(files.match('/tmp/reference/subdir/bad.ftl'))
+        self.assertIsNone(files.match(self.path('/l10n/de/subdir/bad.ftl')))
+        self.assertIsNone(files.match(self.path('/reference/subdir/bad.ftl')))
         files = MockProjectFiles(mocks, 'de', [cfg], mergebase='merging')
         self.assertListEqual(
             list(files),
             [
-                ('/tmp/l10n/de/good.ftl', '/tmp/reference/good.ftl',
+                (self.path('/l10n/de/good.ftl'),
+                 self.path('/reference/good.ftl'),
                  'merging/de/good.ftl', set()),
-                ('/tmp/l10n/de/ref.ftl', '/tmp/reference/ref.ftl',
+                (self.path('/l10n/de/ref.ftl'),
+                 self.path('/reference/ref.ftl'),
                  'merging/de/ref.ftl', set()),
             ])
         self.assertTupleEqual(
-            files.match('/tmp/l10n/de/good.ftl'),
-            ('/tmp/l10n/de/good.ftl', '/tmp/reference/good.ftl',
+            files.match(self.path('/l10n/de/good.ftl')),
+            (self.path('/l10n/de/good.ftl'),
+             self.path('/reference/good.ftl'),
              'merging/de/good.ftl', set()),
             )
         self.assertTupleEqual(
-            files.match('/tmp/reference/good.ftl'),
-            ('/tmp/l10n/de/good.ftl', '/tmp/reference/good.ftl',
+            files.match(self.path('/reference/good.ftl')),
+            (self.path('/l10n/de/good.ftl'),
+             self.path('/reference/good.ftl'),
              'merging/de/good.ftl', set()),
             )
         # 'fr' is not in the locale list, should return no files
@@ -141,66 +177,74 @@ class TestProjectPaths(unittest.TestCase):
         cfg = ProjectConfig(None)
         cfg.locales.extend(['de', 'fr'])
         cfg.add_paths({
-            'l10n': '/tmp/{locale}/major/*'
+            'l10n': self.path('/{locale}/major/*')
         }, {
-            'l10n': '/tmp/{locale}/minor/*',
+            'l10n': self.path('/{locale}/minor/*'),
             'locales': ['de']
         })
         mocks = [
-            '/tmp/de/major/good.ftl',
-            '/tmp/de/major/not/subdir/bad.ftl',
-            '/tmp/de/minor/good.ftl',
-            '/tmp/fr/major/good.ftl',
-            '/tmp/fr/major/not/subdir/bad.ftl',
-            '/tmp/fr/minor/good.ftl',
+            self.path(leaf)
+            for leaf in [
+                '/de/major/good.ftl',
+                '/de/major/not/subdir/bad.ftl',
+                '/de/minor/good.ftl',
+                '/fr/major/good.ftl',
+                '/fr/major/not/subdir/bad.ftl',
+                '/fr/minor/good.ftl',
+            ]
         ]
         files = MockProjectFiles(mocks, 'de', [cfg])
         self.assertListEqual(
             list(files),
             [
-                ('/tmp/de/major/good.ftl', None, None, set()),
-                ('/tmp/de/minor/good.ftl', None, None, set()),
+                (self.path('/de/major/good.ftl'), None, None, set()),
+                (self.path('/de/minor/good.ftl'), None, None, set()),
             ])
         self.assertTupleEqual(
-            files.match('/tmp/de/major/some.ftl'),
-            ('/tmp/de/major/some.ftl', None, None, set()))
-        self.assertIsNone(files.match('/tmp/de/other/some.ftl'))
+            files.match(self.path('/de/major/some.ftl')),
+            (self.path('/de/major/some.ftl'), None, None, set()))
+        self.assertIsNone(files.match(self.path('/de/other/some.ftl')))
         # 'fr' is not in the locale list of minor, should only return major
         files = MockProjectFiles(mocks, 'fr', [cfg])
         self.assertListEqual(
             list(files),
             [
-                ('/tmp/fr/major/good.ftl', None, None, set()),
+                (self.path('/fr/major/good.ftl'), None, None, set()),
             ])
-        self.assertIsNone(files.match('/tmp/fr/minor/some.ftl'))
+        self.assertIsNone(files.match(self.path('/fr/minor/some.ftl')))
 
     def test_validation_mode(self):
         cfg = ProjectConfig(None)
-        cfg.add_environment(l10n_base='/tmp/l10n')
+        cfg.add_environment(l10n_base=self.path('/l10n'))
         cfg.locales.append('de')
         cfg.add_paths({
             'l10n': '{l10n_base}/{locale}/*',
-            'reference': '/tmp/reference/*'
+            'reference': self.path('/reference/*')
         })
         mocks = [
-            '/tmp/l10n/de/good.ftl',
-            '/tmp/l10n/de/not/subdir/bad.ftl',
-            '/tmp/l10n/fr/good.ftl',
-            '/tmp/l10n/fr/not/subdir/bad.ftl',
-            '/tmp/reference/ref.ftl',
-            '/tmp/reference/not/subdir/bad.ftl',
+            self.path(leaf)
+            for leaf in [
+                '/l10n/de/good.ftl',
+                '/l10n/de/not/subdir/bad.ftl',
+                '/l10n/fr/good.ftl',
+                '/l10n/fr/not/subdir/bad.ftl',
+                '/reference/ref.ftl',
+                '/reference/not/subdir/bad.ftl',
+            ]
         ]
         # `None` switches on validation mode
         files = MockProjectFiles(mocks, None, [cfg])
         self.assertListEqual(
             list(files),
             [
-                ('/tmp/reference/ref.ftl', '/tmp/reference/ref.ftl', None,
+                (self.path('/reference/ref.ftl'),
+                 self.path('/reference/ref.ftl'),
+                 None,
                  set()),
             ])
 
 
-class TestL10nMerge(unittest.TestCase):
+class TestL10nMerge(Rooted, unittest.TestCase):
     # need to go through TOMLParser, as that's handling most of the
     # environment
     def test_merge_paths(self):
@@ -218,25 +262,30 @@ locales = [
     l10n = "{l}*"
 '''})
         cfg = parser.parse(
-            '/tmp/base.toml',
-            env={'l10n_base': '/tmp/l10n'}
+            self.path('/base.toml'),
+            env={'l10n_base': self.path('/l10n')}
         )
         mocks = [
-            '/tmp/l10n/de/good.ftl',
-            '/tmp/l10n/de/not/subdir/bad.ftl',
-            '/tmp/l10n/fr/good.ftl',
-            '/tmp/l10n/fr/not/subdir/bad.ftl',
-            '/tmp/reference/ref.ftl',
-            '/tmp/reference/not/subdir/bad.ftl',
+            self.path(leaf)
+            for leaf in [
+                '/l10n/de/good.ftl',
+                '/l10n/de/not/subdir/bad.ftl',
+                '/l10n/fr/good.ftl',
+                '/l10n/fr/not/subdir/bad.ftl',
+                '/reference/ref.ftl',
+                '/reference/not/subdir/bad.ftl',
+            ]
         ]
-        files = MockProjectFiles(mocks, 'de', [cfg], '/tmp/mergers')
+        files = MockProjectFiles(mocks, 'de', [cfg], self.path('/mergers'))
         self.assertListEqual(
             list(files),
             [
-                ('/tmp/l10n/de/good.ftl', '/tmp/reference/good.ftl',
-                 '/tmp/mergers/de/good.ftl',
+                (self.path('/l10n/de/good.ftl'),
+                 self.path('/reference/good.ftl'),
+                 self.path('/mergers/de/good.ftl'),
                  set()),
-                ('/tmp/l10n/de/ref.ftl', '/tmp/reference/ref.ftl',
-                 '/tmp/mergers/de/ref.ftl',
+                (self.path('/l10n/de/ref.ftl'),
+                 self.path('/reference/ref.ftl'),
+                 self.path('/mergers/de/ref.ftl'),
                  set()),
             ])
