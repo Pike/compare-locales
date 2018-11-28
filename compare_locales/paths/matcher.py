@@ -3,6 +3,7 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 from __future__ import absolute_import
+import os
 import re
 import itertools
 from compare_locales import mozpath
@@ -202,7 +203,7 @@ class Pattern(list, Node):
         if self.root is not None:
             # make sure we're not hiding a full path
             first_seg = self[0].expand(env)
-            if not first_seg.startswith('/'):
+            if not os.path.isabs(first_seg):
                 root = re.escape(self.root)
         return root + ''.join(
             child.regex_pattern(env) for child in self
@@ -213,7 +214,7 @@ class Pattern(list, Node):
         if self.root is not None:
             # make sure we're not hiding a full path
             first_seg = self[0].expand(env)
-            if not first_seg.startswith('/'):
+            if not os.path.isabs(first_seg):
                 root = self.root
         return root + ''.join(self._expand_children(env, raise_missing))
 
