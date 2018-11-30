@@ -1,19 +1,43 @@
 sudo: false
 language: python
+python:
+  - 2.7
+  - 3.5
+  - 3.6
+  - 3.7
+dist: xenial
 matrix:
-    include:
-        - python: 2.7
-          dist: trusty
-          sudo: false
-        - python: 3.5
-          dist: trusty
-          sudo: false
-        - python: 3.6
-          dist: trusty
-          sudo: false
-        - python: 3.7
-          dist: xenial
-          sudo: true
+  include:
+    - os: windows
+      language: sh
+      python: "2.7"
+      before_install:
+        - choco install python2
+        - export PATH="/c/Python27:/c/Python27/Scripts:$PATH"
+        - python -m pip install --upgrade pip wheel
+      script:
+        - python -V
+        - python -B setup.py test
+    - os: windows
+      language: sh
+      python: "3.6"
+      before_install:
+        - choco install python3 --version 3.6.7
+        - export PATH="/c/Python36:/c/Python36/Scripts:$PATH"
+        - python -m pip install --upgrade pip wheel
+      script:
+        - python -V
+        - python -B setup.py test
+    - os: windows
+      language: sh
+      python: "3.7"
+      before_install:
+        - choco install python3 --version 3.7.1
+        - export PATH="/c/Python37:/c/Python37/Scripts:$PATH"
+        - python -m pip install --upgrade pip wheel
+      script:
+        - python -V
+        - python -B setup.py test
 env:
   - TOX_ENV=py27
 install: pip install tox-travis
