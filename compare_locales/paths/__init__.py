@@ -3,7 +3,6 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 from __future__ import absolute_import
-import warnings
 from compare_locales import mozpath
 from .files import ProjectFiles, REFERENCE_LOCALE
 from .ini import (
@@ -33,14 +32,6 @@ class File(object):
         self.module = module
         self.locale = locale
         pass
-
-    def getContents(self):
-        # open with universal line ending support and read
-        # ignore universal newlines deprecation
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            with open(self.fullpath, 'rbU') as f:
-                return f.read()
 
     @property
     def localpath(self):

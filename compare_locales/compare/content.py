@@ -142,13 +142,13 @@ class ContentComparer:
                 parser.CAN_COPY, None)
             return
         try:
-            p.readContents(ref_file.getContents())
+            p.readFile(ref_file)
         except Exception as e:
             self.observers.notify('error', ref_file, str(e))
             return
         ref_entities = p.parse()
         try:
-            p.readContents(l10n.getContents())
+            p.readFile(l10n)
             l10n_entities = p.parse()
             l10n_ctx = p.ctx
         except Exception as e:
@@ -286,7 +286,7 @@ class ContentComparer:
             return
 
         try:
-            p.readContents(f.getContents())
+            p.readFile(f)
             entities = p.parse()
         except Exception as ex:
             self.observers.notify('error', f, str(ex))

@@ -10,6 +10,7 @@ import codecs
 from collections import Counter
 import logging
 from compare_locales.keyedtuple import KeyedTuple
+from compare_locales.paths import File
 
 import six
 
@@ -314,6 +315,8 @@ class Parser(object):
 
     def readFile(self, file):
         '''Read contents from disk, with universal_newlines'''
+        if isinstance(file, File):
+            file = file.fullpath
         # python 2 has binary input with universal newlines,
         # python 3 doesn't. Let's split code paths
         if six.PY2:
