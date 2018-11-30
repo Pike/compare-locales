@@ -142,6 +142,7 @@ class ContentComparer:
                 parser.CAN_COPY, None)
             return
         try:
+            import pdb; pdb.set_trace()
             p.readContents(ref_file.getContents())
         except Exception as e:
             self.observers.notify('error', ref_file, str(e))
