@@ -32,7 +32,7 @@ CAN_SKIP = 2
 CAN_MERGE = 4
 
 
-class EntityBase(object):
+class Entry(object):
     '''
     Abstraction layer for a localizable entity.
     Currently supported are grammars of the form:
@@ -124,14 +124,14 @@ class EntityBase(object):
         return self.key == other.key and self.val == other.val
 
 
-class StickyEntry(EntityBase):
-    """Subclass of EntityBase to use in for syntax fragments
+class StickyEntry(Entry):
+    """Subclass of Entry to use in for syntax fragments
     which should always be overwritten in the serializer.
     """
     pass
 
 
-class Entity(EntityBase):
+class Entity(Entry):
     @property
     def localized(self):
         '''Is this entity localized.
@@ -191,7 +191,7 @@ class PlaceholderEntity(LiteralEntity):
         super(PlaceholderEntity, self).__init__(key, "", "\nplaceholder\n")
 
 
-class Comment(EntityBase):
+class Comment(Entry):
     def __init__(self, ctx, span):
         self.ctx = ctx
         self.span = span
@@ -270,7 +270,7 @@ class Junk(object):
         return self.key
 
 
-class Whitespace(EntityBase):
+class Whitespace(Entry):
     '''Entity-like object representing an empty file with whitespace,
     if allowed
     '''
