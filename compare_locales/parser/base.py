@@ -124,6 +124,13 @@ class EntityBase(object):
         return self.key == other.key and self.val == other.val
 
 
+class StickyEntry(EntityBase):
+    """Subclass of EntityBase to use in for syntax fragments
+    which should always be overwritten in the serializer.
+    """
+    pass
+
+
 class Entity(EntityBase):
     @property
     def localized(self):
