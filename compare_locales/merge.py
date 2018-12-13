@@ -119,26 +119,22 @@ def merge_two(newer, older, keep_newer=True):
 
 
 def get_newer_entity(newer, older, key):
-    default, backup = newer, older
-
-    entity = default.get(key, None)
+    entity = newer.get(key, None)
 
     # Always prefer the newer version.
     if entity is not None:
         return entity
 
-    return backup.get(key)
+    return older.get(key)
 
 
 def get_older_entity(newer, older, key):
-    default, backup = older, newer
-
-    entity = default.get(key, None)
+    entity = older.get(key, None)
 
     # If we don't have an older version, or it's a StickyEntry,
     # get a newer version
     if entity is None or isinstance(entity, StickyEntry):
-        return backup.get(key)
+        return newer.get(key)
 
     return entity
 
