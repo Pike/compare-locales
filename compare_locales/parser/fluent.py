@@ -44,7 +44,13 @@ class FluentEntity(Entity):
         self.ctx = ctx
         self.span = (start, end)
 
-        self.key_span = (entry.id.span.start, entry.id.span.end)
+        if isinstance(entry, ftl.Term):
+            # Terms don't have their '-' as part of the id, use the prior
+            # character
+            self.key_span = (entry.id.span.start - 1, entry.id.span.end)
+        else:
+            # Message
+            self.key_span = (entry.id.span.start, entry.id.span.end)
 
         if entry.value is not None:
             self.val_span = (entry.value.span.start, entry.value.span.end)
