@@ -13,29 +13,49 @@ from compare_locales.parser import FluentMessage
 from .base import Checker
 
 
+class ReferenceCollector(ftl.Visitor):
+    def __init__(self):
+        # If we're in an AttributeExpression, keep track of ID suffix
+        self.attr = ''
+        # References to Messages, their Attributes, and Terms
+        self.refs = {}
+
+    def generic_visit(self, node):
+        if isinstance(
+            node,
+            (ftl.Span, ftl.Annotation, ftl.BaseComment)
+        ):
+            return
+        super(ReferenceCollector, self).generic_visit(node)
+
+    def visit_SelectExpression(self, node):
+        # optimize select expressions to only go through the variants
+        self.visit(node.variants)
+
+    def visit_AttributeExpression(self, node):
+        # keep track that we're in an AttributeExpression
+        self.attr = '.' + node.name.name
+        super(ReferenceCollector, self).generic_visit(node)
+        self.attr = ''
+
+    def visit_MessageReference(self, node):
+        self.refs[node.id.name + self.attr] = node
+
+    def visit_TermReference(self, node):
+        # only collect term references, but not attributes of terms
+        if not self.attr:
+            self.refs['-' + node.id.name] = node
+
+
 class FluentChecker(Checker):
     '''Tests to run on Fluent (FTL) files.
     '''
     pattern = re.compile(r'.*\.ftl')
 
     def find_message_references(self, entry):
-        refs = {}
-
-        def collect_message_references(node):
-            if isinstance(node, ftl.MessageReference):
-                # The key is the name of the referenced message and it will
-                # be used in set algebra to find missing and obsolete
-                # references. The value is the node itself and its span
-                # will be used to pinpoint the error.
-                refs[node.id.name] = node
-            if isinstance(node, ftl.TermReference):
-                # Same for terms, store them as -term.id
-                refs['-' + node.id.name] = node
-            # BaseNode.traverse expects this function to return the node.
-            return node
-
-        entry.traverse(collect_message_references)
-        return refs
+        collector = ReferenceCollector()
+        collector.visit(entry)
+        return collector.refs
 
     def check_values(self, ref_entry, l10n_entry):
         '''Verify that values match, either both have a value or none.'''

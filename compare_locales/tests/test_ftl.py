@@ -65,9 +65,11 @@ h =
            *[x] Seven eight
             [y] Nine
         } ten.
+-i = One
+  .prop = Do not count
 ''')
 
-        a, b, c, d, e, f, g, h = list(self.parser)
+        a, b, c, d, e, f, g, h, i = list(self.parser)
         self.assertEqual(a.count_words(), 1)
         self.assertEqual(b.count_words(), 3)
         self.assertEqual(c.count_words(), 2)
@@ -76,6 +78,7 @@ h =
         self.assertEqual(f.count_words(), 2)
         self.assertEqual(g.count_words(), 3)
         self.assertEqual(h.count_words(), 10)
+        self.assertEqual(i.count_words(), 1)
 
     def test_simple_message(self):
         self.parser.readContents(b'a = A')

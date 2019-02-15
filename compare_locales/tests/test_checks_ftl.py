@@ -16,6 +16,7 @@ class TestFluent(BaseHelper):
     refContent = b'''\
 simple = value
 term_ref = some { -term }
+msg-attr-ref = some {button.label}
 '''
 
     def test_simple(self):
@@ -39,6 +40,56 @@ term_ref = some { -term }
     def test_message_ref(self):
         self._test(b'''term_ref = localized with { -term }''',
                    tuple())
+
+    def test_term_attr(self):
+        self._test(b'''term_ref = Depends on { -term.prop ->
+    *[some] Term prop, doesn't reference the term value, though.
+  }''',
+                   ((
+                       u'warning', 0,
+                       u'Missing message reference: -term', u'fluent'),
+                    ))
+
+    def test_msg_attr(self):
+        self._test(
+            b'''msg-attr-ref = Nice {button.label}''',
+            tuple()
+        )
+        self._test(
+            b'''msg-attr-ref = not at all''',
+            (
+                (
+                    'warning', 0,
+                    'Missing message reference: button.label', 'fluent'
+                ),
+            )
+        )
+        self._test(
+            b'''msg-attr-ref = {button} is not a label''',
+            (
+                (
+                    'warning', 0,
+                    'Missing message reference: button.label', 'fluent'
+                ),
+                (
+                    'warning', 16,
+                    'Obsolete message reference: button', 'fluent'
+                ),
+            )
+        )
+        self._test(
+            b'''msg-attr-ref = {button.tooltip} is not a label''',
+            (
+                (
+                    'warning', 0,
+                    'Missing message reference: button.label', 'fluent'
+                ),
+                (
+                    'warning', 16,
+                    'Obsolete message reference: button.tooltip', 'fluent'
+                ),
+            )
+        )
 
     def test_message_ref_variant(self):
         self._test(b'''term_ref = localized with { -term[variant] }''',
