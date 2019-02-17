@@ -7,7 +7,7 @@ from __future__ import absolute_import
 from __future__ import unicode_literals
 import unittest
 
-from .test_checks import BaseHelper
+from compare_locales.tests import BaseHelper
 from compare_locales.paths import File
 
 
