@@ -5,23 +5,106 @@
 
 from __future__ import absolute_import
 from __future__ import unicode_literals
+import textwrap
 import unittest
 
 from compare_locales.tests import BaseHelper
 from compare_locales.paths import File
 
 
-class TestFluent(BaseHelper):
-    file = File('foo.ftl', 'foo.ftl')
-    refContent = b'''\
+def dedent_ftl(text):
+    return textwrap.dedent(text.rstrip() + "\n").encode("utf-8")
+
+
+REFERENCE = b'''\
 simple = value
 term_ref = some { -term }
 msg-attr-ref = some {button.label}
+mixed-attr = value
+  .and = attribute
+only-attr =
+  .one = exists
 '''
+
+
+class TestFluent(BaseHelper):
+    file = File('foo.ftl', 'foo.ftl')
+    refContent = REFERENCE
 
     def test_simple(self):
         self._test(b'''simple = localized''',
                    tuple())
+
+
+class TestMessage(BaseHelper):
+    file = File('foo.ftl', 'foo.ftl')
+    refContent = REFERENCE
+
+    def test_excess_attribute(self):
+        self._test(
+            dedent_ftl('''\
+            simple = value with
+                .obsolete = attribute
+            '''),
+            (
+                (
+                    'error', 24,
+                    'Obsolete attribute: obsolete', 'fluent'
+                ),
+            )
+        )
+
+    def test_duplicate_attribute(self):
+        self._test(
+            dedent_ftl('''\
+            only-attr =
+                .one = attribute
+                .one = again
+                .one = three times
+            '''),
+            (
+                (
+                    'warning', 54,
+                    'Attribute "one" occurs 3 times', 'fluent'
+                ),
+            )
+        )
+
+    def test_only_attributes(self):
+        self._test(
+            dedent_ftl('''\
+            only-attr = obsolete value
+            '''),
+            (
+                (
+                    'error', 12,
+                    'Obsolete value', 'fluent'
+                ),
+                (
+                    'error', 0,
+                    'Missing attribute: one', 'fluent'
+                ),
+            )
+        )
+
+    def test_missing_value(self):
+        self._test(
+            dedent_ftl('''\
+            mixed-attr =
+                .and = attribute exists
+            '''),
+            (
+                (
+                    'error', 0,
+                    'Missing value', 'fluent'
+                ),
+            )
+        )
+
+
+class TestMessageReference(BaseHelper):
+    file = File('foo.ftl', 'foo.ftl')
+    refContent = REFERENCE
 
     def test_missing_message_ref(self):
         self._test(b'''term_ref = localized''',
@@ -30,25 +113,9 @@ msg-attr-ref = some {button.label}
                         u'Missing message reference: -term', u'fluent'),
                     ))
 
-    def test_l10n_only_message_ref(self):
-        self._test(b'''simple = localized with { -term }''',
-                   ((
-                        u'warning', 26,
-                        u'Obsolete message reference: -term', u'fluent'),
-                    ))
-
     def test_message_ref(self):
         self._test(b'''term_ref = localized with { -term }''',
                    tuple())
-
-    def test_term_attr(self):
-        self._test(b'''term_ref = Depends on { -term.prop ->
-    *[some] Term prop, doesn't reference the term value, though.
-  }''',
-                   ((
-                       u'warning', 0,
-                       u'Missing message reference: -term', u'fluent'),
-                    ))
 
     def test_msg_attr(self):
         self._test(
@@ -90,6 +157,27 @@ msg-attr-ref = some {button.label}
                 ),
             )
         )
+
+
+class TestTermReference(BaseHelper):
+    file = File('foo.ftl', 'foo.ftl')
+    refContent = REFERENCE
+
+    def test_l10n_only_term_ref(self):
+        self._test(b'''simple = localized with { -term }''',
+                   ((
+                        u'warning', 26,
+                        u'Obsolete message reference: -term', u'fluent'),
+                    ))
+
+    def test_term_attr(self):
+        self._test(b'''term_ref = Depends on { -term.prop ->
+    *[some] Term prop, doesn't reference the term value, though.
+  }''',
+                   ((
+                       u'warning', 0,
+                       u'Missing message reference: -term', u'fluent'),
+                    ))
 
     def test_message_ref_variant(self):
         self._test(b'''term_ref = localized with { -term[variant] }''',
