@@ -19,11 +19,14 @@ def dedent_ftl(text):
 REFERENCE = b'''\
 simple = value
 term_ref = some { -term }
+  .attr = is simple
 msg-attr-ref = some {button.label}
 mixed-attr = value
   .and = attribute
 only-attr =
   .one = exists
+-term = value need
+  .attrs = can differ
 '''
 
 
@@ -77,12 +80,12 @@ class TestMessage(BaseHelper):
             '''),
             (
                 (
-                    'error', 12,
-                    'Obsolete value', 'fluent'
-                ),
-                (
                     'error', 0,
                     'Missing attribute: one', 'fluent'
+                ),
+                (
+                    'error', 12,
+                    'Obsolete value', 'fluent'
                 ),
             )
         )
@@ -102,20 +105,39 @@ class TestMessage(BaseHelper):
         )
 
 
-class TestMessageReference(BaseHelper):
+class TestTerm(BaseHelper):
     file = File('foo.ftl', 'foo.ftl')
     refContent = REFERENCE
 
-    def test_missing_message_ref(self):
-        self._test(b'''term_ref = localized''',
-                   ((
-                        u'warning', 0,
-                        u'Missing message reference: -term', u'fluent'),
-                    ))
+    def test_mismatching_attribute(self):
+        self._test(
+            dedent_ftl('''\
+            -term = value with
+                .different = attribute
+            '''),
+            tuple()
+        )
 
-    def test_message_ref(self):
-        self._test(b'''term_ref = localized with { -term }''',
-                   tuple())
+    def test_duplicate_attribute(self):
+        self._test(
+            dedent_ftl('''\
+            -term = need value
+                .one = attribute
+                .one = again
+                .one = three times
+            '''),
+            (
+                (
+                    'warning', 61,
+                    'Attribute "one" occurs 3 times', 'fluent'
+                ),
+            )
+        )
+
+
+class TestMessageReference(BaseHelper):
+    file = File('foo.ftl', 'foo.ftl')
+    refContent = REFERENCE
 
     def test_msg_attr(self):
         self._test(
@@ -163,25 +185,68 @@ class TestTermReference(BaseHelper):
     file = File('foo.ftl', 'foo.ftl')
     refContent = REFERENCE
 
+    def test_good_term_ref(self):
+        self._test(
+            dedent_ftl('''\
+            term_ref = localized to {-term}
+                .attr = is plain
+            '''),
+            tuple()
+        )
+
+    def test_missing_term_ref(self):
+        self._test(
+            dedent_ftl('''\
+            term_ref = localized
+                .attr = should not refer to {-term}
+            '''),
+            (
+                (
+                    'warning', 0,
+                    'Missing term reference: -term', 'fluent'
+                ),
+                (
+                    'warning', 54,
+                    'Obsolete term reference: -term', 'fluent'
+                ),
+            )
+        )
+
     def test_l10n_only_term_ref(self):
-        self._test(b'''simple = localized with { -term }''',
-                   ((
-                        u'warning', 26,
-                        u'Obsolete message reference: -term', u'fluent'),
-                    ))
+        self._test(
+            b'''simple = localized with { -term }''',
+            (
+               (
+                    u'warning', 26,
+                    u'Obsolete term reference: -term', u'fluent'
+                ),
+            )
+        )
 
     def test_term_attr(self):
-        self._test(b'''term_ref = Depends on { -term.prop ->
-    *[some] Term prop, doesn't reference the term value, though.
-  }''',
-                   ((
-                       u'warning', 0,
-                       u'Missing message reference: -term', u'fluent'),
-                    ))
+        self._test(
+            dedent_ftl('''\
+            term_ref = Depends on { -term.prop ->
+                *[some] Term prop, doesn't reference the term value, though.
+              }
+              .attr = still simple
+            '''),
+            (
+                (
+                    u'warning', 0,
+                    u'Missing term reference: -term', u'fluent'
+                ),
+            )
+        )
 
     def test_message_ref_variant(self):
-        self._test(b'''term_ref = localized with { -term[variant] }''',
-                   tuple())
+        self._test(
+            dedent_ftl('''\
+            term_ref = localized with { -term[variant] }
+                .attr = is simple
+            '''),
+            tuple()
+        )
 
 
 if __name__ == '__main__':

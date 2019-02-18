@@ -5,20 +5,41 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 import re
-from collections import Counter
+from collections import Counter, defaultdict
 
 from fluent.syntax import ast as ftl
 
-from compare_locales.parser import FluentMessage
 from .base import Checker
 
 
-class ReferenceCollector(ftl.Visitor):
+MSGS = {
+    'missing-msg-ref': 'Missing message reference: {ref}',
+    'missing-term-ref': 'Missing term reference: {ref}',
+    'obsolete-msg-ref': 'Obsolete message reference: {ref}',
+    'obsolete-term-ref': 'Obsolete term reference: {ref}',
+    'duplicate-attribute': 'Attribute "{name}" occurs {count} times',
+    'missing-value': 'Missing value',
+    'obsolete-value': 'Obsolete value',
+    'missing-attribute': 'Missing attribute: {name}',
+    'obsolete-attribute': 'Obsolete attribute: {name}',
+}
+
+
+class ReferenceMessageVisitor(ftl.Visitor):
     def __init__(self):
         # If we're in an AttributeExpression, keep track of ID suffix
         self.attr = ''
         # References to Messages, their Attributes, and Terms
+        # Store reference name and type
+        self.entry_refs = defaultdict(dict)
+        # The currently active references
         self.refs = {}
+        # Start with the Entry value (associated with None)
+        self.entry_refs[None] = self.refs
+        # If we're a messsage, store if there was a value
+        self.message_has_value = False
+        # Map attribute names to positions
+        self.attribute_positions = {}
 
     def generic_visit(self, node):
         if isinstance(
@@ -26,7 +47,19 @@ class ReferenceCollector(ftl.Visitor):
             (ftl.Span, ftl.Annotation, ftl.BaseComment)
         ):
             return
-        super(ReferenceCollector, self).generic_visit(node)
+        super(ReferenceMessageVisitor, self).generic_visit(node)
+
+    def visit_Message(self, node):
+        if node.value is not None:
+            self.message_has_value = True
+        super(ReferenceMessageVisitor, self).generic_visit(node)
+
+    def visit_Attribute(self, node):
+        self.attribute_positions[node.id.name] = node.span.start
+        old_refs = self.refs
+        self.refs = self.entry_refs[node.id.name]
+        super(ReferenceMessageVisitor, self).generic_visit(node)
+        self.refs = old_refs
 
     def visit_SelectExpression(self, node):
         # optimize select expressions to only go through the variants
@@ -35,16 +68,128 @@ class ReferenceCollector(ftl.Visitor):
     def visit_AttributeExpression(self, node):
         # keep track that we're in an AttributeExpression
         self.attr = '.' + node.name.name
-        super(ReferenceCollector, self).generic_visit(node)
+        super(ReferenceMessageVisitor, self).generic_visit(node)
         self.attr = ''
 
     def visit_MessageReference(self, node):
-        self.refs[node.id.name + self.attr] = node
+        self.refs[node.id.name + self.attr] = 'msg-ref'
 
     def visit_TermReference(self, node):
         # only collect term references, but not attributes of terms
-        if not self.attr:
-            self.refs['-' + node.id.name] = node
+        if self.attr:
+            return
+        self.refs['-' + node.id.name] = 'term-ref'
+
+
+class DuplicateAttributes(object):
+    '''Helper Mixin to check for duplicate attributes on a node.'''
+    def check_duplicate_attributes(self, node):
+        attr_counts = Counter(attr.id.name for attr in node.attributes)
+        attr_pos = {attr.id.name: attr.span.start for attr in node.attributes}
+        for attr_name, count in attr_counts.items():
+            if count > 1:
+                self.messages.append(
+                    (
+                        'warning', attr_pos[attr_name],
+                        MSGS['duplicate-attribute'].format(
+                            name=attr_name, count=count
+                        )
+                    )
+                )
+
+
+class L10nMessageVisitor(DuplicateAttributes, ReferenceMessageVisitor):
+    def __init__(self, reference):
+        super(L10nMessageVisitor, self).__init__()
+        # Overload refs to map to sets, just store what we found
+        # References to Messages, their Attributes, and Terms
+        # Store reference name and type
+        self.entry_refs = defaultdict(set)
+        # The currently active references
+        self.refs = set()
+        # Start with the Entry value (associated with None)
+        self.entry_refs[None] = self.refs
+        self.reference = reference
+        self.reference_refs = reference.entry_refs[None]
+        self.messages = []
+
+    def visit_Message(self, node):
+        self.check_duplicate_attributes(node)
+        super(L10nMessageVisitor, self).visit_Message(node)
+        if self.message_has_value and not self.reference.message_has_value:
+            self.messages.append(
+                ('error', node.value.span.start, MSGS['obsolete-value'])
+            )
+        if not self.message_has_value and self.reference.message_has_value:
+            self.messages.append(
+                ('error', 0, MSGS['missing-value'])
+            )
+        ref_attrs = set(self.reference.attribute_positions)
+        l10n_attrs = set(self.attribute_positions)
+        for missing_attr in ref_attrs - l10n_attrs:
+            self.messages.append(
+                (
+                    'error', 0,
+                    MSGS['missing-attribute'].format(name=missing_attr)
+                )
+            )
+        for obs_attr in l10n_attrs - ref_attrs:
+            self.messages.append(
+                (
+                    'error', self.attribute_positions[obs_attr],
+                    MSGS['obsolete-attribute'].format(name=obs_attr)
+                )
+            )
+
+    def visit_Term(self, node):
+        raise RuntimeError("Should not use L10nMessageVisitor for Terms")
+
+    def visit_Attribute(self, node):
+        old_reference_refs = self.reference_refs
+        self.reference_refs = self.reference.entry_refs[node.id.name]
+        super(L10nMessageVisitor, self).visit_Attribute(node)
+        self.reference_refs = old_reference_refs
+
+    def visit_MessageReference(self, node):
+        ref = node.id.name + self.attr
+        self.refs.add(ref)
+        self.check_obsolete_ref(node, ref, 'msg-ref')
+
+    def visit_TermReference(self, node):
+        if self.attr:
+            return
+        ref = '-' + node.id.name
+        self.refs.add(ref)
+        self.check_obsolete_ref(node, ref, 'term-ref')
+
+    def check_obsolete_ref(self, node, ref, ref_type):
+        if ref not in self.reference_refs:
+            self.messages.append(
+                (
+                    'warning', node.span.start,
+                    MSGS['obsolete-' + ref_type].format(ref=ref),
+                )
+            )
+
+
+class TermVisitor(DuplicateAttributes, ftl.Visitor):
+    def __init__(self):
+        super(TermVisitor, self).__init__()
+        self.messages = []
+
+    def generic_visit(self, node):
+        if isinstance(
+            node,
+            (ftl.Span, ftl.Annotation, ftl.BaseComment)
+        ):
+            return
+        super(TermVisitor, self).generic_visit(node)
+
+    def visit_Message(self, node):
+        raise RuntimeError("Should not use TermVisitor for Messages")
+
+    def visit_Term(self, node):
+        self.check_duplicate_attributes(node)
 
 
 class FluentChecker(Checker):
@@ -52,92 +197,37 @@ class FluentChecker(Checker):
     '''
     pattern = re.compile(r'.*\.ftl')
 
-    def find_message_references(self, entry):
-        collector = ReferenceCollector()
-        collector.visit(entry)
-        return collector.refs
+    def check_message(self, ref_entry, l10n_entry):
+        '''Run checks on localized messages against reference message.'''
+        ref_data = ReferenceMessageVisitor()
+        ref_data.visit(ref_entry)
+        l10n_data = L10nMessageVisitor(ref_data)
+        l10n_data.visit(l10n_entry)
 
-    def check_values(self, ref_entry, l10n_entry):
-        '''Verify that values match, either both have a value or none.'''
-        if ref_entry.value is not None and l10n_entry.value is None:
-            yield ('error', 0, 'Missing value', 'fluent')
-        if ref_entry.value is None and l10n_entry.value is not None:
-            offset = l10n_entry.value.span.start - l10n_entry.span.start
-            yield ('error', offset, 'Obsolete value', 'fluent')
+        messages = l10n_data.messages
+        for attr_or_val, refs in ref_data.entry_refs.items():
+            for ref, ref_type in refs.items():
+                if ref not in l10n_data.entry_refs[attr_or_val]:
+                    msg = MSGS['missing-' + ref_type].format(ref=ref)
+                    messages.append(('warning', 0, msg))
+        return messages
 
-    def check_message_references(self, ref_entry, l10n_entry):
-        '''Verify that message references are the same.'''
-        ref_msg_refs = self.find_message_references(ref_entry)
-        l10n_msg_refs = self.find_message_references(l10n_entry)
-
-        # create unique sets of message names referenced in both entries
-        ref_msg_refs_names = set(ref_msg_refs.keys())
-        l10n_msg_refs_names = set(l10n_msg_refs.keys())
-
-        missing_msg_ref_names = ref_msg_refs_names - l10n_msg_refs_names
-        for msg_name in missing_msg_ref_names:
-            yield ('warning', 0, 'Missing message reference: ' + msg_name,
-                   'fluent')
-
-        obsolete_msg_ref_names = l10n_msg_refs_names - ref_msg_refs_names
-        for msg_name in obsolete_msg_ref_names:
-            pos = l10n_msg_refs[msg_name].span.start - l10n_entry.span.start
-            yield ('warning', pos, 'Obsolete message reference: ' + msg_name,
-                   'fluent')
-
-    def check_attributes(self, ref_entry, l10n_entry):
-        '''Verify that ref_entry and l10n_entry have the same attributes.'''
-        ref_attr_names = set((attr.id.name for attr in ref_entry.attributes))
-        ref_pos = dict((attr.id.name, i)
-                       for i, attr in enumerate(ref_entry.attributes))
-        l10n_attr_counts = \
-            Counter(attr.id.name for attr in l10n_entry.attributes)
-        l10n_attr_names = set(l10n_attr_counts)
-        l10n_pos = dict((attr.id.name, i)
-                        for i, attr in enumerate(l10n_entry.attributes))
-        # check for duplicate Attributes
-        # only warn to not trigger a merge skip
-        for attr_name, cnt in l10n_attr_counts.items():
-            if cnt > 1:
-                offset = (
-                    l10n_entry.attributes[l10n_pos[attr_name]].span.start
-                    - l10n_entry.span.start)
-                yield (
-                    'warning',
-                    offset,
-                    'Attribute "{}" occurs {} times'.format(
-                        attr_name, cnt),
-                    'fluent')
-
-        missing_attr_names = sorted(ref_attr_names - l10n_attr_names,
-                                    key=lambda k: ref_pos[k])
-        for attr_name in missing_attr_names:
-            yield ('error', 0, 'Missing attribute: ' + attr_name, 'fluent')
-
-        obsolete_attr_names = sorted(l10n_attr_names - ref_attr_names,
-                                     key=lambda k: l10n_pos[k])
-        obsolete_attrs = [
-            attr
-            for attr in l10n_entry.attributes
-            if attr.id.name in obsolete_attr_names
-        ]
-        for attr in obsolete_attrs:
-            yield ('error', attr.span.start - l10n_entry.span.start,
-                   'Obsolete attribute: ' + attr.id.name, 'fluent')
+    def check_term(self, l10n_entry):
+        '''Check localized terms.'''
+        l10n_data = TermVisitor()
+        l10n_data.visit(l10n_entry)
+        return l10n_data.messages
 
     def check(self, refEnt, l10nEnt):
-        ref_entry = refEnt.entry
         l10n_entry = l10nEnt.entry
+        if isinstance(l10n_entry, ftl.Message):
+            ref_entry = refEnt.entry
+            messages = self.check_message(ref_entry, l10n_entry)
+        elif isinstance(l10n_entry, ftl.Term):
+            messages = self.check_term(l10n_entry)
 
-        # PY3 Replace with `yield from` in Python 3.3+
-        for check in self.check_values(ref_entry, l10n_entry):
-            yield check
-
-        for check in self.check_message_references(ref_entry, l10n_entry):
-            yield check
-
-        # Only compare attributes of Fluent Messages. Attributes defined on
-        # Fluent Terms are private.
-        if isinstance(refEnt, FluentMessage):
-            for check in self.check_attributes(ref_entry, l10n_entry):
-                yield check
+        messages.sort(key=lambda t: t[1])
+        for cat, pos, msg in messages:
+            if pos:
+                pos = pos - l10n_entry.span.start
+            yield (cat, pos, msg, 'fluent')
