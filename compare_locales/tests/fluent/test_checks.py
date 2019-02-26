@@ -249,5 +249,84 @@ class TestTermReference(BaseHelper):
         )
 
 
+class SelectExpressionTest(BaseHelper):
+    file = File('foo.ftl', 'foo.ftl')
+    refContent = b'''\
+msg = { $val ->
+ *[other] Show something
+  }
+-term = Foopy
+'''
+
+    def test_no_select(self):
+        self._test(
+            b'''msg = Something''',
+            tuple()
+        )
+
+    def test_good(self):
+        self._test(
+            dedent_ftl('''\
+            msg = { $val ->
+             *[one] one
+              [other] other
+              }
+            '''),
+            tuple()
+        )
+
+    def test_duplicate_variant(self):
+        self._test(
+            dedent_ftl('''\
+            msg = { $val ->
+             *[one] one
+              [one] other
+              }
+            '''),
+            (
+                (
+                    'warning', 31,
+                    'Variant key "one" occurs 2 times', 'fluent'
+                ),
+            )
+        )
+
+    def test_term_value(self):
+        self._test(
+            dedent_ftl('''\
+            -term = { PLATFORM() ->
+             *[one] one
+              [two] two
+              [two] duplicate
+              }
+            '''),
+            (
+                (
+                    'warning', 51,
+                    'Variant key "two" occurs 2 times', 'fluent'
+                ),
+            )
+        )
+
+    def test_term_attribute(self):
+        self._test(
+            dedent_ftl('''\
+            -term = boring value
+              .attr = { PLATFORM() ->
+               *[one] one
+                [two] two
+                [two] duplicate
+                [two] three
+                }
+            '''),
+            (
+                (
+                    'warning', 100,
+                    'Variant key "two" occurs 3 times', 'fluent'
+                ),
+            )
+        )
+
+
 if __name__ == '__main__':
     unittest.main()

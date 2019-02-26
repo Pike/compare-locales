@@ -22,6 +22,7 @@ MSGS = {
     'obsolete-value': 'Obsolete value',
     'missing-attribute': 'Missing attribute: {name}',
     'obsolete-attribute': 'Obsolete attribute: {name}',
+    'duplicate-variant': 'Variant key "{name}" occurs {count} times',
 }
 
 
@@ -81,8 +82,8 @@ class ReferenceMessageVisitor(ftl.Visitor):
         self.refs['-' + node.id.name] = 'term-ref'
 
 
-class DuplicateAttributes(object):
-    '''Helper Mixin to check for duplicate attributes on a node.'''
+class GenericL10nChecks(object):
+    '''Helper Mixin for checks shared between Terms and Messages.'''
     def check_duplicate_attributes(self, node):
         attr_counts = Counter(attr.id.name for attr in node.attributes)
         attr_pos = {attr.id.name: attr.span.start for attr in node.attributes}
@@ -97,8 +98,24 @@ class DuplicateAttributes(object):
                     )
                 )
 
+    def check_variants(self, variants):
+        variant_counts = Counter(variant.sorting_key for variant in variants)
+        variant_pos = {
+            variant.sorting_key: variant.key.span.start for variant in variants
+        }
+        for variant_name, count in variant_counts.items():
+            if count > 1:
+                self.messages.append(
+                    (
+                        'warning', variant_pos[variant_name],
+                        MSGS['duplicate-variant'].format(
+                            name=variant_name, count=count
+                        )
+                    )
+                )
 
-class L10nMessageVisitor(DuplicateAttributes, ReferenceMessageVisitor):
+
+class L10nMessageVisitor(GenericL10nChecks, ReferenceMessageVisitor):
     def __init__(self, reference):
         super(L10nMessageVisitor, self).__init__()
         # Overload refs to map to sets, just store what we found
@@ -150,6 +167,10 @@ class L10nMessageVisitor(DuplicateAttributes, ReferenceMessageVisitor):
         super(L10nMessageVisitor, self).visit_Attribute(node)
         self.reference_refs = old_reference_refs
 
+    def visit_SelectExpression(self, node):
+        super(L10nMessageVisitor, self).visit_SelectExpression(node)
+        self.check_variants(node.variants)
+
     def visit_MessageReference(self, node):
         ref = node.id.name + self.attr
         self.refs.add(ref)
@@ -172,7 +193,7 @@ class L10nMessageVisitor(DuplicateAttributes, ReferenceMessageVisitor):
             )
 
 
-class TermVisitor(DuplicateAttributes, ftl.Visitor):
+class TermVisitor(GenericL10nChecks, ftl.Visitor):
     def __init__(self):
         super(TermVisitor, self).__init__()
         self.messages = []
@@ -190,6 +211,11 @@ class TermVisitor(DuplicateAttributes, ftl.Visitor):
 
     def visit_Term(self, node):
         self.check_duplicate_attributes(node)
+        super(TermVisitor, self).generic_visit(node)
+
+    def visit_SelectExpression(self, node):
+        super(TermVisitor, self).generic_visit(node)
+        self.check_variants(node.variants)
 
 
 class FluentChecker(Checker):
