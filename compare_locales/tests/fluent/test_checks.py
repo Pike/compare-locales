@@ -356,5 +356,44 @@ msg = { $val ->
         )
 
 
+class PluralTest(BaseHelper):
+    file = File('foo.ftl', 'foo.ftl')
+    refContent = b'''\
+msg = { $val ->
+ *[other] Show something
+  }
+'''
+
+    def test_missing_plural(self):
+        self.file.locale = 'ru'
+        self._test(
+            dedent_ftl('''\
+            msg = { $val ->
+              [one] thing
+              [3] is ok
+             *[many] stuff
+             }
+            '''),
+            (
+                (
+                    'warning', 19,
+                    'Plural categories missing: few', 'fluent'
+                ),
+            )
+        )
+
+    def test_ignoring_other(self):
+        self.file.locale = 'de'
+        self._test(
+            dedent_ftl('''\
+            msg = { $val ->
+              [1] thing
+             *[other] stuff
+             }
+            '''),
+            tuple()
+        )
+
+
 if __name__ == '__main__':
     unittest.main()

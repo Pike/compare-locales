@@ -10,6 +10,7 @@ from collections import Counter, defaultdict
 from fluent.syntax import ast as ftl
 
 from .base import Checker
+from compare_locales import plurals
 
 
 MSGS = {
@@ -23,6 +24,7 @@ MSGS = {
     'missing-attribute': 'Missing attribute: {name}',
     'obsolete-attribute': 'Obsolete attribute: {name}',
     'duplicate-variant': 'Variant key "{name}" occurs {count} times',
+    'missing-plural': 'Plural categories missing: {categories}',
     'term-variants-verboten':
         'Use Parameterized Terms instead of Variant Lists',
 }
@@ -105,6 +107,7 @@ class GenericL10nChecks(object):
         variant_pos = {
             variant.sorting_key: variant.key.span.start for variant in variants
         }
+        # Check for duplicate variants
         for variant_name, count in variant_counts.items():
             if count > 1:
                 self.messages.append(
@@ -115,6 +118,25 @@ class GenericL10nChecks(object):
                         )
                     )
                 )
+        # Check for plural categories
+        if self.locale in plurals.CATEGORIES_BY_LOCALE:
+            known_plurals = set(plurals.CATEGORIES_BY_LOCALE[self.locale])
+            # Ask for known plurals, but check for plurals w/out `other`.
+            # `other` is used for all kinds of things.
+            check_plurals = known_plurals.copy()
+            check_plurals.discard('other')
+            given_plurals = set(variant_counts)
+            if given_plurals & check_plurals:
+                missing_plurals = sorted(known_plurals - given_plurals)
+                if missing_plurals:
+                    self.messages.append(
+                        (
+                            'warning', variants[0].key.span.start,
+                            MSGS['missing-plural'].format(
+                                categories=', '.join(missing_plurals)
+                            )
+                        )
+                    )
 
     def check_term_variant(self, term):
         if isinstance(term.value, ftl.VariantList):
@@ -136,8 +158,9 @@ class GenericL10nChecks(object):
 
 
 class L10nMessageVisitor(GenericL10nChecks, ReferenceMessageVisitor):
-    def __init__(self, reference):
+    def __init__(self, locale, reference):
         super(L10nMessageVisitor, self).__init__()
+        self.locale = locale
         # Overload refs to map to sets, just store what we found
         # References to Messages, their Attributes, and Terms
         # Store reference name and type
@@ -214,8 +237,9 @@ class L10nMessageVisitor(GenericL10nChecks, ReferenceMessageVisitor):
 
 
 class TermVisitor(GenericL10nChecks, ftl.Visitor):
-    def __init__(self):
+    def __init__(self, locale):
         super(TermVisitor, self).__init__()
+        self.locale = locale
         self.messages = []
 
     def generic_visit(self, node):
@@ -248,7 +272,7 @@ class FluentChecker(Checker):
         '''Run checks on localized messages against reference message.'''
         ref_data = ReferenceMessageVisitor()
         ref_data.visit(ref_entry)
-        l10n_data = L10nMessageVisitor(ref_data)
+        l10n_data = L10nMessageVisitor(self.locale, ref_data)
         l10n_data.visit(l10n_entry)
 
         messages = l10n_data.messages
@@ -261,7 +285,7 @@ class FluentChecker(Checker):
 
     def check_term(self, l10n_entry):
         '''Check localized terms.'''
-        l10n_data = TermVisitor()
+        l10n_data = TermVisitor(self.locale)
         l10n_data.visit(l10n_entry)
         return l10n_data.messages
 
