@@ -23,6 +23,8 @@ MSGS = {
     'missing-attribute': 'Missing attribute: {name}',
     'obsolete-attribute': 'Obsolete attribute: {name}',
     'duplicate-variant': 'Variant key "{name}" occurs {count} times',
+    'term-variants-verboten':
+        'Use Parameterized Terms instead of Variant Lists',
 }
 
 
@@ -113,6 +115,24 @@ class GenericL10nChecks(object):
                         )
                     )
                 )
+
+    def check_term_variant(self, term):
+        if isinstance(term.value, ftl.VariantList):
+            self.messages.append(
+                (
+                    'error', term.value.span.start,
+                    MSGS['term-variants-verboten']
+                )
+            )
+
+    def visit_VariantExpression(self, node):
+        self.messages.append(
+            (
+                'error', node.span.start,
+                MSGS['term-variants-verboten']
+            )
+        )
+        super(GenericL10nChecks, self).generic_visit(node)
 
 
 class L10nMessageVisitor(GenericL10nChecks, ReferenceMessageVisitor):
@@ -210,6 +230,7 @@ class TermVisitor(GenericL10nChecks, ftl.Visitor):
         raise RuntimeError("Should not use TermVisitor for Messages")
 
     def visit_Term(self, node):
+        self.check_term_variant(node)
         self.check_duplicate_attributes(node)
         super(TermVisitor, self).generic_visit(node)
 

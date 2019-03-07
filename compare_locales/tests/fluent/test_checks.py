@@ -39,6 +39,43 @@ class TestFluent(BaseHelper):
                    tuple())
 
 
+class TestObsoleteTermVariants(BaseHelper):
+    file = File('foo.ftl', 'foo.ftl')
+    refContent = REFERENCE
+
+    def test_term_variant(self):
+        self._test(
+            dedent_ftl('''\
+            -term = {
+               *[usually] this was ok
+                [but] no more
+            }
+            '''),
+            (
+                (
+                    'error', 8,
+                    'Use Parameterized Terms instead of Variant Lists',
+                    'fluent'
+                ),
+            )
+        )
+
+    def test_term_ref_variant(self):
+        self._test(
+            dedent_ftl('''\
+            term_ref = localized with { -term[variant] }
+                .attr = is simple
+            '''),
+            (
+                (
+                    'error', 28,
+                    'Use Parameterized Terms instead of Variant Lists',
+                    'fluent'
+                ),
+            )
+        )
+
+
 class TestMessage(BaseHelper):
     file = File('foo.ftl', 'foo.ftl')
     refContent = REFERENCE
@@ -237,15 +274,6 @@ class TestTermReference(BaseHelper):
                     u'Missing term reference: -term', u'fluent'
                 ),
             )
-        )
-
-    def test_message_ref_variant(self):
-        self._test(
-            dedent_ftl('''\
-            term_ref = localized with { -term[variant] }
-                .attr = is simple
-            '''),
-            tuple()
         )
 
 
