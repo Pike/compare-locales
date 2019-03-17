@@ -5,9 +5,10 @@
 from __future__ import absolute_import
 from __future__ import unicode_literals
 import re
-from collections import Counter, defaultdict
+from collections import defaultdict
 
 from fluent.syntax import ast as ftl
+from fluent.syntax.serializer import serialize_variant_key
 
 from .base import Checker
 from compare_locales import plurals
@@ -18,12 +19,12 @@ MSGS = {
     'missing-term-ref': 'Missing term reference: {ref}',
     'obsolete-msg-ref': 'Obsolete message reference: {ref}',
     'obsolete-term-ref': 'Obsolete term reference: {ref}',
-    'duplicate-attribute': 'Attribute "{name}" occurs {count} times',
+    'duplicate-attribute': 'Attribute "{name}" is duplicated',
     'missing-value': 'Missing value',
     'obsolete-value': 'Obsolete value',
     'missing-attribute': 'Missing attribute: {name}',
     'obsolete-attribute': 'Obsolete attribute: {name}',
-    'duplicate-variant': 'Variant key "{name}" occurs {count} times',
+    'duplicate-variant': 'Variant key "{name}" is duplicated',
     'missing-plural': 'Plural categories missing: {categories}',
     'term-variants-verboten':
         'Use Parameterized Terms instead of Variant Lists',
@@ -89,35 +90,64 @@ class ReferenceMessageVisitor(ftl.Visitor):
 class GenericL10nChecks(object):
     '''Helper Mixin for checks shared between Terms and Messages.'''
     def check_duplicate_attributes(self, node):
-        attr_counts = Counter(attr.id.name for attr in node.attributes)
-        attr_pos = {attr.id.name: attr.span.start for attr in node.attributes}
-        for attr_name, count in attr_counts.items():
-            if count > 1:
-                self.messages.append(
-                    (
-                        'warning', attr_pos[attr_name],
-                        MSGS['duplicate-attribute'].format(
-                            name=attr_name, count=count
+        warned = set()
+        for left in range(len(node.attributes) - 1):
+            if left in warned:
+                continue
+            left_attr = node.attributes[left]
+            warned_left = False
+            for right in range(left+1, len(node.attributes)):
+                right_attr = node.attributes[right]
+                if left_attr.id.name == right_attr.id.name:
+                    if not warned_left:
+                        warned_left = True
+                        self.messages.append(
+                            (
+                                'warning', left_attr.span.start,
+                                MSGS['duplicate-attribute'].format(
+                                    name=left_attr.id.name
+                                )
+                            )
+                        )
+                    warned.add(right)
+                    self.messages.append(
+                        (
+                            'warning', right_attr.span.start,
+                            MSGS['duplicate-attribute'].format(
+                                name=left_attr.id.name
+                            )
                         )
                     )
-                )
 
     def check_variants(self, variants):
-        variant_counts = Counter(variant.sorting_key for variant in variants)
-        variant_pos = {
-            variant.sorting_key: variant.key.span.start for variant in variants
-        }
         # Check for duplicate variants
-        for variant_name, count in variant_counts.items():
-            if count > 1:
-                self.messages.append(
-                    (
-                        'warning', variant_pos[variant_name],
-                        MSGS['duplicate-variant'].format(
-                            name=variant_name, count=count
+        warned = set()
+        for left in range(len(variants) - 1):
+            if left in warned:
+                continue
+            left_key = variants[left].key
+            key_string = None
+            for right in range(left+1, len(variants)):
+                if left_key.equals(variants[right].key):
+                    if key_string is None:
+                        key_string = serialize_variant_key(left_key)
+                        self.messages.append(
+                            (
+                                'warning', left_key.span.start,
+                                MSGS['duplicate-variant'].format(
+                                    name=key_string
+                                )
+                            )
+                        )
+                    warned.add(right)
+                    self.messages.append(
+                        (
+                            'warning', variants[right].key.span.start,
+                            MSGS['duplicate-variant'].format(
+                                name=key_string
+                            )
                         )
                     )
-                )
         # Check for plural categories
         if self.locale in plurals.CATEGORIES_BY_LOCALE:
             known_plurals = set(plurals.CATEGORIES_BY_LOCALE[self.locale])
@@ -125,7 +155,7 @@ class GenericL10nChecks(object):
             # `other` is used for all kinds of things.
             check_plurals = known_plurals.copy()
             check_plurals.discard('other')
-            given_plurals = set(variant_counts)
+            given_plurals = set(serialize_variant_key(v.key) for v in variants)
             if given_plurals & check_plurals:
                 missing_plurals = sorted(known_plurals - given_plurals)
                 if missing_plurals:

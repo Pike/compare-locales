@@ -104,8 +104,16 @@ class TestMessage(BaseHelper):
             '''),
             (
                 (
+                    'warning', 16,
+                    'Attribute "one" is duplicated', 'fluent'
+                ),
+                (
+                    'warning', 37,
+                    'Attribute "one" is duplicated', 'fluent'
+                ),
+                (
                     'warning', 54,
-                    'Attribute "one" occurs 3 times', 'fluent'
+                    'Attribute "one" is duplicated', 'fluent'
                 ),
             )
         )
@@ -165,8 +173,16 @@ class TestTerm(BaseHelper):
             '''),
             (
                 (
+                    'warning', 23,
+                    'Attribute "one" is duplicated', 'fluent'
+                ),
+                (
+                    'warning', 44,
+                    'Attribute "one" is duplicated', 'fluent'
+                ),
+                (
                     'warning', 61,
-                    'Attribute "one" occurs 3 times', 'fluent'
+                    'Attribute "one" is duplicated', 'fluent'
                 ),
             )
         )
@@ -313,8 +329,12 @@ msg = { $val ->
             '''),
             (
                 (
+                    'warning', 19,
+                    'Variant key "one" is duplicated', 'fluent'
+                ),
+                (
                     'warning', 31,
-                    'Variant key "one" occurs 2 times', 'fluent'
+                    'Variant key "one" is duplicated', 'fluent'
                 ),
             )
         )
@@ -330,8 +350,12 @@ msg = { $val ->
             '''),
             (
                 (
+                    'warning', 39,
+                    'Variant key "two" is duplicated', 'fluent'
+                ),
+                (
                     'warning', 51,
-                    'Variant key "two" occurs 2 times', 'fluent'
+                    'Variant key "two" is duplicated', 'fluent'
                 ),
             )
         )
@@ -349,8 +373,16 @@ msg = { $val ->
             '''),
             (
                 (
+                    'warning', 66,
+                    'Variant key "two" is duplicated', 'fluent'
+                ),
+                (
+                    'warning', 80,
+                    'Variant key "two" is duplicated', 'fluent'
+                ),
+                (
                     'warning', 100,
-                    'Variant key "two" occurs 3 times', 'fluent'
+                    'Variant key "two" is duplicated', 'fluent'
                 ),
             )
         )
