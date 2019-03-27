@@ -972,11 +972,11 @@ eff = lEff
         self.reference("""
 foo = Foo
   .foottr = something
-bar
+bar =
   .tender = Attribute value
 """)
         self.localized("""\
-foo
+foo =
   .foottr = attr
 bar = lBar
   .tender = localized

@@ -124,14 +124,14 @@ abc = ABC
 
     def test_message_with_attribute_and_no_value(self):
         self.parser.readContents(b'''\
-abc
+abc =
     .attr = Attr
 ''')
 
         [abc] = list(self.parser)
         self.assertEqual(abc.key, 'abc')
         self.assertEqual(abc.raw_val, None)
-        self.assertEqual(abc.all, 'abc\n    .attr = Attr')
+        self.assertEqual(abc.all, 'abc =\n    .attr = Attr')
         attributes = list(abc.attributes)
         self.assertEqual(len(attributes), 1)
         attr = attributes[0]
@@ -217,89 +217,6 @@ baz = Baz
         with self.assertRaises(StopIteration):
             next(entities)
 
-    def test_non_localizable_syntax_zero_four(self):
-        self.parser.readContents(b'''\
-// Resource Comment
-
-foo = Foo
-
-// Section Comment
-[[ Section Header ]]
-
-bar = Bar
-
-[[ Another Section ]]
-
-// Standalone Comment
-
-// Baz Comment
-baz = Baz
-''')
-        entities = self.parser.walk()
-
-        entity = next(entities)
-        self.assertTrue(isinstance(entity,  parser.FluentComment))
-        self.assertEqual(entity.all, '// Resource Comment')
-
-        entity = next(entities)
-        self.assertTrue(isinstance(entity, parser.Whitespace))
-        self.assertEqual(entity.all, '\n\n')
-
-        entity = next(entities)
-        self.assertTrue(isinstance(entity, parser.FluentEntity))
-        self.assertEqual(entity.raw_val, 'Foo')
-
-        entity = next(entities)
-        self.assertTrue(isinstance(entity, parser.Whitespace))
-        self.assertEqual(entity.all, '\n\n')
-
-        entity = next(entities)
-        self.assertTrue(isinstance(entity,  parser.FluentComment))
-        self.assertEqual(
-            entity.all,
-            '// Section Comment\n[[ Section Header ]]'
-        )
-
-        entity = next(entities)
-        self.assertTrue(isinstance(entity, parser.Whitespace))
-        self.assertEqual(entity.all, '\n\n')
-
-        entity = next(entities)
-        self.assertTrue(isinstance(entity, parser.FluentEntity))
-        self.assertEqual(entity.raw_val, 'Bar')
-
-        entity = next(entities)
-        self.assertTrue(isinstance(entity, parser.Whitespace))
-        self.assertEqual(entity.all, '\n\n')
-
-        entity = next(entities)
-        self.assertTrue(isinstance(entity,  parser.FluentComment))
-        self.assertEqual(entity.all, '[[ Another Section ]]')
-
-        entity = next(entities)
-        self.assertTrue(isinstance(entity, parser.Whitespace))
-        self.assertEqual(entity.all, '\n\n')
-
-        entity = next(entities)
-        self.assertTrue(isinstance(entity,  parser.FluentComment))
-        self.assertEqual(entity.all, '// Standalone Comment')
-
-        entity = next(entities)
-        self.assertTrue(isinstance(entity, parser.Whitespace))
-        self.assertEqual(entity.all, '\n\n')
-
-        entity = next(entities)
-        self.assertTrue(isinstance(entity, parser.FluentEntity))
-        self.assertEqual(entity.raw_val, 'Baz')
-        self.assertEqual(entity.entry.comment.content, 'Baz Comment')
-
-        entity = next(entities)
-        self.assertTrue(isinstance(entity, parser.Whitespace))
-        self.assertEqual(entity.all, '\n')
-
-        with self.assertRaises(StopIteration):
-            next(entities)
-
     def test_comments_val(self):
         self.parser.readContents(b'''\
 // Legacy Comment
@@ -314,11 +231,8 @@ baz = Baz
 
         entity = next(entities)
         # ensure that fluent comments are FluentComments and Comments
-        self.assertTrue(isinstance(entity,  parser.FluentComment))
-
-        # now test the actual .val values, .raw_val is None
-        self.assertTrue(isinstance(entity,   parser.Comment))
-        self.assertEqual(entity.val, 'Legacy Comment')
+        # Legacy comments (//) are Junk
+        self.assertTrue(isinstance(entity,  parser.Junk))
 
         entity = next(entities)
         self.assertTrue(isinstance(entity, parser.Whitespace))

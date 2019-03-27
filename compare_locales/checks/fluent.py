@@ -26,15 +26,11 @@ MSGS = {
     'obsolete-attribute': 'Obsolete attribute: {name}',
     'duplicate-variant': 'Variant key "{name}" is duplicated',
     'missing-plural': 'Plural categories missing: {categories}',
-    'term-variants-verboten':
-        'Use Parameterized Terms instead of Variant Lists',
 }
 
 
 class ReferenceMessageVisitor(ftl.Visitor):
     def __init__(self):
-        # If we're in an AttributeExpression, keep track of ID suffix
-        self.attr = ''
         # References to Messages, their Attributes, and Terms
         # Store reference name and type
         self.entry_refs = defaultdict(dict)
@@ -71,18 +67,15 @@ class ReferenceMessageVisitor(ftl.Visitor):
         # optimize select expressions to only go through the variants
         self.visit(node.variants)
 
-    def visit_AttributeExpression(self, node):
-        # keep track that we're in an AttributeExpression
-        self.attr = '.' + node.name.name
-        super(ReferenceMessageVisitor, self).generic_visit(node)
-        self.attr = ''
-
     def visit_MessageReference(self, node):
-        self.refs[node.id.name + self.attr] = 'msg-ref'
+        ref = node.id.name
+        if node.attribute:
+            ref += '.' + node.attribute.name
+        self.refs[ref] = 'msg-ref'
 
     def visit_TermReference(self, node):
         # only collect term references, but not attributes of terms
-        if self.attr:
+        if node.attribute:
             return
         self.refs['-' + node.id.name] = 'term-ref'
 
@@ -168,24 +161,6 @@ class GenericL10nChecks(object):
                         )
                     )
 
-    def check_term_variant(self, term):
-        if isinstance(term.value, ftl.VariantList):
-            self.messages.append(
-                (
-                    'error', term.value.span.start,
-                    MSGS['term-variants-verboten']
-                )
-            )
-
-    def visit_VariantExpression(self, node):
-        self.messages.append(
-            (
-                'error', node.span.start,
-                MSGS['term-variants-verboten']
-            )
-        )
-        super(GenericL10nChecks, self).generic_visit(node)
-
 
 class L10nMessageVisitor(GenericL10nChecks, ReferenceMessageVisitor):
     def __init__(self, locale, reference):
@@ -245,12 +220,14 @@ class L10nMessageVisitor(GenericL10nChecks, ReferenceMessageVisitor):
         self.check_variants(node.variants)
 
     def visit_MessageReference(self, node):
-        ref = node.id.name + self.attr
+        ref = node.id.name
+        if node.attribute:
+            ref += '.' + node.attribute.name
         self.refs.add(ref)
         self.check_obsolete_ref(node, ref, 'msg-ref')
 
     def visit_TermReference(self, node):
-        if self.attr:
+        if node.attribute:
             return
         ref = '-' + node.id.name
         self.refs.add(ref)
@@ -284,7 +261,6 @@ class TermVisitor(GenericL10nChecks, ftl.Visitor):
         raise RuntimeError("Should not use TermVisitor for Messages")
 
     def visit_Term(self, node):
-        self.check_term_variant(node)
         self.check_duplicate_attributes(node)
         super(TermVisitor, self).generic_visit(node)
 
