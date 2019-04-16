@@ -48,7 +48,7 @@ def compareProjects(
                 filter=filter,
             ))
         if not locales:
-            all_locales.update(project.locales)
+            all_locales.update(project.all_locales)
     for locale in sorted(all_locales):
         files = paths.ProjectFiles(locale, project_configs,
                                    mergebase=merge_stage)
