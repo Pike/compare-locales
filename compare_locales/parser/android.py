@@ -61,6 +61,9 @@ class AndroidEntity(Entity):
     def raw_val(self):
         return self._raw_val_literal
 
+    def position(self, offset=0):
+        return (0, offset)
+
     def value_position(self, offset=0):
         return (0, offset)
 

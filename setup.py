@@ -45,8 +45,13 @@ setup(name="compare-locales",
       classifiers=CLASSIFIERS.split("\n"),
       platforms=["any"],
       python_requires='>=2.7, !=3.0.*, !=3.1.*, !=3.2.*, !=3.3.*, !=3.4.*, <4',
-      entry_points={'console_scripts': [
-          'compare-locales = compare_locales.commands:CompareLocales.call']},
+      entry_points={
+        'console_scripts':
+        [
+            'compare-locales = compare_locales.commands:CompareLocales.call',
+            'moz-l10n-lint = compare_locales.lint.cli:main',
+        ],
+      },
       packages=find_packages(),
       package_data={
           'compare_locales.tests': ['data/*.properties', 'data/*.dtd']
