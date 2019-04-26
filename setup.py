@@ -9,8 +9,8 @@ sys.path.insert(0, os.path.dirname(__file__))
 from compare_locales import version
 
 this_directory = os.path.abspath(os.path.dirname(__file__))
-with open(os.path.join(this_directory, 'README.md'), encoding='utf-8') as f:
-    long_description = f.read()
+with open(os.path.join(this_directory, 'README.md'), 'rb') as f:
+    long_description = f.read().decode('utf-8')
 
 CLASSIFIERS = """\
 Development Status :: 5 - Production/Stable
