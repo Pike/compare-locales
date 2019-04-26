@@ -1,22 +1,16 @@
-"""Python library and scripts to assist in localizing Mozilla projects
-
-This library and the command-line script provide a way to check
-a given localization for completeness, errors and warnings. It also supports
-"l10n merge", which produces sanitized versions of localized files to be
-included in builds and deployments. For more information see
-https://developer.mozilla.org/en/docs/Compare-locales
-"""
-
 from __future__ import absolute_import
-DOCSTRINGS = __doc__.split("\n")
 
 from setuptools import setup, find_packages
 
 import sys
-import os.path
+import os
 sys.path.insert(0, os.path.dirname(__file__))
 
 from compare_locales import version
+
+this_directory = os.path.abspath(os.path.dirname(__file__))
+with open(os.path.join(this_directory, 'README.md'), encoding='utf-8') as f:
+    long_description = f.read()
 
 CLASSIFIERS = """\
 Development Status :: 5 - Production/Stable
@@ -39,8 +33,9 @@ setup(name="compare-locales",
       version=version,
       author="Axel Hecht",
       author_email="axel@mozilla.com",
-      description=DOCSTRINGS[0],
-      long_description="\n".join(DOCSTRINGS[2:]),
+      description='Lint Mozilla localizations',
+      long_description=long_description,
+      long_description_content_type='text/markdown',
       license="MPL 2.0",
       classifiers=CLASSIFIERS.split("\n"),
       platforms=["any"],
