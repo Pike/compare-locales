@@ -113,6 +113,8 @@ abc =
 
     def test_message_with_attribute(self):
         self.parser.readContents(b'''\
+
+
 abc = ABC
     .attr = Attr
 ''')
@@ -121,9 +123,10 @@ abc = ABC
         self.assertEqual(abc.key, 'abc')
         self.assertEqual(abc.raw_val, 'ABC')
         self.assertEqual(abc.all, 'abc = ABC\n    .attr = Attr')
-        self.assertEqual(abc.value_position(), (1, 7))
+        self.assertEqual(abc.position(), (3, 1))
+        self.assertEqual(abc.value_position(), (3, 7))
         attr = list(abc.attributes)[0]
-        self.assertEqual(attr.value_position(), (2, 13))
+        self.assertEqual(attr.value_position(), (4, 13))
 
     def test_message_with_attribute_and_no_value(self):
         self.parser.readContents(b'''\
