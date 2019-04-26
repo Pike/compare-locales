@@ -5,12 +5,12 @@
 
 from __future__ import absolute_import
 
-import os
 import unittest
 
 from compare_locales.lint import util
 from compare_locales.paths.project import ProjectConfig
 from compare_locales.paths.files import ProjectFiles
+from compare_locales import mozpath
 
 
 class MirrorReferenceTest(unittest.TestCase):
@@ -30,7 +30,7 @@ class MirrorReferenceTest(unittest.TestCase):
         files = ProjectFiles(None, [pc])
         get_reference_and_tests = util.mirror_reference_and_tests(files, 'tld')
         ref, tests = get_reference_and_tests('some/path/file.ftl')
-        self.assertEqual(os.path.relpath(ref, 'tld'), 'some/path/file.ftl')
+        self.assertEqual(mozpath.relpath(ref, 'tld'), 'some/path/file.ftl')
         self.assertEqual(tests, set())
 
     def test_with_tests(self):
@@ -43,7 +43,7 @@ class MirrorReferenceTest(unittest.TestCase):
         files = ProjectFiles(None, [pc])
         get_reference_and_tests = util.mirror_reference_and_tests(files, 'tld')
         ref, tests = get_reference_and_tests('some/path/file.ftl')
-        self.assertEqual(os.path.relpath(ref, 'tld'), 'some/path/file.ftl')
+        self.assertEqual(mozpath.relpath(ref, 'tld'), 'some/path/file.ftl')
         self.assertEqual(tests, {'more_stuff'})
 
 
@@ -67,7 +67,7 @@ class L10nBaseReferenceTest(unittest.TestCase):
         get_reference_and_tests = util.l10n_base_reference_and_tests(files)
         ref, tests = get_reference_and_tests('some/path/file.ftl')
         self.assertEqual(
-            os.path.relpath(ref, 'l10n_orig/gecko'),
+            mozpath.relpath(ref, 'l10n_orig/gecko'),
             'some/file.ftl'
         )
         self.assertEqual(tests, set())
@@ -85,7 +85,7 @@ class L10nBaseReferenceTest(unittest.TestCase):
         get_reference_and_tests = util.l10n_base_reference_and_tests(files)
         ref, tests = get_reference_and_tests('some/path/file.ftl')
         self.assertEqual(
-            os.path.relpath(ref, 'l10n_orig/gecko'),
+            mozpath.relpath(ref, 'l10n_orig/gecko'),
             'some/file.ftl'
         )
         self.assertEqual(tests, {'more_stuff'})

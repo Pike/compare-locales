@@ -13,6 +13,7 @@ from compare_locales.lint.util import (
     mirror_reference_and_tests,
     l10n_base_reference_and_tests,
 )
+from compare_locales import mozpath
 from compare_locales import paths
 from compare_locales import parser
 
@@ -78,7 +79,7 @@ def main():
             rv = 0
     for result in results:
         print('{} ({}:{}): {}'.format(
-            os.path.relpath(result['path']),
+            mozpath.relpath(result['path'], '.'),
             result.get('lineno', 0),
             result.get('column', 0),
             result['message']
