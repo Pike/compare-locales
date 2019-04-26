@@ -16,6 +16,7 @@ from compare_locales.lint.util import (
 from compare_locales import mozpath
 from compare_locales import paths
 from compare_locales import parser
+from compare_locales import version
 
 
 epilog = '''\
@@ -32,6 +33,9 @@ def main():
         epilog=epilog,
     )
     p.add_argument('l10n_toml')
+    p.add_argument(
+        '--version', action='version', version='%(prog)s ' + version
+    )
     p.add_argument('-W', action='store_true', help='error on warnings')
     p.add_argument(
         '--l10n-reference',
