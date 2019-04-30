@@ -24,7 +24,7 @@ class L10nLinter(object):
 
     def lint_file(self, path, ref, extra_tests):
         file_parser = parser.getParser(path)
-        if os.path.isfile(ref):
+        if ref is not None and os.path.isfile(ref):
             file_parser.readFile(ref)
             reference = file_parser.parse()
         else:
