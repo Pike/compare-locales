@@ -99,7 +99,10 @@ class EntityLinter(object):
             for tp, pos, msg, cat in self.checker.check(
                 current_entity, current_entity
             ):
-                lineno, col = current_entity.value_position(pos)
+                if isinstance(pos, checks.EntityPos):
+                    lineno, col = current_entity.position(pos)
+                else:
+                    lineno, col = current_entity.value_position(pos)
                 yield {
                     'lineno': lineno,
                     'column': col,
