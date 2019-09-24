@@ -142,8 +142,9 @@ class GenericL10nChecks(object):
                         )
                     )
         # Check for plural categories
-        if self.locale in plurals.CATEGORIES_BY_LOCALE:
-            known_plurals = set(plurals.CATEGORIES_BY_LOCALE[self.locale])
+        known_plurals = plurals.get_plural(self.locale)
+        if known_plurals:
+            known_plurals = set(known_plurals)
             # Ask for known plurals, but check for plurals w/out `other`.
             # `other` is used for all kinds of things.
             check_plurals = known_plurals.copy()
