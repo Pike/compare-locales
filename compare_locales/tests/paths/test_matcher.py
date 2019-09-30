@@ -46,6 +46,12 @@ class TestMatcher(unittest.TestCase):
         self.assertTrue(one.match('foo/tender/bar/baz.qux'))
         self.assertFalse(one.match('foo/nobar/baz.qux'))
         self.assertFalse(one.match('foo/tender/bar'))
+        other = Matcher('baz/**/qux/**')
+        self.assertEqual(one.sub(other, 'foo/bar/baz.qux'), 'baz/qux/baz.qux')
+        self.assertEqual(
+            one.sub(other, 'foo/tender/bar/baz.qux'),
+            'baz/tender/qux/baz.qux'
+        )
 
     def test_prefix(self):
         self.assertEqual(

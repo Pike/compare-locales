@@ -108,7 +108,7 @@ class Matcher(object):
             return None
         env = {}
         env.update(
-            (key, Literal(value))
+            (key, Literal(value if value is not None else ''))
             for key, value in m.items()
         )
         env.update(other.env)
