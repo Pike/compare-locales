@@ -71,6 +71,7 @@ CATEGORIES_BY_LOCALE = {
     'be': 7,
     'bg': 1,
     'bn': 2,
+    'bo': 0,
     'br': 16,
     'brx': 1,
     'bs': 19,
