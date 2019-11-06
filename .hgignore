@@ -7,3 +7,6 @@
 ^.tox$
 ^.coverage$
 ^htmlcov$
+^contrib/lang/build$
+^contrib/lang/dist$
+^contrib/lang/src/cl_ext.lang.egg-info$
