@@ -4,6 +4,7 @@ from setuptools import setup
 
 setup(
     name="cl_ext.lang",
+    version="0.1.0",
     author="Axel Hecht",
     author_email="axel@mozilla.com",
     description=".lang parser for compare-locales",
