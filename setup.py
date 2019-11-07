@@ -56,4 +56,7 @@ setup(name="compare-locales",
           'pytoml',
           'six',
       ],
+      tests_require=[
+          'mock',
+      ],
       test_suite='compare_locales.tests')

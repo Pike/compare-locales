@@ -10,6 +10,16 @@ from compare_locales import mozpath
 REFERENCE_LOCALE = 'en-x-moz-reference'
 
 
+class ConfigList(list):
+    def maybe_extend(self, other):
+        '''Add configs from other list if this list doesn't have this path yet.
+        '''
+        for config in other:
+            if any(mine.path == config.path for mine in self):
+                continue
+            self.append(config)
+
+
 class ProjectFiles(object):
     '''Iterable object to get all files and tests for a locale and a
     list of ProjectConfigs.
@@ -20,14 +30,26 @@ class ProjectFiles(object):
     def __init__(self, locale, projects, mergebase=None):
         self.locale = locale
         self.matchers = []
+        self.exclude = None
         self.mergebase = mergebase
-        configs = []
+        configs = ConfigList()
+        excludes = ConfigList()
         for project in projects:
             # Only add this project if we're not in validation mode,
             # and the given locale is enabled for the project.
             if locale is not None and locale not in project.all_locales:
                 continue
-            configs.extend(project.configs)
+            configs.maybe_extend(project.configs)
+            excludes.maybe_extend(project.excludes)
+        # If an excluded config is explicitly included, drop if from the
+        # excludes.
+        excludes = [
+            exclude
+            for exclude in excludes
+            if not any(c.path == exclude.path for c in configs)
+        ]
+        if excludes:
+            self.exclude = ProjectFiles(locale, excludes)
         for pc in configs:
             if locale and pc.locales is not None and locale not in pc.locales:
                 continue
@@ -146,12 +168,16 @@ class ProjectFiles(object):
         '''
         base = matcher.prefix
         if self._isfile(base):
+            if self.exclude and self.exclude.match(base) is not None:
+                return
             if matcher.match(base) is not None:
                 yield base
             return
         for d, dirs, files in self._walk(base):
             for f in files:
                 p = mozpath.join(d, f)
+                if self.exclude and self.exclude.match(p) is not None:
+                    continue
                 if matcher.match(p) is not None:
                     yield p
 
