@@ -415,6 +415,8 @@ select =
     }
 ref =
     .style = {simple.style}
+broken =
+    .style = 28em
 '''
 
     def test_simple(self):
@@ -552,6 +554,25 @@ ref =
                 (
                     'warning', 0,
                     'Missing message reference: simple.style', 'fluent'
+                ),
+            ))
+
+    def test_broken(self):
+        self._test(dedent_ftl(
+            '''\
+            broken =
+                .style = 27em
+            '''),
+            (('error', 0, 'reference is a CSS spec', 'fluent'),))
+        self._test(dedent_ftl(
+            '''\
+            broken =
+                .style = width: 27em
+            '''),
+            (
+                (
+                    'warning', 0,
+                    'width only in l10n', 'fluent'
                 ),
             ))
 

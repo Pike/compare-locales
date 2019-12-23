@@ -245,7 +245,7 @@ class L10nMessageVisitor(GenericL10nChecks, ReferenceMessageVisitor):
         if node.id.name != 'style' or self.css_styles == 'skip':
             return
         ref_styles = self.reference.css_styles
-        if ref_styles == 'skip':
+        if ref_styles in ('skip', None):
             # Reference is complex, l10n isn't.
             # Let's still validate the css spec.
             ref_styles = {}
