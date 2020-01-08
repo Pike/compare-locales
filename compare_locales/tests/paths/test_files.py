@@ -382,6 +382,28 @@ basepath = "."
         local_files = [self.leaf(p).split('/', 1)[1] for p, _, _, _ in pc]
         return pontoon, vendor, local_files
 
+    def test_reference(self, _walk, _isfile):
+        pontoon_config, vendor_config, files = self._list(None, _walk, _isfile)
+        pontoon_files = ProjectFiles(None, [pontoon_config])
+        vendor_files = ProjectFiles(None, [vendor_config])
+        self.assertListEqual(
+            files,
+            [
+                'firefox/feature.ftl',
+                'firefox/home.ftl',
+                'mozorg/mission.ftl',
+            ]
+        )
+        ref_path = self.path('/en/firefox/feature.ftl')
+        self.assertIsNotNone(pontoon_files.match(ref_path))
+        self.assertIsNotNone(vendor_files.match(ref_path))
+        ref_path = self.path('/en/firefox/home.ftl')
+        self.assertIsNotNone(pontoon_files.match(ref_path))
+        self.assertIsNotNone(vendor_files.match(ref_path))
+        ref_path = self.path('/en/mozorg/mission.ftl')
+        self.assertIsNotNone(pontoon_files.match(ref_path))
+        self.assertIsNone(vendor_files.match(ref_path))
+
     def test_de(self, _walk, _isfile):
         # home.ftl excluded completely by configs-special-templates.toml
         # firefox/* only in vendor

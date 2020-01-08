@@ -145,6 +145,9 @@ class ProjectFiles(object):
 
     def iter_reference(self):
         '''Iterate over reference files.'''
+        # unset self.exclude, as we don't want that for our reference files
+        exclude = self.exclude
+        self.exclude = None
         known = {}
         for matchers in self.matchers:
             if 'reference' not in matchers:
@@ -159,6 +162,7 @@ class ProjectFiles(object):
                     }
         for path, d in sorted(known.items()):
             yield (path, d.get('reference'), None, d['test'])
+        self.exclude = exclude
 
     def _files(self, matcher):
         '''Base implementation of getting all files in a hierarchy
@@ -194,11 +198,11 @@ class ProjectFiles(object):
 
         This routine doesn't check that the files actually exist.
         '''
-        if self.exclude and self.exclude.match(path) is not None:
+        if self.locale is not None and self.exclude and self.exclude.match(path) is not None:
             return
         for matchers in self.matchers:
             matcher = matchers['l10n']
-            if matcher.match(path) is not None:
+            if self.locale is not None and matcher.match(path) is not None:
                 ref = merge = None
                 if 'reference' in matchers:
                     ref = matcher.sub(matchers['reference'], path)
