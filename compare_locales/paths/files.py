@@ -198,7 +198,10 @@ class ProjectFiles(object):
 
         This routine doesn't check that the files actually exist.
         '''
-        if self.locale is not None and self.exclude and self.exclude.match(path) is not None:
+        if (
+            self.locale is not None and
+            self.exclude and self.exclude.match(path) is not None
+        ):
             return
         for matchers in self.matchers:
             matcher = matchers['l10n']
