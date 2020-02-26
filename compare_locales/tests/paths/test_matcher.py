@@ -53,6 +53,12 @@ class TestMatcher(unittest.TestCase):
             'baz/tender/qux/baz.qux'
         )
 
+    def test_encoded_matcher(self):
+        one = Matcher('foo/*', encoding='utf-8')
+        self.assertTrue(one.match(b'foo/bar'))
+        other = Matcher('bar/*', encoding='utf-8')
+        self.assertEqual(one.sub(other, b'foo/baz'), b'bar/baz')
+
     def test_prefix(self):
         self.assertEqual(
             Matcher('foo/bar.file').prefix, 'foo/bar.file'
@@ -91,6 +97,22 @@ class TestMatcher(unittest.TestCase):
         self.assertEqual(
             Matcher('foo/{v}/*/bar', {'v': '{missing}'}).prefix,
             'foo/'
+        )
+
+    def test_encoded_prefix(self):
+        self.assertEqual(
+            Matcher('foo/bar.file', encoding='utf-8').prefix, b'foo/bar.file'
+        )
+        self.assertEqual(
+            Matcher('foo/*', encoding='utf-8').prefix, b'foo/'
+        )
+        self.assertEqual(
+            Matcher('foo/{v}/bar', encoding='utf-8').prefix,
+            b'foo/'
+        )
+        self.assertEqual(
+            Matcher('foo/{v}/bar', {'v': 'expanded'}, encoding='utf-8').prefix,
+            b'foo/expanded/bar'
         )
 
     def test_variables(self):
@@ -163,12 +185,44 @@ class TestMatcher(unittest.TestCase):
             }
         )
 
+    def test_encoded_variables(self):
+        self.assertDictEqual(
+            Matcher('foo/bar.file', encoding='utf-8').match(b'foo/bar.file'),
+            {}
+        )
+        self.assertDictEqual(
+            Matcher(
+                '{path}/bar.file', encoding='utf-8'
+            ).match(b'foo/bar.file'),
+            {
+                'path': 'foo'
+            }
+        )
+        self.assertDictEqual(
+            Matcher('{l}*', {
+                'l': 'foo/{locale}/'
+            }, encoding='utf-8').match(b'foo/it/path'),
+            {
+                'l': 'foo/it/',
+                'locale': 'it',
+                's1': 'path',
+            }
+        )
+
     def test_variables_sub(self):
         one = Matcher('{base}/{loc}/*', {'base': 'ONE_BASE'})
         other = Matcher('{base}/somewhere/*', {'base': 'OTHER_BASE'})
         self.assertEqual(
             one.sub(other, 'ONE_BASE/ab-CD/special'),
             'OTHER_BASE/somewhere/special'
+        )
+        one = Matcher('{base}/{loc}/*', {'base': 'ONE_BASE'}, encoding='utf-8')
+        other = Matcher(
+            '{base}/somewhere/*', {'base': 'OTHER_BASE'}, encoding='utf-8'
+        )
+        self.assertEqual(
+            one.sub(other, b'ONE_BASE/ab-CD/special'),
+            b'OTHER_BASE/somewhere/special'
         )
 
     def test_copy(self):
