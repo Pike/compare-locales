@@ -57,6 +57,6 @@ setup(name="compare-locales",
           'six',
       ],
       tests_require=[
-          'mock',
+          'mock<4.0',
       ],
       test_suite='compare_locales.tests')
